@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionX - Local Web Interface (V0.25)</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="/src/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header class="app-header">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
+          <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+          <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+        </svg>
+        <div>
+          <h1 class="brand-title">VisionX Web</h1>
+          <span class="brand-subtitle">Real YOLOv8 ONNX Browser Inference Engine</span>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <!-- Badge Status Kamera -->
+        <div id="cameraBadge" class="badge badge-disconnected">
+          <span class="badge-dot"></span>
+          <span id="cameraStatusText">Camera Disconnected</span>
+        </div>
+
+        <!-- Badge Status Inferensi AI -->
+        <div id="inferenceBadge" class="badge badge-disconnected">
+          <span class="badge-dot"></span>
+          <span id="inferenceStatusText">Loading Model...</span>
+        </div>
+
+        <!-- Badge FPS -->
+        <div class="badge badge-fps">
+          <span>FPS:</span>
+          <strong id="fpsValue">0.0</strong>
+        </div>
+      </div>
+    </header>
+
+    <!-- Error / Warning Banner Toast -->
+    <div id="errorBanner" class="error-banner hidden">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span id="errorMessage">Pesan kesalahan kamera.</span>
+    </div>
+
+    <!-- Main Stage: Video & Canvas Overlay -->
+    <main class="stage-card">
+      <video id="videoElement" class="video-view" autoplay playsinline muted></video>
+      <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
+
+      <!-- Placeholder bila kamera mati -->
+      <div id="cameraPlaceholder" class="camera-placeholder">
+        <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <div class="placeholder-title">Kamera Belum Aktif</div>
+        <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video dan inferensi YOLOv8.</div>
+      </div>
+    </main>
+
+    <!-- Controls Panel -->
+    <section class="controls-card">
+      <div class="controls-row">
+        <!-- Tombol Start/Stop -->
+        <div class="button-group">
+          <button id="btnStart" class="btn btn-start">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start Camera
+          </button>
+          <button id="btnStop" class="btn btn-stop" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="6" y="6" width="12" height="12"></rect>
+            </svg>
+            Stop Camera
+          </button>
+        </div>
+
+        <!-- Select Device Kamera -->
+        <div class="field-group">
+          <label for="deviceSelect" class="field-label">Pilih Kamera:</label>
+          <select id="deviceSelect" class="select-control">
+            <option value="">Default / Auto Camera</option>
+          </select>
+        </div>
+
+        <!-- Toggle Inferensi AI -->
+        <label class="toggle-group">
+          <span class="field-label">AI Inference:</span>
+          <span class="switch">
+            <input type="checkbox" id="toggleInference" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Threshold & Debug Controls Row -->
+      <div class="controls-row threshold-row">
+        <!-- Confidence Slider -->
+        <div class="field-group slider-group">
+          <label for="confSlider" class="field-label">
+            Confidence Threshold: <strong id="confVal">0.45</strong>
+          </label>
+          <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.45" class="range-slider" />
+        </div>
+
+        <!-- IoU Slider -->
+        <div class="field-group slider-group">
+          <label for="iouSlider" class="field-label">
+            IoU NMS Threshold: <strong id="iouVal">0.45</strong>
+          </label>
+          <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" />
+        </div>
+
+        <!-- Toggle Debug Mode -->
+        <label class="toggle-group debug-toggle">
+          <span class="field-label">Debug Mode (Raw Output):</span>
+          <span class="switch">
+            <input type="checkbox" id="toggleDebug" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Debug Mode Raw Output Panel -->
+    <section id="debugPanel" class="debug-card">
+      <div class="debug-header">
+        <h3>🔍 Raw Detection Debug Inspector</h3>
+        <div class="debug-meta">
+          <span>Active Model: <strong id="debugModelName">YOLOv8n ONNX</strong></span>
+          <span>Latency: <strong id="debugLatency">0 ms</strong></span>
+          <span>Frame ID: <strong id="debugFrameId">#0</strong></span>
+        </div>
+      </div>
+      
+      <div class="debug-table-wrapper">
+        <table class="debug-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Class</th>
+              <th>Confidence</th>
+              <th>Bounding Box [x1, y1, x2, y2]</th>
+              <th>Frame ID</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="debugTableBody">
+            <tr>
+              <td colspan="6" class="text-center text-muted">Belum ada deteksi aktif (kamera mati atau background kosong).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="app-footer">
+      VisionX V0.25 Local Development Interface &bull; Real YOLOv8 ONNX Runtime Web
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
