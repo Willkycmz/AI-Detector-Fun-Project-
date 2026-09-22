@@ -4,7 +4,7 @@
 
 VisionX adalah fondasi sistem Computer Vision jangka panjang yang dirancang untuk mengenali berbagai objek dan informasi visual secara realtime dari video stream (webcam, kamera eksternal, CCTV/RTSP, hingga kamera smartphone di masa depan).
 
-Saat ini VisionX telah mencapai **Versi 0.2 (Dataset Collection System)** dengan tetap mempertahankan **V0.1 (Realtime Object Detection)** secara utuh dan modular.
+Saat ini VisionX telah mencapai **Versi 0.3 (Dataset Preparation Pipeline)** dengan tetap mempertahankan **V0.1 (Realtime Object Detection)** dan **V0.2 (Dataset Collection System)** secara modular, stabil, dan teruji.
 
 ---
 
@@ -15,18 +15,49 @@ Saat ini VisionX telah mencapai **Versi 0.2 (Dataset Collection System)** dengan
 - **Estetika UI & Visualisasi**: Bounding box beraksen sudut modern, label kelas, nilai confidence, dan badge realtime FPS yang dihaluskan (*smoothed*).
 - **Arsitektur Modular**: Pemisahan tegas antara Camera Stream, AI Inference, dan UI Visualizer.
 
-### 2. V0.2 - Dataset Collection System *(Baru!)*
-- **Struktur Dataset Terstandarisasi**:
-  - `datasets/raw/<class_name>/`: Gambar mentah asli (*clean frames*) tanpa anotasi / bounding box.
-  - `datasets/processed/`: Dataset siap olah (resizing/augmentasi).
-  - `datasets/annotations/`: Label anotasi (format YOLO txt / Pascal VOC xml).
-  - `datasets/metadata/`: Metadata kelas dan konfigurasi split dataset.
-- **Pengambilan Gambar Keyboard-Triggered**: Tekan tombol `SPACE` atau `c` untuk menyimpan frame kamera bersih.
-- **Nama File Otomatis & Unik**: Format `<class>_<timestamp>_<uuid>.jpg` tanpa risiko menimpa file lama.
+### 2. V0.2 - Dataset Collection System
+- **Struktur Dataset Terstandarisasi**: Pengambilan citra asli mentah (*clean raw frames*) tanpa kontaminasi anotasi ke `datasets/raw/<class_name>/`.
+- **Pengambilan Gambar Keyboard-Triggered**: Tekan tombol `SPACE` atau `c` untuk mengambil foto.
+- **Nama File Otomatis & Unik**: Format `<class>_<timestamp>_<uuid>.jpg` tanpa risiko menimpa file lama (*collision-safe*).
 - **Ganti Kelas Tanpa Restart**: Tekan tombol `n` untuk membuka dialog pengetikan nama kelas langsung di layar (*on-screen modal dialog*).
-- **Validasi Nama Kelas Aman**: Sanitasi nama folder otomatis (mencegah karakter ilegal dan nama reserved sistem).
-- **Monitoring Koleksi di Layar**: Menampilkan status mode koleksi, nama kelas aktif, jumlah foto terkumpul, dan flash notifikasi keberhasilan simpan.
+- **Validasi Nama Kelas Aman**: Sanitasi nama folder otomatis (mencegah karakter ilegal dan nama reserved sistem Windows).
 - **Non-Breaking Dual-Mode**: Beralih mode deteksi $\leftrightarrow$ koleksi kapan saja dengan menekan tombol `m`.
+
+### 3. V0.3 - Dataset Preparation Pipeline *(Baru!)*
+- **End-to-End Preparation Workflow**:
+  ```text
+  Capture (V0.2) 
+    ↳ Annotate using CVAT / Label Studio 
+        ↳ Export YOLO 
+            ↳ Import 
+                ↳ Validate 
+                    ↳ Split (Train/Val/Test) 
+                        ↳ Prepare 
+                            ↳ Generate dataset.yaml 
+                                ↳ Ready for V0.4 Training
+  ```
+- **YOLO Annotation Support**: Mendukung pasangan `image.jpg` dan `image.txt` dengan format normalisasi standar:
+  `class_id x_center y_center width height` (nilai float $[0.0, 1.0]$).
+- **Validasi Komprehensif (`DatasetValidator`)**:
+  - Pengecekan keterbacaan citra (resolusi $> 0$ via OpenCV).
+  - Pengecekan keterbacaan dan struktur file anotasi.
+  - Validasi koordinat bounding box agar berada di dalam batas citra ($[0.0, 1.0]$).
+  - Deteksi citra tanpa label (*missing labels*) dan label tanpa citra (*orphaned labels*).
+  - Deteksi file anotasi kosong (*empty labels*) atau rusak (*corrupted annotations*).
+  - Deteksi citra duplikat berbasis SHA256 image hash.
+  - Perhitungan jumlah objek dan citra per kelas.
+- **Class Registry Terpusat (`ClassRegistry`)**:
+  - Pemetaan konsisten antara `class_id` dan `class_name` via `datasets/metadata/classes.yaml`.
+  - Menjamin ID kelas tidak bergeser saat dataset diproses ulang atau ditambah kelas baru.
+- **Reproducible Split & Anti Data-Leakage (`DatasetSplitter`)**:
+  - Pembagian partisi `train` (80%), `val` (10%), dan `test` (10%) yang dapat dikonfigurasi.
+  - Random seed yang dapat ditentukan (misal `--seed 42`) untuk reproduktibilitas 100%.
+  - **Anti-Leakage Grouping**: Citra dengan hash identik dikelompokkan ke partisi yang sama sehingga tidak bocor antar train, val, dan test.
+- **Otomatisasi `dataset.yaml` (`DatasetYAMLGenerator`)**:
+  - Membuat file konfigurasi resmi Ultralytics YOLO (`dataset.yaml`) berisi path relatif/absolut dan daftar nama kelas.
+- **Statistik Dataset Mendalam (`DatasetStats`)**:
+  - Menampilkan ringkasan total citra, total objek, sebaran per kelas, perbandingan split, serta audit integritas dataset.
+- **Antarmuka CLI Terpadu**: Tersedia melalui perintah `python -m app.dataset <subcommand>`.
 
 ---
 
@@ -40,27 +71,41 @@ VisionX/
 │   ├── config.py        # Dataclass AppConfig & CLI argument parser
 │   ├── detector.py      # YOLOObjectDetector (AI) & Visualizer (HUD & UI)
 │   ├── camera.py        # CameraStream lifecycle & error handling
-│   └── collector.py     # DatasetCollector & validasi nama kelas (V0.2)
+│   ├── collector.py     # DatasetCollector & validasi nama kelas (V0.2)
+│   └── dataset.py       # Dataset Preparation Pipeline, Validator & CLI (V0.3)
 ├── models/              # Bobot model (*.pt, *.onnx)
 │   ├── README.md
 │   └── yolov8n.pt
 ├── datasets/            # Arsitektur dataset terstruktur
-│   ├── raw/             # Gambar mentah per kelas (diabaikan git)
+│   ├── raw/             # Foto mentah per kelas dari V0.2 (diabaikan git)
 │   │   ├── README.md
 │   │   ├── bottle/
 │   │   ├── glass/
 │   │   └── charger/
-│   ├── processed/       # Dataset hasil pra-pemrosesan
+│   ├── imported/        # Pasangan gambar + label YOLO hasil export CVAT/Label Studio
 │   │   └── README.md
-│   ├── annotations/     # File anotasi (YOLO / VOC / COCO)
+│   ├── processed/       # Dataset hasil split siap training YOLO
+│   │   ├── README.md
+│   │   ├── dataset.yaml # Konfigurasi resmi YOLO (dihasilkan otomatis)
+│   │   ├── images/
+│   │   │   ├── train/
+│   │   │   ├── val/
+│   │   │   └── test/
+│   │   └── labels/
+│   │       ├── train/
+│   │       ├── val/
+│   │       └── test/
+│   ├── annotations/     # Arsip label anotasi
 │   │   └── README.md
-│   └── metadata/        # Konfigurasi data.yaml & classes
+│   └── metadata/        # Konfigurasi registry kelas
+│       ├── classes.yaml # Mapping stabil: 0: glass, 1: bottle, 2: charger
 │       └── README.md
-├── tests/               # Automated unit testing suite (11 tests)
+├── tests/               # Automated unit testing suite (21 tests)
 │   ├── test_camera.py
 │   ├── test_detector.py
-│   └── test_collector.py
-├── requirements.txt     # Dependensi Python
+│   ├── test_collector.py
+│   └── test_dataset.py  # Unit tests pipeline V0.3
+├── requirements.txt     # Dependensi Python (PyTorch, Ultralytics, OpenCV, NumPy, PyYAML)
 ├── .gitignore           # Filter cache, venv, model binary, & dataset
 └── README.md            # Dokumentasi lengkap
 ```
@@ -102,66 +147,112 @@ pip install -r requirements.txt
 
 ---
 
-## 💻 Cara Menjalankan Aplikasi
+## 💻 Panduan Penggunaan
 
-### 1. Menjalankan Mode Deteksi Objek (V0.1 Default)
+### A. Realtime Object Detection (V0.1)
 ```powershell
+# Jalankan deteksi objek realtime dengan webcam
 python app/main.py
-```
-*Gunakan kamera default (0) dengan model YOLO pretrained.*
 
-### 2. Menjalankan Mode Koleksi Dataset (V0.2)
-Anda dapat langsung memulai di mode koleksi dan menentukan nama kelas objek:
+# Menggunakan parameter custom
+python app/main.py --conf 0.50 --model models/yolov8n.pt
+```
+
+### B. Dataset Collection (V0.2)
 ```powershell
+# Jalankan mode koleksi foto untuk kelas tertentu
 python app/main.py --mode collect --class bottle
-```
-Contoh kelas lain:
-```powershell
-python app/main.py --mode collect --class glass
-python app/main.py --mode collect --class charger
-```
 
-### 3. Menjalankan Mode Simulasi / Synthetic (Tanpa Webcam Fisik)
-```powershell
-python app/main.py --source synthetic --mode collect --class bottle
+# Tombol interaktif saat preview:
+# [SPACE] / [C] : Ambil foto bersih (disimpan ke datasets/raw/<class>/)
+# [N]           : Buka dialog pengetikan ganti kelas on-screen
+# [M]           : Toggle mode deteksi <-> koleksi
+# [Q] / [ESC]   : Keluar
 ```
 
 ---
 
-## ⌨️ Kontrol Keyboard Interaktif
+### C. Dataset Preparation Pipeline (V0.3)
 
-Saat jendela preview aktif, Anda dapat menggunakan tombol-tombol berikut:
+#### Alur Kerja Lengkap:
+1. **Kumpulkan Foto**: Ambil foto objek menggunakan V0.2 (`datasets/raw/<class>/`).
+2. **Anotasi Eksternal**: Anotasi gambar menggunakan **CVAT**, **Label Studio**, atau **Roboflow**.
+3. **Ekspor YOLO**: Ekspor hasil anotasi dalam format **YOLO 1.0** (pasangan file `.jpg` dan `.txt`).
+4. **Impor / Letakkan**: Letakkan pasangan gambar & label ke folder sumber (misal `datasets/imported/`).
+5. **Jalankan Pipeline VisionX**:
 
-| Tombol | Fungsi |
-|---|---|
-| **`SPACE`** atau **`c`** | **Ambil Foto**: Menyimpan frame kamera asli (*clean raw frame*) ke `datasets/raw/<class_name>/` |
-| **`n`** | **Ganti Kelas**: Membuka kotak dialog on-screen untuk mengetik nama kelas baru (tekan **ENTER** untuk simpan, **ESC** untuk batal) |
-| **`m`** | **Ganti Mode**: Berpindah secara instan antara mode **Deteksi Objek** dan **Koleksi Dataset** |
-| **`q`** atau **`ESC`** | **Keluar**: Menutup preview dan membebaskan resource kamera secara aman |
+#### 1. Validasi Integritas Dataset (`validate`)
+Memeriksa keterbacaan file, format koordinat YOLO, missing/orphaned labels, dan duplikasi:
+```powershell
+python -m app.dataset validate --source datasets/imported --classes datasets/metadata/classes.yaml
+```
+
+#### 2. Menjalankan Alur Lengkap Persiapan Dataset (`prepare`)
+Menjalankan validasi $\rightarrow$ class registry $\rightarrow$ train/val/test split anti data-leakage $\rightarrow$ generate `dataset.yaml` $\rightarrow$ menampilkan statistik:
+```powershell
+python -m app.dataset prepare --source datasets/imported --dest datasets/processed --classes datasets/metadata/classes.yaml --train 0.8 --val 0.1 --test 0.1 --seed 42
+```
+
+#### 3. Membagi Dataset Saja (`split`)
+```powershell
+python -m app.dataset split --source datasets/imported --dest datasets/processed --train 0.8 --val 0.1 --test 0.1 --seed 42
+```
+
+#### 4. Menampilkan Statistik Dataset (`stats`)
+```powershell
+python -m app.dataset stats --source datasets/processed
+```
+*Contoh Output Statistik:*
+```text
+=============================================
+Dataset Statistics
+=============================================
+Images: 1500
+Objects: 2340
+
+Objects per Class:
+  glass: 700
+  bottle: 500
+  charger: 300
+
+Splits:
+  Train: 1200
+  Val: 150
+  Test: 150
+
+Quality & Integrity:
+  Invalid annotations: 0
+  Missing labels: 0
+=============================================
+```
+
+#### 5. Mengimpor Pasangan Citra & Label dari Direktori Eksternal (`import`)
+```powershell
+python -m app.dataset import --source "D:/Downloads/my_annotated_batch" --dest datasets/imported
+```
 
 ---
 
-## ⚙️ Opsi Perintah CLI
+## ⚙️ Ringkasan Opsi CLI `app.dataset`
 
-| Argumen | Default | Deskripsi |
-|---|---|---|
-| `--mode` | `detect` | Mode awal: `detect` (deteksi objek) atau `collect` (koleksi dataset) |
-| `--class` | `object` | Nama kelas awal untuk mode koleksi dataset |
-| `--source` | `0` | Indeks webcam (0, 1, ...), path file video, atau `synthetic` |
-| `--model` | `models/yolov8n.pt` | Path ke bobot model YOLO |
-| `--conf` | `0.45` | Confidence threshold deteksi objek (0.0 s/d 1.0) |
-| `--iou` | `0.45` | IoU / NMS threshold (0.0 s/d 1.0) |
-| `--save-dir` | `datasets/raw` | Direktori tujuan penyimpanan foto mentah |
-| `--width` | `640` | Lebar resolusi frame kamera |
-| `--height` | `480` | Tinggi resolusi frame kamera |
-| `--device` | `auto` | Pilihan akselerasi: `auto`, `cpu`, atau `cuda` |
-| `--no-fps` | `False` | Menyembunyikan badge counter FPS |
+| Subcommand | Argumen | Default | Deskripsi |
+|---|---|---|---|
+| `validate` | `--source` | *wajib* | Direktori dataset yang akan diperiksa |
+| | `--classes` | `None` | Path file `classes.yaml` untuk validasi class ID |
+| `split` | `--source` | *wajib* | Direktori dataset sumber |
+| | `--dest` | `datasets/processed` | Direktori tujuan output YOLO |
+| | `--train` / `--val` / `--test` | `0.8` / `0.1` / `0.1` | Proporsi pembagian dataset |
+| | `--seed` | `42` | Random seed untuk reproduktibilitas |
+| | `--allow-leakage` | `False` | Nonaktifkan pengelompokan hash anti-leakage |
+| `stats` | `--source` | `datasets/processed` | Direktori dataset yang ingin dihitung statistiknya |
+| `prepare` | `--source` | *wajib* | Menjalankan seluruh alur validasi, split, yaml, stats |
+| `import` | `--source` / `--dest` | *wajib* / `datasets/imported` | Menyalin pasangan gambar + label |
 
 ---
 
 ## 🧪 Menjalankan Automated Testing
 
-Untuk memvalidasi seluruh fungsionalitas modul kamera, detektor YOLO, visualizer, serta subsistem koleksi dataset:
+Untuk memvalidasi seluruh fungsionalitas modul V0.1, V0.2, dan V0.3:
 
 ```powershell
 .venv\Scripts\python -m unittest discover tests
@@ -169,25 +260,30 @@ Untuk memvalidasi seluruh fungsionalitas modul kamera, detektor YOLO, visualizer
 
 Output:
 ```text
-Ran 11 tests in ...s
+Ran 21 tests in ...s
 OK
 ```
 
-Semua pengujian mencakup:
-- Validasi nama kelas (sanitasi, penanganan spasi, penolakan karakter ilegal & reserved names).
-- Penyimpanan file citra mentah dengan penamaan unik tanpa overwriting.
-- Penghitungan dan pergantian kelas runtime tanpa restart aplikasi.
-- Lifecycle camera stream & synthetic frame generator.
-- Penanganan error model corrupt / invalid weights path.
-- Konsistensi rendering visualizer.
+Cakupan pengujian (21 unit tests):
+- `test_dataset.py`:
+  - Validasi format baris YOLO valid & boundary overflow check.
+  - Penolakan token invalid, koordinat out-of-bounds ($<0$ atau $>1$), dan class ID negatif.
+  - Class Registry persistence (YAML save/load) & pencegahan class ID shift.
+  - Deteksi missing label, orphaned label, empty label, dan corrupted image.
+  - Split reproducibility via random seed & pengelompokan citra duplikat (anti-leakage).
+  - Pembuatan `dataset.yaml` format standar Ultralytics.
+  - Perhitungan metrik statistik dataset.
+- `test_collector.py`: Validasi nama kelas, counter, runtime class switching, dan unique naming.
+- `test_camera.py`: Lifecycle camera stream, synthetic stream, dan context manager.
+- `test_detector.py`: Inferensi YOLO, error handling model, dan visualizer HUD.
 
 ---
 
-## 🗺️ Roadmap Pengembangan Berikutnya
+## 🗺️ Roadmap Pengembangan VisionX
 
 - [x] **V0.1 (MVP)**: Realtime object detection modular berbasis webcam + pretrained YOLO.
 - [x] **V0.2**: Dataset Collection System terstruktur, keyboard capture, unique naming, class switching tanpa restart.
-- [ ] **V0.3**: Auto-Annotation Assistant & Dataset Preparation (integrasi semi-automated bounding box labeling).
-- [ ] **V0.4**: Custom Model Training Pipeline (Fine-tuning YOLO pada custom dataset lokal).
+- [x] **V0.3**: Dataset Preparation Pipeline (YOLO validation, class registry, anti-leakage split, dataset.yaml, stats & CLI).
+- [ ] **V0.4**: Custom Model Training Pipeline (Fine-tuning Ultralytics YOLO menggunakan `datasets/processed/dataset.yaml`).
 - [ ] **V0.5**: Integrasi kamera smartphone (IP Webcam / RTSP stream / DroidCam).
-- [ ] **V0.6**: Object Tracking & Model Optimization (ONNX / TensorRT / OpenVINO).
+- [ ] **V0.6**: Object Tracking & Model Optimization (ByteTrack / ONNX / TensorRT / OpenVINO).

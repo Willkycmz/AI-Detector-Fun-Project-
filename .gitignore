@@ -30,6 +30,7 @@ datasets/**
 !datasets/
 !datasets/**/
 !datasets/**/README.md
+!datasets/metadata/*.yaml
 data/
 *.mp4
 *.avi
