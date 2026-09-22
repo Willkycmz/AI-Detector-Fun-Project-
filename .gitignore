@@ -1,0 +1,58 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Machine Learning Models and Checkpoints
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+*.mlmodel
+models/*.pt
+models/*.onnx
+models/*.engine
+models/*.bin
+
+# Datasets and Large Media Files
+datasets/**
+!datasets/
+!datasets/**/
+!datasets/**/README.md
+data/
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.jpg
+*.jpeg
+*.png
+!app/assets/*.png
+!app/assets/*.jpg
+
+# IDE and Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+runs/
+wandb/
+.system_generated/
+scratch/
