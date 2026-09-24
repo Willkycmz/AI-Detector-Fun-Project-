@@ -8,14 +8,26 @@ export class DetectionRenderer {
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
     
-    // Palet warna neon modern (RGB)
+    // Mapping warna spesifik untuk 7 kelas VisionX V1
+    this.customClassColors = {
+      'person':     { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.22)', tag: '#0284c7' }, // Sky Blue
+      'bottle':     { border: '#10b981', bg: 'rgba(16, 185, 129, 0.22)', tag: '#059669' }, // Emerald Green
+      'cup':        { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.22)', tag: '#d97706' }, // Amber Gold
+      'laptop':     { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.22)', tag: '#7c3aed' }, // Purple / Violet
+      'mouse':      { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.22)', tag: '#db2777' }, // Rose Pink
+      'keyboard':   { border: '#f97316', bg: 'rgba(249, 115, 22, 0.22)', tag: '#ea580c' }, // Orange
+      'cell_phone': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.22)', tag: '#0891b2' }  // Cyan
+    };
+
+    // Palet warna fallback untuk kelas COCO lainnya
     this.colorPalette = [
-      { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.20)', tag: '#0891b2' },  // Cyan
-      { border: '#10b981', bg: 'rgba(16, 185, 129, 0.20)', tag: '#059669' }, // Emerald
-      { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.20)', tag: '#7c3aed' }, // Purple
-      { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.20)', tag: '#d97706' }, // Amber
-      { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.20)', tag: '#db2777' }, // Pink
-      { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.20)', tag: '#2563eb' }  // Blue
+      { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.20)', tag: '#0891b2' },
+      { border: '#10b981', bg: 'rgba(16, 185, 129, 0.20)', tag: '#059669' },
+      { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.20)', tag: '#7c3aed' },
+      { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.20)', tag: '#d97706' },
+      { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.20)', tag: '#db2777' },
+      { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.20)', tag: '#2563eb' },
+      { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.20)', tag: '#0d9488' }
     ];
   }
 
@@ -40,6 +52,10 @@ export class DetectionRenderer {
    * Mengambil warna konsisten berdasarkan string nama kelas.
    */
   getColor(className) {
+    if (this.customClassColors[className]) {
+      return this.customClassColors[className];
+    }
+
     let hash = 0;
     for (let i = 0; i < className.length; i++) {
       hash = className.charCodeAt(i) + ((hash << 5) - hash);
@@ -51,21 +67,20 @@ export class DetectionRenderer {
   /**
    * Menggambar hasil deteksi ke canvas.
    * @param {Array} detections List DetectionResult [{ class_name, confidence, x1, y1, x2, y2 }]
-   * @param {Object} debugInfo Info debug opsional { frameId, inferenceTimeMs }
+   * @param {Object} debugInfo Info debug opsional { frameId, inferenceTimeMs, modelName }
    */
   render(detections = [], debugInfo = null) {
-    // 1. Selalu bersihkan canvas di awal render
     this.clear();
-
     const ctx = this.ctx;
 
-    // 2. Gambar debug watermark jika ada
+    // Gambar watermark debug kecil jika ada
     if (debugInfo && debugInfo.frameId) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
-      ctx.fillRect(10, 10, 210, 28);
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
+      ctx.fillRect(10, 10, 240, 28);
       ctx.fillStyle = '#38bdf8';
       ctx.font = '600 12px Inter, sans-serif';
-      ctx.fillText(`Frame #${debugInfo.frameId} | ${debugInfo.inferenceTimeMs}ms`, 18, 28);
+      const label = `Frame #${debugInfo.frameId} | ${debugInfo.inferenceTimeMs}ms (${detections.length} obj)`;
+      ctx.fillText(label, 18, 28);
     }
 
     if (!detections || detections.length === 0) {
@@ -84,14 +99,14 @@ export class DetectionRenderer {
 
       // Garis kotak utama
       ctx.strokeStyle = color.border;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.strokeRect(x1, y1, w, h);
 
-      // Corner Accents (Sudut modern kontras)
-      const cornerLen = Math.min(20, w / 4, h / 4);
+      // Corner Accents
+      const cornerLen = Math.min(22, w / 4, h / 4);
       if (cornerLen > 3) {
         ctx.strokeStyle = color.border;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 4.5;
 
         // Top-Left
         ctx.beginPath();
@@ -126,7 +141,7 @@ export class DetectionRenderer {
       const confPercent = Math.round(confidence * 100);
       const labelText = `${class_name} ${confPercent}%`;
 
-      ctx.font = '600 13px Inter, system-ui, -apple-system, sans-serif';
+      ctx.font = '700 13px Inter, system-ui, -apple-system, sans-serif';
       const textMetrics = ctx.measureText(labelText);
       const paddingX = 8;
       const tagW = textMetrics.width + paddingX * 2;
@@ -146,8 +161,8 @@ export class DetectionRenderer {
         ctx.fillRect(tagX, tagY, tagW, tagH);
       }
 
-      // Teks Tag
-      ctx.fillStyle = '#ffffff';
+      // Teks Tag (Warna kontras gelap untuk kontras tinggi di atas neon border)
+      ctx.fillStyle = '#0f172a';
       ctx.fillText(labelText, tagX + paddingX, tagY + 15);
     }
   }

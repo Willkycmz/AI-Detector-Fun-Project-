@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VisionX - Local Web Interface (V0.4.1 Dataset Management)</title>
+  <title>VisionX - Live Custom Model Test (V0.5.1)</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,8 +22,8 @@
           <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
         </svg>
         <div>
-          <h1 class="brand-title">VisionX Web <span class="version-tag">V0.4.1</span></h1>
-          <span class="brand-subtitle">Realtime YOLOv8 ONNX &amp; Dataset Management</span>
+          <h1 class="brand-title">VisionX Web <span class="version-tag">V0.5.1</span></h1>
+          <span class="brand-subtitle">Realtime VisionX V1 (7 Classes) &amp; Pretrained YOLO</span>
         </div>
       </div>
 
@@ -64,10 +64,22 @@
           <span id="cameraStatusText">Camera Disconnected</span>
         </div>
 
+        <!-- Badge Model Aktif (V0.5.1) -->
+        <div id="activeModelBadge" class="badge badge-model-custom">
+          <span class="badge-dot"></span>
+          <span id="activeModelBadgeText">VisionX V1 Custom</span>
+        </div>
+
         <!-- Badge Status Inferensi AI (Hanya di Detection Mode) -->
         <div id="inferenceBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="inferenceStatusText">Loading Model...</span>
+        </div>
+
+        <!-- Badge Object Count (Hanya di Detection Mode) -->
+        <div id="detectionCountBadge" class="badge badge-count">
+          <span>Objects:</span>
+          <strong id="detectionCountValue">0</strong>
         </div>
 
         <!-- Badge Active Class (Hanya di Collection Mode) -->
@@ -164,6 +176,37 @@
 
       <!-- DETECTION MODE CONTROLS -->
       <div id="detectionControls" class="detection-controls-panel">
+        <!-- Model Selection Row (V0.5.1) -->
+        <div class="model-selector-row">
+          <div class="model-select-group">
+            <label for="modelSelect" class="field-label">
+              <strong>Pilih Model:</strong>
+            </label>
+            <select id="modelSelect" class="model-select-control">
+              <option value="visionx_v1" selected>🎯 VisionX V1 (Custom 7 Classes)</option>
+              <option value="pretrained">🌐 Pretrained YOLOv8n (COCO 80 Classes)</option>
+            </select>
+          </div>
+
+          <div class="model-meta-info">
+            <span id="modelArchTag" class="model-pill-tag">Arch: YOLOv8n</span>
+            <span id="modelClassesTag" class="model-pill-tag">Classes: 7</span>
+            <span id="modelLoadTimeTag" class="model-pill-tag">Load: -- ms</span>
+          </div>
+        </div>
+
+        <!-- Target Classes Preview Chips -->
+        <div class="model-target-chips" id="targetChipsContainer">
+          <span class="chips-label">Target Classes:</span>
+          <span class="class-chip" data-chip-class="person">person</span>
+          <span class="class-chip" data-chip-class="bottle">bottle</span>
+          <span class="class-chip" data-chip-class="cup">cup</span>
+          <span class="class-chip" data-chip-class="laptop">laptop</span>
+          <span class="class-chip" data-chip-class="mouse">mouse</span>
+          <span class="class-chip" data-chip-class="keyboard">keyboard</span>
+          <span class="class-chip" data-chip-class="cell_phone">cell_phone</span>
+        </div>
+
         <div class="controls-row threshold-row">
           <!-- Toggle Inferensi AI -->
           <label class="toggle-group">
@@ -371,8 +414,10 @@
       <div class="debug-header">
         <h3>🔍 Raw Detection Debug Inspector</h3>
         <div class="debug-meta">
-          <span>Active Model: <strong id="debugModelName">YOLOv8n ONNX</strong></span>
+          <span>Active Model: <strong id="debugModelName">VisionX V1 Custom (7 Classes)</strong></span>
+          <span>Load Time: <strong id="debugLoadTime">-- ms</strong></span>
           <span>Latency: <strong id="debugLatency">0 ms</strong></span>
+          <span>Objects: <strong id="debugObjectCount">0</strong></span>
           <span>Frame ID: <strong id="debugFrameId">#0</strong></span>
         </div>
       </div>
@@ -449,7 +494,7 @@
     </div>
 
     <footer class="app-footer">
-      VisionX V0.4.1 Dataset Management &bull; Real YOLOv8 ONNX &amp; Clean Structured Dataset
+      VisionX V0.5.1 Live Custom Model Test &bull; Real ONNX Runtime Web Inference &bull; 7 Custom Target Classes
     </footer>
   </div>
 

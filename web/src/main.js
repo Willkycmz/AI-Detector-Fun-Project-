@@ -1,12 +1,16 @@
 /**
- * main.js - Application Controller untuk VisionX Web Interface (V0.4.1)
- * Mengorkestrasi CameraService, Real YOLOv8 ONNX Inference, DetectionRenderer,
- * DatasetCaptureService (Capture, Single Delete, Multi-Delete, Import Image & Folder, Hashing),
- * FPS Counter, dan Mode Switcher (Detection <-> Collection).
+ * main.js - Application Controller untuk VisionX Web Interface (V0.5.1)
+ * Mengorkestrasi:
+ * - CameraService (Webcam stream, multi-device, auto-resolution)
+ * - YOLOInferenceService (Model selector: VisionX V1 7 Classes <-> Pretrained YOLOv8n 80 Classes)
+ * - DetectionRenderer (Realtime bounding boxes, synchronized canvas overlays, neon palette)
+ * - DatasetCaptureService (Capture, Single Delete, Multi-Delete, Import Image & Folder, Hashing)
+ * - FPS Counter & Live Debug Inspector
+ * - Mode Switcher (Detection <-> Collection)
  */
 
 import { CameraService } from './services/CameraService.js';
-import { YOLOInferenceService } from './services/InferenceService.js';
+import { YOLOInferenceService, MODEL_PRESETS, VISIONX_V1_CLASSES } from './services/InferenceService.js';
 import { DetectionRenderer } from './services/DetectionRenderer.js';
 import { DatasetCaptureService, validateClassName, SUPPORTED_IMPORT_EXTENSIONS } from './services/DatasetCaptureService.js';
 
@@ -14,7 +18,8 @@ class VisionXWebApp {
   constructor() {
     // Services
     this.cameraService = new CameraService();
-    this.inferenceService = new YOLOInferenceService('/models/yolov8n.onnx');
+    // Default aktif ke Custom VisionX V1 (7 classes)
+    this.inferenceService = new YOLOInferenceService('visionx_v1');
     this.captureService = new DatasetCaptureService();
     this.renderer = null;
 
@@ -29,9 +34,9 @@ class VisionXWebApp {
 
     // Multi-Select State
     this.isSelectMode = false;
-    this.selectedItems = new Set(); // Set of filenames
-    this.pendingDeleteAction = null; // Callback for confirmation modal
-    this.pendingFolderImportFiles = null; // Files for folder import modal
+    this.selectedItems = new Set();
+    this.pendingDeleteAction = null;
+    this.pendingFolderImportFiles = null;
 
     // DOM Elements
     this.elements = {
@@ -51,8 +56,12 @@ class VisionXWebApp {
       modeStatusText: document.getElementById('modeStatusText'),
       cameraBadge: document.getElementById('cameraBadge'),
       cameraStatusText: document.getElementById('cameraStatusText'),
+      activeModelBadge: document.getElementById('activeModelBadge'),
+      activeModelBadgeText: document.getElementById('activeModelBadgeText'),
       inferenceBadge: document.getElementById('inferenceBadge'),
       inferenceStatusText: document.getElementById('inferenceStatusText'),
+      detectionCountBadge: document.getElementById('detectionCountBadge'),
+      detectionCountValue: document.getElementById('detectionCountValue'),
       classBadge: document.getElementById('classBadge'),
       badgeClassName: document.getElementById('badgeClassName'),
       countBadge: document.getElementById('countBadge'),
@@ -68,21 +77,30 @@ class VisionXWebApp {
       btnStop: document.getElementById('btnStop'),
       deviceSelect: document.getElementById('deviceSelect'),
 
-      // Detection Mode Controls
+      // Detection Mode Controls (V0.5.1)
       detectionControls: document.getElementById('detectionControls'),
+      modelSelect: document.getElementById('modelSelect'),
+      modelArchTag: document.getElementById('modelArchTag'),
+      modelClassesTag: document.getElementById('modelClassesTag'),
+      modelLoadTimeTag: document.getElementById('modelLoadTimeTag'),
+      targetChipsContainer: document.getElementById('targetChipsContainer'),
       toggleInference: document.getElementById('toggleInference'),
       confSlider: document.getElementById('confSlider'),
       confVal: document.getElementById('confVal'),
       iouSlider: document.getElementById('iouSlider'),
       iouVal: document.getElementById('iouVal'),
       toggleDebug: document.getElementById('toggleDebug'),
+
+      // Debug Panel (V0.5.1)
       debugPanel: document.getElementById('debugPanel'),
       debugModelName: document.getElementById('debugModelName'),
+      debugLoadTime: document.getElementById('debugLoadTime'),
       debugLatency: document.getElementById('debugLatency'),
+      debugObjectCount: document.getElementById('debugObjectCount'),
       debugFrameId: document.getElementById('debugFrameId'),
       debugTableBody: document.getElementById('debugTableBody'),
 
-      // Collection Mode Controls (V0.4.1)
+      // Collection Mode Controls
       collectionControls: document.getElementById('collectionControls'),
       inputClassName: document.getElementById('inputClassName'),
       btnSetClass: document.getElementById('btnSetClass'),
@@ -147,22 +165,93 @@ class VisionXWebApp {
     this.updateCollectionUI();
     this.renderRecentCaptures();
 
-    // 5. Muat model ONNX YOLOv8
-    this.updateInferenceUI(false, 'Memuat model YOLOv8 ONNX (~12MB)...');
-    try {
-      await this.inferenceService.loadModel((msg) => {
-        this.updateInferenceUI(false, msg);
-      });
-      this.updateInferenceUI(this.inferenceService.isActive, 'YOLOv8n ONNX Active');
-      this.elements.debugModelName.textContent = 'YOLOv8n ONNX (WASM)';
-    } catch (err) {
-      console.error('[VisionX] Gagal memuat model ONNX:', err);
-      this.updateInferenceUI(false, 'Gagal memuat model ONNX');
-      this.showError('Gagal memuat model YOLOv8 ONNX: ' + (err.message || 'File tidak ditemukan'));
-    }
+    // 5. Muat default model (VisionX V1 Custom 7 Classes)
+    await this.loadSelectedModel('visionx_v1');
 
     // 6. Populate camera devices list
     await this.loadCameraDevices();
+  }
+
+  /**
+   * Memuat model ONNX yang dipilih dan memperbarui semua tampilan UI
+   */
+  async loadSelectedModel(modelId) {
+    const config = MODEL_PRESETS[modelId] || MODEL_PRESETS.visionx_v1;
+    this.updateInferenceUI(false, `Memuat ${config.shortName}...`);
+
+    try {
+      const res = await this.inferenceService.switchModel(modelId, (msg) => {
+        this.updateInferenceUI(false, msg);
+      });
+
+      this.updateModelUI(config, res.loadTimeMs);
+      this.updateInferenceUI(this.inferenceService.isActive, `${config.shortName} Aktif`);
+      this.showSuccess(`Model [${config.name}] siap digunakan (${res.loadTimeMs} ms)`);
+    } catch (err) {
+      console.error(`[VisionX] Gagal memuat model [${modelId}]:`, err);
+      this.updateInferenceUI(false, 'Gagal memuat model');
+      this.showError(`Gagal memuat ${config.name}: ` + (err.message || 'File ONNX tidak ditemukan'));
+    }
+  }
+
+  /**
+   * Sinkronisasi UI dengan model yang aktif
+   */
+  updateModelUI(config, loadTimeMs = 0) {
+    // Update badge di header
+    const badge = this.elements.activeModelBadge;
+    const badgeText = this.elements.activeModelBadgeText;
+    badge.className = 'badge ' + (config.isCustom ? 'badge-model-custom' : 'badge-model-pretrained');
+    badgeText.textContent = config.isCustom ? 'VisionX V1 (Custom 7 Classes)' : 'Pretrained YOLO (COCO 80 Classes)';
+
+    // Update tags di control panel
+    if (this.elements.modelArchTag) {
+      this.elements.modelArchTag.textContent = 'Arch: YOLOv8n';
+    }
+    if (this.elements.modelClassesTag) {
+      this.elements.modelClassesTag.textContent = `Classes: ${config.numClasses}`;
+    }
+    if (this.elements.modelLoadTimeTag) {
+      this.elements.modelLoadTimeTag.textContent = `Load: ${loadTimeMs || this.inferenceService.loadTimeMs || '--'} ms`;
+    }
+
+    // Update debug panel meta
+    if (this.elements.debugModelName) {
+      this.elements.debugModelName.textContent = config.name;
+    }
+    if (this.elements.debugLoadTime) {
+      this.elements.debugLoadTime.textContent = `${loadTimeMs || this.inferenceService.loadTimeMs || 0} ms`;
+    }
+
+    // Render target class chips
+    this.renderTargetClassChips(config);
+  }
+
+  /**
+   * Render chip kelas target di bawah selector model
+   */
+  renderTargetClassChips(config) {
+    const container = this.elements.targetChipsContainer;
+    if (!container) return;
+
+    if (config.isCustom) {
+      // Tampilkan 7 kelas VisionX
+      let chipsHtml = `<span class="chips-label">VisionX V1 Classes (${config.classes.length}):</span>`;
+      config.classes.forEach(cls => {
+        chipsHtml += `<span class="class-chip" data-chip-class="${cls}">${cls}</span>`;
+      });
+      container.innerHTML = chipsHtml;
+      container.classList.remove('hidden');
+    } else {
+      // COCO ada 80 kelas, tampilkan ringkasan + kelas utama
+      let chipsHtml = `<span class="chips-label">COCO Classes (80 total):</span>`;
+      const sampleCoco = ['person', 'bottle', 'cup', 'laptop', 'mouse', 'keyboard', 'cell phone', 'car', 'chair', '...'];
+      sampleCoco.forEach(cls => {
+        chipsHtml += `<span class="class-chip" data-chip-class="${cls}">${cls}</span>`;
+      });
+      container.innerHTML = chipsHtml;
+      container.classList.remove('hidden');
+    }
   }
 
   bindEvents() {
@@ -182,10 +271,17 @@ class VisionXWebApp {
       }
     });
 
+    // Model Selector Change (V0.5.1)
+    this.elements.modelSelect.addEventListener('change', async (e) => {
+      const selectedModelId = e.target.value;
+      await this.loadSelectedModel(selectedModelId);
+    });
+
     // Toggle Inferensi AI
     this.elements.toggleInference.addEventListener('change', (e) => {
       this.inferenceService.isActive = e.target.checked;
-      this.updateInferenceUI(e.target.checked, e.target.checked ? 'YOLOv8n ONNX Active' : 'Inference Inactive');
+      const modelName = this.inferenceService.modelConfig.shortName;
+      this.updateInferenceUI(e.target.checked, e.target.checked ? `${modelName} Aktif` : 'Inference Inactive');
     });
 
     // Confidence Slider
@@ -309,7 +405,9 @@ class VisionXWebApp {
       this.elements.modeBadge.className = 'badge badge-mode-detect';
       this.elements.modeStatusText.textContent = 'Detection Mode';
 
+      this.elements.activeModelBadge.classList.remove('hidden');
       this.elements.inferenceBadge.classList.remove('hidden');
+      this.elements.detectionCountBadge.classList.remove('hidden');
       this.elements.classBadge.classList.add('hidden');
       this.elements.countBadge.classList.add('hidden');
 
@@ -331,7 +429,9 @@ class VisionXWebApp {
       this.elements.modeBadge.className = 'badge badge-mode-collect';
       this.elements.modeStatusText.textContent = 'Collection Mode';
 
+      this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
+      this.elements.detectionCountBadge.classList.add('hidden');
       this.elements.classBadge.classList.remove('hidden');
       this.elements.countBadge.classList.remove('hidden');
 
@@ -411,9 +511,6 @@ class VisionXWebApp {
     }, 80);
   }
 
-  /**
-   * Mengimpor satu/beberapa file citra
-   */
   async handleImportImages(files) {
     if (!files || files.length === 0) return;
 
@@ -436,9 +533,6 @@ class VisionXWebApp {
     }
   }
 
-  /**
-   * Menampilkan dialog pre-import folder
-   */
   handleFolderSelected(files) {
     if (!files || files.length === 0) return;
 
@@ -491,9 +585,6 @@ class VisionXWebApp {
     }
   }
 
-  /**
-   * Konfirmasi & eksekusi hapus satu file
-   */
   promptDeleteSingle(filename, className) {
     this.elements.modalTitle.textContent = 'Konfirmasi Hapus Gambar';
     this.elements.modalDescription.textContent = `Apakah Anda yakin ingin menghapus gambar "${filename}" dari kelas "${className}"?`;
@@ -502,46 +593,72 @@ class VisionXWebApp {
 
     this.pendingDeleteAction = async () => {
       try {
-        await this.captureService.deleteImage(filename, className);
+        await this.captureService.deleteItem(filename, className);
         this.selectedItems.delete(filename);
         this.renderRecentCaptures();
         this.updateCollectionUI();
+        this.updateMultiSelectUI();
         this.showSuccess(`Gambar "${filename}" berhasil dihapus.`);
       } catch (err) {
-        this.showError('Gagal menghapus gambar: ' + err.message);
+        this.showError('Gagal menghapus file: ' + err.message);
       }
     };
 
     this.elements.confirmModal.classList.remove('hidden');
   }
 
-  /**
-   * Konfirmasi & eksekusi Multi-Delete
-   */
+  toggleSelectMode() {
+    this.isSelectMode = !this.isSelectMode;
+    if (!this.isSelectMode) {
+      this.selectedItems.clear();
+    }
+    this.updateMultiSelectUI();
+    this.renderRecentCaptures();
+  }
+
+  toggleItemSelection(filename) {
+    if (this.selectedItems.has(filename)) {
+      this.selectedItems.delete(filename);
+    } else {
+      this.selectedItems.add(filename);
+    }
+    this.updateMultiSelectUI();
+    this.renderRecentCaptures();
+  }
+
+  selectAllCaptures() {
+    const list = this.captureService.getRecentCaptures();
+    list.forEach(item => this.selectedItems.add(item.filename));
+    this.updateMultiSelectUI();
+    this.renderRecentCaptures();
+  }
+
+  clearSelection() {
+    this.selectedItems.clear();
+    this.updateMultiSelectUI();
+    this.renderRecentCaptures();
+  }
+
   handleDeleteSelectedPrompt() {
     const count = this.selectedItems.size;
     if (count === 0) return;
 
-    this.elements.modalTitle.textContent = `Hapus ${count} Gambar Terpilih`;
-    this.elements.modalDescription.textContent = `Apakah Anda yakin ingin menghapus ${count} gambar yang dipilih dari dataset? Tindakan ini tidak dapat dibatalkan.`;
-    this.elements.modalItemPreview.textContent = `${count} item dipilih untuk dihapus.`;
+    this.elements.modalTitle.textContent = 'Konfirmasi Hapus Massal';
+    this.elements.modalDescription.textContent = `Apakah Anda yakin ingin menghapus ${count} gambar yang dipilih dari dataset?`;
+    this.elements.modalItemPreview.textContent = `${count} gambar terpilih`;
     this.elements.modalItemPreview.classList.remove('hidden');
 
     this.pendingDeleteAction = async () => {
       try {
-        const itemsToDelete = Array.from(this.selectedItems).map(filename => {
-          const item = this.captureService.recentCaptures.find(c => c.filename === filename);
-          return { filename, className: item ? item.className : this.captureService.currentClass };
-        });
-
-        const deletedCount = await this.captureService.deleteMultipleImages(itemsToDelete);
+        const filenames = Array.from(this.selectedItems);
+        const result = await this.captureService.deleteMultiple(filenames);
         this.selectedItems.clear();
-        this.updateSelectedCountUI();
         this.renderRecentCaptures();
         this.updateCollectionUI();
-        this.showSuccess(`Berhasil menghapus ${deletedCount} gambar dari dataset.`);
+        this.updateMultiSelectUI();
+        this.showSuccess(`Berhasil menghapus ${result.deleted} gambar dari dataset.`);
       } catch (err) {
-        this.showError('Gagal menghapus gambar terpilih: ' + err.message);
+        this.showError('Gagal menghapus massal: ' + err.message);
       }
     };
 
@@ -553,199 +670,163 @@ class VisionXWebApp {
     this.pendingDeleteAction = null;
   }
 
-  toggleSelectMode() {
-    this.isSelectMode = !this.isSelectMode;
-    if (this.isSelectMode) {
-      this.elements.btnToggleSelectMode.textContent = 'Mode Normal';
-      this.elements.selectionControls.classList.remove('hidden');
-    } else {
-      this.elements.btnToggleSelectMode.textContent = 'Pilih Banyak';
-      this.elements.selectionControls.classList.add('hidden');
-      this.selectedItems.clear();
-      this.updateSelectedCountUI();
-    }
-    this.renderRecentCaptures();
-  }
-
-  selectAllCaptures() {
-    this.captureService.recentCaptures.forEach(c => this.selectedItems.add(c.filename));
-    this.updateSelectedCountUI();
-    this.renderRecentCaptures();
-  }
-
-  clearSelection() {
-    this.selectedItems.clear();
-    this.updateSelectedCountUI();
-    this.renderRecentCaptures();
-  }
-
-  updateSelectedCountUI() {
+  updateMultiSelectUI() {
+    const btnToggle = this.elements.btnToggleSelectMode;
+    const selectionControls = this.elements.selectionControls;
+    const btnDelete = this.elements.btnDeleteSelected;
     const count = this.selectedItems.size;
+
+    if (this.isSelectMode) {
+      btnToggle.textContent = 'Selesai Pilih';
+      btnToggle.classList.add('btn-secondary');
+      btnToggle.classList.remove('btn-outline');
+      selectionControls.classList.remove('hidden');
+    } else {
+      btnToggle.textContent = 'Pilih Banyak';
+      btnToggle.classList.remove('btn-secondary');
+      btnToggle.classList.add('btn-outline');
+      selectionControls.classList.add('hidden');
+    }
+
     this.elements.deleteSelectedText.textContent = `Hapus Terpilih (${count})`;
-    this.elements.btnDeleteSelected.disabled = (count === 0);
+    btnDelete.disabled = count === 0;
   }
 
-  /**
-   * Render kartu preview galeri hasil capture / impor
-   */
+  async handleSelectDirectory() {
+    try {
+      const ok = await this.captureService.requestDirectoryAccess();
+      if (ok) {
+        this.showSuccess('Folder datasets/raw berhasil terhubung langsung!');
+      }
+    } catch (err) {
+      this.showError('Akses direktori dibatalkan atau tidak didukung browser ini.');
+    }
+  }
+
+  handleDirectoryChange(dirInfo) {
+    if (dirInfo.hasDirectoryHandle && dirInfo.directoryName) {
+      this.elements.dirStatusText.textContent = `Terhubung ke: ${dirInfo.directoryName}/`;
+      this.elements.btnSelectDir.classList.add('btn-success');
+    } else {
+      this.elements.dirStatusText.textContent = 'Mode Unduhan Browser Langsung';
+      this.elements.btnSelectDir.classList.remove('btn-success');
+    }
+  }
+
   renderRecentCaptures() {
-    const list = this.elements.recentCapturesList;
-    const captures = this.captureService.recentCaptures;
+    const list = this.captureService.getRecentCaptures();
+    const container = this.elements.recentCapturesList;
+    this.elements.recentCapturesCount.textContent = `${list.length} item`;
 
-    this.elements.recentCapturesCount.textContent = `${captures.length} item`;
-
-    if (!captures || captures.length === 0) {
-      list.innerHTML = `
-        <div class="empty-gallery-text">
-          Belum ada gambar yang diambil/diimpor pada sesi ini. Tekan tombol Capture, SPACE, atau Impor.
-        </div>
-      `;
+    if (list.length === 0) {
+      container.innerHTML = `<div class="empty-gallery-text">Belum ada gambar pada sesi ini. Tekan tombol Capture, SPACE, atau Impor Citra.</div>`;
       return;
     }
 
     let html = '';
-    captures.forEach((item) => {
+    list.forEach(item => {
       const isSelected = this.selectedItems.has(item.filename);
-      const sizeKb = (item.sizeBytes / 1024).toFixed(1);
-      const sourceTag = item.source ? item.source.replace('own_', '') : 'capture';
+      const selectedClass = isSelected ? 'selected' : '';
+      const sourceBadge = item.source === 'own_capture' ? '📸' : '💾';
 
       html += `
-        <div class="capture-card ${isSelected ? 'selected' : ''}" data-filename="${item.filename}" data-class="${item.className}">
+        <div class="gallery-item-card ${selectedClass}" data-filename="${item.filename}">
           ${this.isSelectMode ? `
-            <input type="checkbox" class="card-select-checkbox" data-filename="${item.filename}" ${isSelected ? 'checked' : ''} />
-          ` : `
-            <button class="card-delete-btn" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
+            <div class="item-checkbox-wrapper">
+              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${item.filename}" />
+            </div>
+          ` : ''}
+          <img src="${item.dataUrl}" alt="${item.filename}" class="gallery-thumbnail" loading="lazy" />
+          <div class="gallery-item-info">
+            <span class="gallery-item-class" title="Kelas">${item.className}</span>
+            <span class="gallery-item-name" title="${item.filename}">${item.filename}</span>
+            <div class="gallery-item-meta">
+              <span title="Sumber Data">${sourceBadge} ${item.source}</span>
+              <span>${item.width}x${item.height}</span>
+            </div>
+          </div>
+          ${!this.isSelectMode ? `
+            <button type="button" class="btn-delete-single" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
             </button>
-          `}
-          <img src="${item.previewUrl}" alt="${item.filename}" class="capture-thumb" />
-          <div class="capture-meta">
-            <span class="capture-filename" title="${item.filename}">${item.filename}</span>
-            <span class="capture-source-tag">${sourceTag} &bull; ${item.className}</span>
-            <span class="capture-time">${item.timestamp} &bull; ${sizeKb} KB</span>
-          </div>
+          ` : ''}
         </div>
       `;
     });
 
-    list.innerHTML = html;
+    container.innerHTML = html;
 
-    // Pasang click listener untuk single delete dan checkbox selection
-    list.querySelectorAll('.card-delete-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const fn = btn.dataset.filename;
-        const cls = btn.dataset.class;
-        this.promptDeleteSingle(fn, cls);
-      });
-    });
-
+    // Attach listeners
     if (this.isSelectMode) {
-      list.querySelectorAll('.card-select-checkbox').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          const fn = cb.dataset.filename;
-          if (e.target.checked) {
-            this.selectedItems.add(fn);
-          } else {
-            this.selectedItems.delete(fn);
-          }
-          this.updateSelectedCountUI();
-          const card = cb.closest('.capture-card');
-          if (card) {
-            card.classList.toggle('selected', e.target.checked);
-          }
+      container.querySelectorAll('.gallery-item-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+          const fn = card.dataset.filename;
+          if (fn) this.toggleItemSelection(fn);
+        });
+      });
+    } else {
+      container.querySelectorAll('.btn-delete-single').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fn = btn.dataset.filename;
+          const cls = btn.dataset.class;
+          if (fn && cls) this.promptDeleteSingle(fn, cls);
         });
       });
     }
   }
 
-  async handleSelectDirectory() {
-    try {
-      const dirName = await this.captureService.selectDirectory();
-      if (dirName) {
-        this.elements.dirStatusText.textContent = `Tersambung ke folder: ${dirName}`;
-        this.elements.dirStatusText.classList.add('connected');
-        this.showSuccess(`Folder direktori "${dirName}" berhasil dihubungkan.`);
-      }
-    } catch (err) {
-      console.warn('[VisionX] Directory picker dibatalkan:', err);
-    }
-  }
-
-  handleDirectoryChange(info) {
-    if (info && info.dirName) {
-      this.elements.dirStatusText.textContent = `Tersambung ke folder: ${info.dirName}`;
-      this.elements.dirStatusText.classList.add('connected');
-    }
-  }
-
   handleGlobalKeydown(e) {
-    const activeEl = document.activeElement;
-    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
-
-    if ((e.key === 'm' || e.key === 'M') && !isTyping) {
-      e.preventDefault();
-      this.setMode(this.currentMode === 'detection' ? 'collection' : 'detection');
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
       return;
     }
 
-    if ((e.key === 'n' || e.key === 'N') && !isTyping) {
+    if (e.code === 'Space' || e.key === 'c' || e.key === 'C') {
       e.preventDefault();
-      if (this.currentMode !== 'collection') {
-        this.setMode('collection');
-      }
-      this.elements.inputClassName.focus();
-      this.elements.inputClassName.select();
-      return;
-    }
-
-    if (this.currentMode === 'collection' && !isTyping) {
-      if (e.code === 'Space' || e.key === 'c' || e.key === 'C') {
-        e.preventDefault();
+      if (this.currentMode === 'collection') {
         this.handleCapture();
       }
+    } else if (e.key === 'm' || e.key === 'M') {
+      const nextMode = this.currentMode === 'detection' ? 'collection' : 'detection';
+      this.setMode(nextMode);
     }
   }
 
   async loadCameraDevices() {
     try {
-      const devices = await this.cameraService.getDevices();
+      const devices = await this.cameraService.getAvailableDevices();
       this.populateDeviceSelect(devices);
     } catch (err) {
-      console.warn('Bisa jadi izin kamera belum diberikan:', err);
+      console.warn('[VisionX] Tidak dapat mengambil daftar kamera:', err);
     }
   }
 
-  populateDeviceSelect(devices = []) {
+  populateDeviceSelect(devices) {
     const select = this.elements.deviceSelect;
     const currentVal = select.value;
-
     select.innerHTML = '<option value="">Default / Auto Camera</option>';
 
     devices.forEach((dev, idx) => {
-      const option = document.createElement('option');
-      option.value = dev.deviceId;
-      option.textContent = dev.label || `Kamera ${idx + 1} (${dev.deviceId.slice(0, 6)}...)`;
-      select.appendChild(option);
+      const opt = document.createElement('option');
+      opt.value = dev.deviceId;
+      opt.textContent = dev.label || `Camera ${idx + 1}`;
+      if (dev.deviceId === currentVal) {
+        opt.selected = true;
+      }
+      select.appendChild(opt);
     });
-
-    if (currentVal && Array.from(select.options).some(opt => opt.value === currentVal)) {
-      select.value = currentVal;
-    }
   }
 
   async handleStartCamera(deviceId = null) {
-    this.hideBanners();
-    const targetDeviceId = deviceId || this.elements.deviceSelect.value || null;
-
+    const targetDevice = deviceId || this.elements.deviceSelect.value || null;
     try {
-      await this.cameraService.start(targetDeviceId);
+      await this.cameraService.start(targetDevice);
       this.startRenderLoop();
     } catch (err) {
-      // Error sudah ditangani di handleCameraError
+      console.error('[VisionX] Gagal memulai kamera:', err);
     }
   }
 
@@ -755,6 +836,7 @@ class VisionXWebApp {
     this.renderer.clear();
     this.elements.fpsValue.textContent = '0.0';
     this.fpsSmooth = 0;
+    this.elements.detectionCountValue.textContent = '0';
     this.updateDebugTable([], 0, 0);
   }
 
@@ -810,11 +892,6 @@ class VisionXWebApp {
     setTimeout(() => this.elements.successBanner.classList.add('hidden'), 4500);
   }
 
-  hideBanners() {
-    this.elements.errorBanner.classList.add('hidden');
-    this.elements.successBanner.classList.add('hidden');
-  }
-
   updateInferenceUI(active, textMessage = null) {
     const badge = this.elements.inferenceBadge;
     const text = this.elements.inferenceStatusText;
@@ -822,7 +899,7 @@ class VisionXWebApp {
     badge.className = 'badge';
     if (active) {
       badge.classList.add('badge-connected');
-      text.textContent = textMessage || 'YOLOv8n ONNX Active';
+      text.textContent = textMessage || `${this.inferenceService.modelConfig.shortName} Aktif`;
     } else {
       badge.classList.add('badge-disconnected');
       text.textContent = textMessage || 'Inference Inactive';
@@ -881,7 +958,17 @@ class VisionXWebApp {
           const result = await this.inferenceService.detect(video);
           if (result) {
             const { detections, frameId, inferenceTimeMs } = result;
-            this.renderer.render(detections, { frameId, inferenceTimeMs });
+            this.renderer.render(detections, {
+              frameId,
+              inferenceTimeMs,
+              modelName: this.inferenceService.modelConfig.shortName
+            });
+
+            // Update badge object count
+            this.elements.detectionCountValue.textContent = detections.length;
+
+            // Highlight class chips on active detection
+            this.highlightDetectedChips(detections);
 
             if (this.isDebugVisible) {
               this.updateDebugTable(detections, frameId, inferenceTimeMs);
@@ -898,9 +985,25 @@ class VisionXWebApp {
     }
   }
 
+  highlightDetectedChips(detections) {
+    const activeClasses = new Set(detections.map(d => d.class_name));
+    const chips = this.elements.targetChipsContainer.querySelectorAll('.class-chip');
+    chips.forEach(chip => {
+      const cls = chip.dataset.chipClass;
+      if (activeClasses.has(cls)) {
+        chip.classList.add('active-detected');
+      } else {
+        chip.classList.remove('active-detected');
+      }
+    });
+  }
+
   updateDebugTable(detections = [], frameId = 0, latencyMs = 0) {
     this.elements.debugFrameId.textContent = `#${frameId}`;
     this.elements.debugLatency.textContent = `${latencyMs} ms`;
+    if (this.elements.debugObjectCount) {
+      this.elements.debugObjectCount.textContent = detections.length;
+    }
 
     const tbody = this.elements.debugTableBody;
 
@@ -919,11 +1022,13 @@ class VisionXWebApp {
     detections.forEach((det, idx) => {
       const timeStr = new Date(det.timestamp || Date.now()).toLocaleTimeString();
       const confBadge = (det.confidence * 100).toFixed(1) + '%';
+      const color = this.renderer.getColor(det.class_name);
+
       rowsHtml += `
         <tr>
           <td><strong>${idx + 1}</strong></td>
-          <td><span style="color: #38bdf8; font-weight: 600;">${det.class_name}</span></td>
-          <td><span style="color: #10b981;">${confBadge}</span></td>
+          <td><span style="color: ${color.border}; font-weight: 700;">${det.class_name}</span></td>
+          <td><span style="color: #10b981; font-weight: 600;">${confBadge}</span></td>
           <td>[${det.x1}, ${det.y1}, ${det.x2}, ${det.y2}]</td>
           <td>#${det.frameId}</td>
           <td>${timeStr}</td>
