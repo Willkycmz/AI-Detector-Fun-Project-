@@ -1,98 +1,94 @@
-# VisionX Web Interface (V0.25) 🌐👁️
+# VisionX Web Interface (V0.4.1) 🌐👁️
 
-> **Browser-Based Local Computer Vision Interface for Development & Mobile Testing**
+> **Browser-Based Realtime YOLOv8 ONNX Inference & Dataset Management System**
 
-VisionX Web Interface (V0.25) adalah antarmuka web modern berbasis browser untuk pengembangan sistem Computer Vision secara lokal di laptop dan pengujian langsung dari smartphone melalui jaringan Wi-Fi lokal (LAN).
-
----
-
-## ⚡ Fitur Utama V0.25
-
-1. **Browser Camera API (`getUserMedia`)**:
-   - Kontrol penuh **Start Camera** dan **Stop Camera**.
-   - Penanganan izin (*Permission Handling*) untuk status *Granted*, *Denied*, *Not Found*, dan *Not Readable*.
-   - Pemilihan perangkat kamera (*Camera Device Selector*) untuk beralih antara webcam laptop, kamera eksternal USB, atau kamera depan/belakang smartphone.
-2. **Live Video Preview & Overlay Canvas**:
-   - Preview streaming video realtime berlatar belakang responsif.
-   - Canvas overlay presisi tinggi yang menyelaraskan dimensi visual dengan resolusi kamera asli.
-3. **Realtime FPS Counter**:
-   - Pengukuran frame rate yang dihaluskan (*smoothed*) dengan pembaruan dinamis per detik.
-4. **AI Inference Abstraction & Demo**:
-   - Modul `InferenceService` yang disiapkan untuk integrasi **ONNX Runtime Web** (`ort.InferenceSession`).
-   - Mendukung format output `DetectionResult`: `{ class_name, confidence, x1, y1, x2, y2 }`.
-   - Fitur toggle **AI Inference (Active / Inactive)**.
-5. **Modern Aesthetic Interface**:
-   - Desain Dark Mode futuristik dengan aksen neon cyan dan purple.
-   - Bounding box beraksen sudut (*corner accents*) dan tag label confidence.
-   - Badge indikator status (*Connected / Disconnected / Inference Active*).
+VisionX Web Interface (V0.4.1) memungkinkan pengguna untuk menjalankan inferensi deteksi objek YOLOv8 secara realtime dan mengelola siklus hidup dataset gambar mentah (*clean raw frames*) secara aman, terstruktur, dan praktis untuk dataset skala besar langsung dari browser.
 
 ---
 
-## 🏗️ Struktur Modul Frontend
+## 🔄 Alur Kerja Pengumpulan & Pengelolaan Dataset (Workflow)
 
 ```text
-web/
-├── index.html                  # Shell aplikasi HTML5 & viewport responsif
-├── package.json                # Konfigurasi dependensi Vite
-├── vite.config.js              # Server config (host: true untuk akses LAN/HP)
-├── README.md                   # Petunjuk menjalankan web interface
-├── public/
-│   └── favicon.svg             # Logo VisionX Web
-└── src/
-    ├── style.css               # Vanilla CSS modern, dark mode glassmorphism
-    ├── main.js                 # App Controller & requestAnimationFrame loop
-    └── services/
-        ├── CameraService.js    # Abstraction Web Camera API & device enumeration
-        ├── InferenceService.js # Abstraction deteksi objek & kontrak DetectionResult
-        └── DetectionRenderer.js# Canvas drawing: corner accents, tags, confidence
+Camera Stream / Import PC (Files / Folder)
+      │
+      ▼
+Collection Mode (Tab 'Dataset Collection' atau tombol [M])
+      │
+      ▼
+Select Class & Source Metadata (misal: 'glass', 'charger' / 'own_capture', 'own_import')
+      │
+      ▼
+Deduplication Guard (SHA-256 Hash Verification)
+      │
+      ▼
+Capture Clean Raw Frame / Import (Tanpa Bounding Box / Watermark / HUD)
+      │
+      ▼
+Nested Dataset Storage:
+  - datasets/raw/own/<class_name>/<class>_<source>_<timestamp>_<uuid>.jpg
+  - datasets/raw/external/<source>/<class_name>/...
+  - datasets/metadata/sources.yaml
+      │
+      ▼
+Dataset Management (Single Delete, Multi-Delete, Gallery Inspection)
+      │
+      ▼
+Annotation (Tahap Berikutnya)
+      │
+      ▼
+Model Training (Tahap Berikutnya)
 ```
 
 ---
 
-## 🚀 Cara Menjalankan Frontend
+## ⚡ Fitur Utama V0.4.1
 
-### 1. Masuk ke Folder `web`
+1. **Dual-Mode Operation (Detection Mode $\leftrightarrow$ Collection Mode)**:
+   - **Detection Mode**: Inferensi realtime YOLOv8 ONNX WebAssembly, rendering bounding box interaktif, threshold sliders, dan debug inspector.
+   - **Collection Mode**: Mengambil frame kamera resolusi asli tanpa bounding box, tanpa watermark, dan tanpa teks HUD. Kamera tetap berjalan mulus tanpa reload/restart.
+
+2. **Single Delete & Multi-Delete**:
+   - **Hapus Tunggal**: Tombol hapus pada setiap kartu galeri dilengkapi dialog konfirmasi (*confirmation modal*) untuk mencegah penghapusan yang tidak disengaja.
+   - **Multi-Delete**: Beralih ke mode seleksi (*Pilih Banyak*), pilih gambar satu per satu atau *Pilih Semua*, dan hapus seluruh gambar yang dipilih sekaligus.
+   - Counter jumlah gambar per kelas langsung diperbarui secara akurat (*live decrement*).
+
+3. **Import Image(s) & Import Folder**:
+   - **Impor Gambar**: Memilih satu atau beberapa file dari PC (mendukung `.jpg`, `.jpeg`, `.png`, `.webp`) langsung ke target class.
+   - **Impor Folder**: Memilih seluruh folder di PC, memindai jumlah gambar yang valid, menampilkan konfirmasi sebelum impor, dan mengalokasikan gambar ke target class tanpa menimpa file yang ada (*unique naming*).
+
+4. **SHA-256 Deduplication**:
+   - Menghitung hash SHA-256 secara realtime menggunakan Web Cryptography API.
+   - Mencegah salinan ganda dari gambar identik pada proses capture maupun impor.
+
+5. **Source Metadata Tracking**:
+   - Membedakan sumber data secara terstruktur:
+     * `own_capture` (pengambilan kamera langsung)
+     * `own_import` (file lokal)
+     * `huggingface` (dataset publik)
+     * `kaggle` (dataset publik)
+     * `other_external`
+   - Tersimpan rapi di metadata sistem.
+
+6. **Storage Structure Berjenjang**:
+   - `datasets/raw/own/<class_name>/`
+   - `datasets/raw/external/<source>/<class_name>/`
+   - Kompatibel penuh dengan pipeline persiapan dataset Python V0.3.
+
+7. **Shortcut Keyboard Ergonomis**:
+   - `SPACE` atau `C`: Mengambil frame citra bersih (Capture).
+   - `N`: Fokus ke input nama kelas baru.
+   - `M`: Beralih antara Detection Mode dan Collection Mode.
+
+---
+
+## 🚀 Cara Menjalankan
+
 ```bash
 cd web
-```
-
-### 2. Install Dependensi
-```bash
 npm install
-```
-
-### 3. Jalankan Development Server
-```bash
 npm run dev
 ```
 
-Output pada terminal akan menampilkan URL akses:
-```text
-  VITE v5.2.0  ready in 240 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: http://192.168.1.5:5173/
-```
-
----
-
-## 📱 Cara Membuka Aplikasi
-
-### A. Di Laptop (Browser Lokal)
-Buka browser favorit Anda (Chrome, Edge, Firefox, Safari) lalu akses:
-[http://localhost:5173/](http://localhost:5173/)
-
-### B. Di HP / Smartphone (Jaringan Wi-Fi Lokal yang Sama)
-1. Pastikan HP dan Laptop terhubung ke **Wi-Fi yang sama**.
-2. Lihat **Network IP** yang tertera di terminal saat menjalankan `npm run dev` (misal: `http://192.168.1.5:5173`).
-3. Buka browser HP (Chrome / Safari) dan ketik URL IP tersebut.
-4. Berikan izin akses kamera saat diminta oleh browser.
-
----
-
-## ⚙️ Panduan Penggunaan Antarmuka
-
-1. **Start Camera**: Klik tombol **Start Camera** untuk meminta izin kamera dan memulai streaming video.
-2. **Stop Camera**: Klik tombol **Stop Camera** untuk mematikan streaming dan membebaskan hardware kamera.
-3. **Pilih Kamera**: Gunakan dropdown **Pilih Kamera** untuk berpindah antar input kamera yang tersedia.
-4. **AI Inference**: Gunakan toggle switch **AI Inference** untuk mengaktifkan atau menonaktifkan rendering bounding box dan deteksi objek.
+Buka URL yang ditampilkan pada terminal:
+- **Laptop**: [http://localhost:5173/](http://localhost:5173/)
+- **Smartphone**: Akses alamat IP Network (misal: `http://192.168.1.65:5173/`) pada jaringan Wi-Fi yang sama.

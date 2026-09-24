@@ -2,25 +2,59 @@
 
 > **Realtime Computer Vision & Deep Learning Object Detection System**
 
-VisionX adalah fondasi sistem Computer Vision jangka panjang yang dirancang untuk mengenali berbagai objek dan informasi visual secara realtime dari video stream (webcam, kamera eksternal, CCTV/RTSP, hingga kamera smartphone di masa depan).
+VisionX adalah fondasi sistem Computer Vision jangka panjang yang dirancang untuk mengenali berbagai objek dan informasi visual secara realtime dari video stream (webcam, kamera eksternal, CCTV/RTSP, hingga kamera smartphone).
 
-Saat ini VisionX telah mencapai **Versi 0.25 (Web Interface for Local Development)** dengan tetap mempertahankan **V0.1 (Realtime Object Detection)**, **V0.2 (Dataset Collection System)**, dan **V0.3 (Dataset Preparation Pipeline)** secara modular, stabil, dan teruji.
+Saat ini VisionX telah mencapai **Versi 0.4.1 (Dataset Management & Collection)** dengan tetap mempertahankan **V0.1 (Realtime Object Detection)**, **V0.2 (Python Dataset Collection)**, **V0.3 (Dataset Preparation Pipeline)**, dan **V0.4 (Web Dataset Collection)** secara modular, stabil, dan teruji.
+
+---
+
+## 🔄 End-to-End Dataset Workflow
+
+```text
+Camera Stream / File Import (PC / Folder)
+      │
+      ▼
+Collection Mode (Web / Python CLI)
+      │
+      ▼
+Select / Set Active Class & Source (e.g. 'glass', 'charger' / 'own_capture', 'own_import')
+      │
+      ▼
+Deduplication Guard (SHA-256 Hash Check)
+      │
+      ▼
+Capture Clean Raw Frame / Import Clean Images (Tanpa Bounding Box / Watermark / HUD)
+      │
+      ▼
+Structured Dataset Storage & Metadata Logging:
+  - datasets/raw/own/<class_name>/<class>_<source>_<timestamp>_<uuid>.jpg
+  - datasets/raw/external/<source>/<class_name>/...
+  - datasets/metadata/sources.yaml
+      │
+      ▼
+Dataset Management (Single Delete, Multi-Delete, Gallery Inspection)
+      │
+      ▼
+Annotation (Tahap Berikutnya)
+      │
+      ▼
+Model Training (Tahap Berikutnya)
+```
 
 ---
 
 ## ✨ Fitur VisionX
 
 ### 1. V0.1 - Realtime Object Detection
-- **Pretrained YOLO Inference**: Deteksi instan berbagai objek menggunakan bobot `yolov8n.pt`.
+- **Pretrained YOLO Inference**: Deteksi instan berbagai objek menggunakan bobot `yolov8n.pt` (Python) dan `yolov8n.onnx` (Browser WASM).
 - **Estetika UI & Visualisasi**: Bounding box beraksen sudut modern, label kelas, nilai confidence, dan badge realtime FPS yang dihaluskan (*smoothed*).
 - **Arsitektur Modular**: Pemisahan tegas antara Camera Stream, AI Inference, dan UI Visualizer.
 
-### 2. V0.2 - Dataset Collection System
-- **Struktur Dataset Terstandarisasi**: Pengambilan citra asli mentah (*clean raw frames*) tanpa kontaminasi anotasi ke `datasets/raw/<class_name>/`.
+### 2. V0.2 - Python Dataset Collection System
+- **Struktur Dataset Terstandarisasi**: Pengambilan citra asli mentah (*clean raw frames*) tanpa kontaminasi anotasi ke `datasets/raw/own/<class_name>/`.
 - **Pengambilan Gambar Keyboard-Triggered**: Tekan tombol `SPACE` atau `c` untuk mengambil foto.
 - **Nama File Otomatis & Unik**: Format `<class>_<timestamp>_<uuid>.jpg` tanpa risiko menimpa file lama (*collision-safe*).
-- **Ganti Kelas Tanpa Restart**: Tekan tombol `n` untuk membuka dialog pengetikan nama kelas langsung di layar (*on-screen modal dialog*).
-- **Non-Breaking Dual-Mode**: Beralih mode deteksi $\leftrightarrow$ koleksi kapan saja dengan menekan tombol `m`.
+- **Ganti Kelas Tanpa Restart**: Tekan tombol `n` untuk dialog penggantian nama kelas langsung di layar.
 
 ### 3. V0.3 - Dataset Preparation Pipeline
 - **YOLO Annotation Support**: Validasi pasangan `image.jpg` dan `image.txt` (`class_id x_center y_center width height`).
@@ -29,13 +63,14 @@ Saat ini VisionX telah mencapai **Versi 0.25 (Web Interface for Local Developmen
 - **Reproducible Split & Anti Data-Leakage (`DatasetSplitter`)**: Train (80%), Val (10%), Test (10%) dengan random seed dan anti-leakage grouping.
 - **Otomatisasi `dataset.yaml` & Statistik**: Pembuatan `dataset.yaml` resmi Ultralytics YOLO dan perintah statistik CLI.
 
-### 4. V0.25 - Web Interface for Local Development *(Baru!)*
-- **Browser Camera API**: Penggunaan `navigator.mediaDevices.getUserMedia` langsung di sisi client.
-- **Start / Stop & Device Selector**: Mengontrol status kamera dan memilih input kamera (webcam laptop, USB external camera, kamera HP).
-- **Penanganan Izin Kamera**: Menangani status izin (*Granted*, *Denied*, *Not Found*, *Not Readable*) secara informatif.
-- **Visual Rendering Canvas Overlay**: Bounding box beraksen sudut futuristik dan tag confidence score di atas `<canvas>`.
-- **InferenceService Abstraction**: Disiapkan untuk integrasi ONNX Runtime Web (`ort.InferenceSession`) dengan objek `DetectionResult` (`class_name`, `confidence`, `x1`, `y1`, `x2`, `y2`).
-- **Akses Jaringan Lokal (LAN / HP)**: Dapat dibuka langsung dari browser smartphone yang terhubung ke Wi-Fi lokal yang sama.
+### 4. V0.4 & V0.4.1 - Web Dataset Collection & Management *(Baru!)*
+- **Structured Web Dataset Collection**: Mengambil frame kamera resolusi asli murni langsung dari browser web tanpa bounding box/HUD.
+- **Single & Multi-Delete**: Hapus gambar satu per satu atau seleksi banyak (*multi-select*) dengan dialog konfirmasi aman dan update counter live.
+- **Import Image(s) & Import Folder**: Impor file gambar lokal (JPG, JPEG, PNG, WEBP) atau seluruh folder ke target class dengan inspeksi jumlah sebelum impor.
+- **SHA-256 Deduplication**: Pemeriksaan hash SHA-256 otomatis untuk mencegah redundansi dan salinan ganda file yang identik.
+- **Source Metadata Tracking**: Membedakan dan mencatat sumber: `own_capture`, `own_import`, `huggingface`, `kaggle`, dan `other_external`.
+- **Dual-Mode Switching**: Beralih instan antara **Detection Mode** dan **Dataset Collection Mode** tanpa me-restart stream kamera.
+- **Storage Hierarchy**: Penyimpanan langsung ke `datasets/raw/own/<class>/` atau `datasets/raw/external/<source>/<class>/` via File System Access API atau direct browser download.
 
 ---
 
@@ -49,30 +84,40 @@ VisionX/
 │   ├── config.py        # Dataclass AppConfig & CLI argument parser
 │   ├── detector.py      # YOLOObjectDetector (AI) & Visualizer (HUD & UI)
 │   ├── camera.py        # CameraStream lifecycle & error handling
-│   ├── collector.py     # DatasetCollector & validasi nama kelas (V0.2)
+│   ├── collector.py     # DatasetCollector, Delete, Import, & Hashing (V0.4.1)
 │   └── dataset.py       # Dataset Preparation Pipeline, Validator & CLI (V0.3)
-├── web/                 # Web Interface Frontend (V0.25)
-│   ├── index.html       # Shell HTML5
+├── web/                 # Web Interface Frontend (V0.4.1)
+│   ├── index.html       # Shell HTML5 (Mode Switcher, Stage, Controls & Gallery)
 │   ├── package.json     # Konfigurasi dependensi Vite
 │   ├── vite.config.js   # Server config (host: true untuk akses LAN/HP)
 │   ├── README.md        # Dokumentasi khusus Web Interface
 │   └── src/
-│       ├── style.css    # Dark mode UI glassmorphism
+│       ├── style.css    # Dark mode UI glassmorphism & collection styles
 │       ├── main.js      # App Controller & requestAnimationFrame loop
 │       └── services/
-│           ├── CameraService.js    # Abstraction Web Camera API
-│           ├── InferenceService.js # Abstraction deteksi objek & DetectionResult
-│           └── DetectionRenderer.js# Canvas drawing: corner accents, tags
+│           ├── CameraService.js        # Abstraction Web Camera API
+│           ├── DatasetCaptureService.js# Raw capture, delete, import, & hashing
+│           ├── InferenceService.js     # YOLOv8 ONNX web inference
+│           └── DetectionRenderer.js    # Canvas bounding box renderer
 ├── models/              # Bobot model (*.pt, *.onnx)
-│   └── yolov8n.pt
+│   ├── yolov8n.pt
+│   └── yolov8n.onnx
 ├── datasets/            # Arsitektur dataset terstruktur
 │   ├── raw/
+│   │   ├── own/         # Citra hasil capture & import sendiri
+│   │   │   ├── glass/
+│   │   │   ├── bottle/
+│   │   │   └── charger/
+│   │   └── external/    # Citra dari sumber publik / eksternal
+│   │       ├── huggingface/
+│   │       └── kaggle/
 │   ├── imported/
 │   ├── processed/
 │   ├── annotations/
 │   └── metadata/
-│       └── classes.yaml
-├── tests/               # Automated unit testing suite (21 tests)
+│       ├── classes.yaml
+│       └── sources.yaml
+├── tests/               # Automated unit testing suite (26 tests)
 ├── requirements.txt     # Dependensi Python
 ├── .gitignore           # Filter cache, venv, node_modules, model binary, & dataset
 └── README.md            # Dokumentasi lengkap
@@ -82,7 +127,7 @@ VisionX/
 
 ## 🚀 Cara Menjalankan
 
-### A. Menjalankan Web Interface (V0.25)
+### A. Menjalankan Web Interface (V0.4.1)
 
 #### 1. Masuk ke Folder `web` dan Install Dependensi
 ```bash
@@ -97,15 +142,15 @@ npm run dev
 
 Output terminal:
 ```text
-  VITE v5.4.21  ready in 717 ms
+  VITE v5.4.21  ready in 280 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.1.65:5173/
 ```
 
 #### 3. Buka di Browser
-- **Di Laptop**: Akses [http://localhost:5173/](http://localhost:5173/)
-- **Di Smartphone (Wi-Fi Lokal Sama)**: Buka browser HP dan ketik alamat IP Network yang tertera (misal: `http://192.168.1.65:5173`).
+- **Di Laptop**: Buka [http://localhost:5173/](http://localhost:5173/)
+- **Di Smartphone (Wi-Fi Lokal Sama)**: Buka browser HP dan ketik alamat IP Network yang tertera.
 
 ---
 
@@ -130,7 +175,7 @@ Output terminal:
 
 ## 🧪 Automated Testing
 
-Menjalankan pengujian unit test modul Python:
+Menjalankan pengujian unit test modul Python (26 automated test cases):
 
 ```powershell
 .venv\Scripts\python -m unittest discover tests
@@ -138,7 +183,7 @@ Menjalankan pengujian unit test modul Python:
 
 Output:
 ```text
-Ran 21 tests in 10.754s
+Ran 26 tests in 2.821s
 OK
 ```
 
@@ -147,9 +192,10 @@ OK
 ## 🗺️ Roadmap Pengembangan VisionX
 
 - [x] **V0.1 (MVP)**: Realtime object detection modular berbasis webcam + pretrained YOLO.
-- [x] **V0.2**: Dataset Collection System terstruktur, keyboard capture, unique naming, class switching tanpa restart.
+- [x] **V0.2**: Dataset Collection System terstruktur (Python CLI), keyboard capture, unique naming, class switching tanpa restart.
 - [x] **V0.3**: Dataset Preparation Pipeline (YOLO validation, class registry, anti-leakage split, dataset.yaml, stats & CLI).
-- [x] **V0.25**: Web Interface untuk pengembangan lokal (Browser Camera API, Detection Overlay Canvas, Localhost & LAN Access).
-- [ ] **V0.4**: Custom Model Training Pipeline (Fine-tuning Ultralytics YOLO pada custom dataset lokal).
-- [ ] **V0.5**: Integrasi ONNX Runtime Web di browser & Kamera HP Streaming.
+- [x] **V0.25**: Web Camera Interface (Browser Camera API, Detection Overlay Canvas, Localhost & LAN Access).
+- [x] **V0.4**: Web Dataset Collection (Clean raw capture, class switching, storage management, dual-mode switcher).
+- [x] **V0.4.1**: Dataset Management (Single Delete, Multi-Delete, Import Image & Folder, SHA-256 Deduplication, Source Metadata, Nested Structure).
+- [ ] **V0.5**: Custom Model Training Pipeline (Fine-tuning Ultralytics YOLO pada custom dataset lokal).
 - [ ] **V0.6**: Object Tracking & Model Optimization (ByteTrack / TensorRT / OpenVINO).

@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VisionX - Local Web Interface (V0.25)</title>
+  <title>VisionX - Local Web Interface (V0.4.1 Dataset Management)</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 </head>
 <body>
@@ -22,26 +22,68 @@
           <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
         </svg>
         <div>
-          <h1 class="brand-title">VisionX Web</h1>
-          <span class="brand-subtitle">Real YOLOv8 ONNX Browser Inference Engine</span>
+          <h1 class="brand-title">VisionX Web <span class="version-tag">V0.4.1</span></h1>
+          <span class="brand-subtitle">Realtime YOLOv8 ONNX &amp; Dataset Management</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="mode-switcher-container">
+        <div class="mode-toggle-group" role="tablist">
+          <button id="btnModeDetect" class="mode-tab active" role="tab" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="2" x2="12" y2="5"></line>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="5" y2="12"></line>
+              <line x1="19" y1="12" x2="22" y2="12"></line>
+            </svg>
+            Detection Mode
+          </button>
+          <button id="btnModeCollect" class="mode-tab" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            Dataset Collection
+          </button>
         </div>
       </div>
 
       <div class="header-badges">
+        <!-- Badge Mode Aktif -->
+        <div id="modeBadge" class="badge badge-mode-detect">
+          <span class="badge-dot"></span>
+          <span id="modeStatusText">Detection Mode</span>
+        </div>
+
         <!-- Badge Status Kamera -->
         <div id="cameraBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="cameraStatusText">Camera Disconnected</span>
         </div>
 
-        <!-- Badge Status Inferensi AI -->
+        <!-- Badge Status Inferensi AI (Hanya di Detection Mode) -->
         <div id="inferenceBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="inferenceStatusText">Loading Model...</span>
         </div>
 
+        <!-- Badge Active Class (Hanya di Collection Mode) -->
+        <div id="classBadge" class="badge badge-class hidden">
+          <span>Class:</span>
+          <strong id="badgeClassName">object</strong>
+        </div>
+
+        <!-- Badge Image Count (Hanya di Collection Mode) -->
+        <div id="countBadge" class="badge badge-count hidden">
+          <span>Images:</span>
+          <strong id="badgeImageCount">0</strong>
+        </div>
+
         <!-- Badge FPS -->
-        <div class="badge badge-fps">
+        <div id="fpsBadge" class="badge badge-fps">
           <span>FPS:</span>
           <strong id="fpsValue">0.0</strong>
         </div>
@@ -55,13 +97,31 @@
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
       </svg>
-      <span id="errorMessage">Pesan kesalahan kamera.</span>
+      <span id="errorMessage">Pesan notifikasi.</span>
     </div>
 
-    <!-- Main Stage: Video & Canvas Overlay -->
+    <!-- Success Toast Notification -->
+    <div id="successBanner" class="success-banner hidden">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span id="successMessage">Operasi berhasil.</span>
+    </div>
+
+    <!-- Main Stage: Video, Shutter Flash, & Canvas Overlay -->
     <main class="stage-card">
       <video id="videoElement" class="video-view" autoplay playsinline muted></video>
       <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
+      
+      <!-- Visual Shutter Flash Effect saat Capture -->
+      <div id="shutterFlash" class="shutter-flash"></div>
+
+      <!-- Live Mode Indicator Overlay Watermark -->
+      <div id="stageWatermark" class="stage-watermark">
+        <span id="watermarkMode">DETECTION</span>
+        <span id="watermarkExtra"></span>
+      </div>
 
       <!-- Placeholder bila kamera mati -->
       <div id="cameraPlaceholder" class="camera-placeholder">
@@ -70,11 +130,11 @@
           <circle cx="12" cy="13" r="4"></circle>
         </svg>
         <div class="placeholder-title">Kamera Belum Aktif</div>
-        <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video dan inferensi YOLOv8.</div>
+        <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video, deteksi YOLOv8, atau pengumpulan dataset.</div>
       </div>
     </main>
 
-    <!-- Controls Panel -->
+    <!-- Global Camera Controls Row -->
     <section class="controls-card">
       <div class="controls-row">
         <!-- Tombol Start/Stop -->
@@ -100,47 +160,213 @@
             <option value="">Default / Auto Camera</option>
           </select>
         </div>
-
-        <!-- Toggle Inferensi AI -->
-        <label class="toggle-group">
-          <span class="field-label">AI Inference:</span>
-          <span class="switch">
-            <input type="checkbox" id="toggleInference" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
       </div>
 
-      <!-- Threshold & Debug Controls Row -->
-      <div class="controls-row threshold-row">
-        <!-- Confidence Slider -->
-        <div class="field-group slider-group">
-          <label for="confSlider" class="field-label">
-            Confidence Threshold: <strong id="confVal">0.45</strong>
+      <!-- DETECTION MODE CONTROLS -->
+      <div id="detectionControls" class="detection-controls-panel">
+        <div class="controls-row threshold-row">
+          <!-- Toggle Inferensi AI -->
+          <label class="toggle-group">
+            <span class="field-label">AI Inference:</span>
+            <span class="switch">
+              <input type="checkbox" id="toggleInference" checked />
+              <span class="slider"></span>
+            </span>
           </label>
-          <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.45" class="range-slider" />
+
+          <!-- Confidence Slider -->
+          <div class="field-group slider-group">
+            <label for="confSlider" class="field-label">
+              Confidence Threshold: <strong id="confVal">0.45</strong>
+            </label>
+            <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.45" class="range-slider" />
+          </div>
+
+          <!-- IoU Slider -->
+          <div class="field-group slider-group">
+            <label for="iouSlider" class="field-label">
+              IoU NMS Threshold: <strong id="iouVal">0.45</strong>
+            </label>
+            <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" />
+          </div>
+
+          <!-- Toggle Debug Mode -->
+          <label class="toggle-group debug-toggle">
+            <span class="field-label">Debug Mode:</span>
+            <span class="switch">
+              <input type="checkbox" id="toggleDebug" checked />
+              <span class="slider"></span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- COLLECTION & MANAGEMENT CONTROLS (V0.4.1) -->
+      <div id="collectionControls" class="collection-controls-panel hidden">
+        <div class="collection-grid">
+          <!-- Kolom 1: Class Name Management & Hotkeys -->
+          <div class="collection-col">
+            <div class="class-input-wrapper">
+              <label for="inputClassName" class="field-label">Nama Kelas Dataset:</label>
+              <div class="input-with-button">
+                <input 
+                  type="text" 
+                  id="inputClassName" 
+                  class="text-input" 
+                  placeholder="Contoh: glass, bottle, charger" 
+                  value="object" 
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button id="btnSetClass" class="btn btn-secondary" title="Ganti kelas aktif">
+                  Terapkan Kelas
+                </button>
+              </div>
+              <div id="classValidationHint" class="validation-hint">
+                Format: huruf kecil, angka, underscore (_), atau tanda hubung (-).
+              </div>
+            </div>
+
+            <!-- Quick Class Suggestions / Presets -->
+            <div class="quick-classes">
+              <span class="quick-label">Kelas Cepat:</span>
+              <div class="pills-container">
+                <button type="button" class="class-pill" data-class="glass">glass</button>
+                <button type="button" class="class-pill" data-class="bottle">bottle</button>
+                <button type="button" class="class-pill" data-class="charger">charger</button>
+                <button type="button" class="class-pill" data-class="cup">cup</button>
+                <button type="button" class="class-pill" data-class="person">person</button>
+              </div>
+            </div>
+
+            <!-- Source Metadata Selector -->
+            <div class="source-select-group">
+              <label for="sourceSelect" class="field-label">Kategori Sumber Data:</label>
+              <select id="sourceSelect" class="select-control">
+                <option value="own_capture" selected>📸 Own Capture (Live Camera)</option>
+                <option value="own_import">💾 Own Import (Local PC Files)</option>
+                <option value="huggingface">🤗 HuggingFace Dataset</option>
+                <option value="kaggle">📊 Kaggle Dataset</option>
+                <option value="other_external">🌐 Other External Source</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Kolom 2: Capture Trigger & Live Active Class Counter Card -->
+          <div class="collection-col capture-action-col">
+            <!-- Active Class Counter Card -->
+            <div class="active-counter-card">
+              <div class="counter-header">
+                <span class="counter-label">Kelas Aktif</span>
+                <span id="activeClassDisplay" class="active-class-title">object</span>
+              </div>
+              <div class="counter-body">
+                <span id="activeCountDisplay" class="counter-number">0</span>
+                <span class="counter-unit">gambar tersimpan</span>
+              </div>
+            </div>
+
+            <!-- Big Prominent Capture Button -->
+            <button id="btnCapture" class="btn btn-capture" title="Ambil frame bersih (Shortcut: SPACE atau C)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span>Capture Image</span>
+              <span class="hotkey-badge">SPACE / C</span>
+            </button>
+          </div>
         </div>
 
-        <!-- IoU Slider -->
-        <div class="field-group slider-group">
-          <label for="iouSlider" class="field-label">
-            IoU NMS Threshold: <strong id="iouVal">0.45</strong>
-          </label>
-          <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" />
+        <!-- DATASET IMPORT TOOLBAR (V0.4.1) -->
+        <div class="dataset-management-toolbar">
+          <div class="toolbar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Impor Dataset dari PC:</span>
+          </div>
+
+          <div class="import-buttons-group">
+            <!-- Tombol Import Image -->
+            <input type="file" id="inputImportImages" multiple accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="hidden" />
+            <button id="btnTriggerImportImages" class="btn btn-sm btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>Impor File Gambar</span>
+            </button>
+
+            <!-- Tombol Import Folder -->
+            <input type="file" id="inputImportFolder" webkitdirectory directory multiple class="hidden" />
+            <button id="btnTriggerImportFolder" class="btn btn-sm btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Impor Folder Gambar</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Toggle Debug Mode -->
-        <label class="toggle-group debug-toggle">
-          <span class="field-label">Debug Mode (Raw Output):</span>
-          <span class="switch">
-            <input type="checkbox" id="toggleDebug" checked />
-            <span class="slider"></span>
-          </span>
-        </label>
+        <!-- Storage & Info Row -->
+        <div class="collection-storage-row">
+          <div class="storage-info">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Target Struktur: <code id="storagePathDisplay">datasets/raw/own/&lt;class_name&gt;/</code></span>
+          </div>
+
+          <div class="storage-actions">
+            <button id="btnSelectDir" class="btn btn-sm btn-outline">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Hubungkan Folder datasets/raw</span>
+            </button>
+            <span id="dirStatusText" class="dir-status-text">Mode Unduhan Browser Langsung</span>
+          </div>
+        </div>
+
+        <!-- Recent Captures & Dataset Gallery (V0.4.1 with Single & Multi Delete) -->
+        <div class="recent-captures-section">
+          <div class="recent-header">
+            <div class="gallery-title-group">
+              <h4>📸 Galeri Dataset Sesi Ini</h4>
+              <span id="recentCapturesCount" class="text-muted">0 item</span>
+            </div>
+
+            <!-- Multi-Select & Delete Actions -->
+            <div class="gallery-action-tools">
+              <button id="btnToggleSelectMode" class="btn btn-xs btn-outline">
+                Pilih Banyak
+              </button>
+              <div id="selectionControls" class="selection-controls hidden">
+                <button id="btnSelectAll" class="btn btn-xs btn-secondary">Pilih Semua</button>
+                <button id="btnClearSelection" class="btn btn-xs btn-secondary">Batal</button>
+                <button id="btnDeleteSelected" class="btn btn-xs btn-danger" disabled>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <span id="deleteSelectedText">Hapus Terpilih (0)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="recentCapturesList" class="recent-captures-list">
+            <div class="empty-gallery-text">Belum ada gambar yang diambil/diimpor pada sesi ini. Tekan tombol Capture, SPACE, atau Impor.</div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Debug Mode Raw Output Panel -->
+    <!-- Debug Mode Raw Output Panel (Hanya di Detection Mode) -->
     <section id="debugPanel" class="debug-card">
       <div class="debug-header">
         <h3>🔍 Raw Detection Debug Inspector</h3>
@@ -172,8 +398,58 @@
       </div>
     </section>
 
+    <!-- Modal Konfirmasi Hapus (Single / Multi Delete) -->
+    <div id="confirmModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modalTitle">Konfirmasi Penghapusan</h3>
+          <button id="modalCloseBtn" class="modal-close-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="modalDescription">Apakah Anda yakin ingin menghapus gambar ini dari dataset?</p>
+          <div id="modalItemPreview" class="modal-item-preview hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="modalCancelBtn" class="btn btn-secondary">Batal</button>
+          <button id="modalConfirmBtn" class="btn btn-danger">Hapus Sekarang</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Preview Impor Folder -->
+    <div id="folderImportModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>📂 Konfirmasi Impor Folder</h3>
+          <button id="folderModalCloseBtn" class="modal-close-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="folderModalSummary">Memindai folder...</p>
+          
+          <div class="modal-form-group">
+            <label for="folderTargetClass" class="field-label">Target Kelas Dataset:</label>
+            <input type="text" id="folderTargetClass" class="text-input" value="object" />
+          </div>
+
+          <div class="modal-form-group">
+            <label for="folderTargetSource" class="field-label">Sumber Metadata:</label>
+            <select id="folderTargetSource" class="select-control">
+              <option value="own_import" selected>💾 Own Import</option>
+              <option value="huggingface">🤗 HuggingFace</option>
+              <option value="kaggle">📊 Kaggle</option>
+              <option value="other_external">🌐 Other External</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="folderModalCancelBtn" class="btn btn-secondary">Batal</button>
+          <button id="folderModalConfirmBtn" class="btn btn-start">Mulai Impor</button>
+        </div>
+      </div>
+    </div>
+
     <footer class="app-footer">
-      VisionX V0.25 Local Development Interface &bull; Real YOLOv8 ONNX Runtime Web
+      VisionX V0.4.1 Dataset Management &bull; Real YOLOv8 ONNX &amp; Clean Structured Dataset
     </footer>
   </div>
 
