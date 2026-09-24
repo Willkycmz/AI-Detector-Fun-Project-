@@ -1,8 +1,9 @@
 /**
- * DatasetCaptureService.js - Service Pengambilan & Pengelolaan Dataset (V0.4.1)
- * Mengelola validasi nama kelas, penamaan file unik, penangkapan frame asli tanpa HUD/bounding box,
- * penghapusan tunggal & multi-delete, impor citra & folder, pencegahan duplikasi (SHA-256),
- * struktur direktori berjenjang (own/external), serta pelacakan metadata sumber.
+ * DatasetCaptureService.js - Service Pengambilan & Pengelolaan Dataset (V0.5.1)
+ * Mengelola validasi nama kelas, penamaan file unik, penangkapan frame asli (clean raw frames),
+ * penyimpanan persisten langsung ke disk (datasets/raw/own/<class>/),
+ * sinkronisasi API dev server, File System Access API, penghapusan tunggal & multi-delete,
+ * impor citra & folder, pencegahan duplikasi (SHA-256), serta metadata presisi.
  */
 
 // Daftar nama reserved Windows yang dilarang (kompatibel dengan app/collector.py)
@@ -36,7 +37,6 @@ export function validateClassName(name) {
   }
 
   let cleaned = name.trim().toLowerCase();
-  // Ganti spasi atau tab berurutan dengan underscore
   cleaned = cleaned.replace(/\s+/g, '_');
 
   if (!cleaned) {
@@ -67,11 +67,11 @@ export async function computeBufferHash(buffer) {
 
 export class DatasetCaptureService {
   constructor() {
-    this.currentClass = 'object';
-    this.currentSource = 'own_capture'; // Default source
-    this.dirHandle = null; // FileSystemDirectoryHandle (jika user memilih folder via File System Access API)
+    this.currentClass = this._loadCurrentClass();
+    this.currentSource = 'own_capture';
+    this.dirHandle = null;
     this.dirName = null;
-    this.recentCaptures = []; // Thumbnail & metadata capture sesi aktif
+    this.recentCaptures = [];
     this.classCounts = this._loadCounts();
     this.knownHashes = this._loadHashes();
     this.sourcesMetadata = this._loadMetadata();
@@ -90,9 +90,6 @@ export class DatasetCaptureService {
     };
   }
 
-  /**
-   * Mendaftarkan event listener.
-   */
   on(event, callback) {
     if (this.listeners[event]) {
       this.listeners[event].push(callback);
@@ -101,7 +98,22 @@ export class DatasetCaptureService {
 
   _notify(event, data) {
     if (this.listeners[event]) {
-      this.listeners[event].forEach(cb => cb(data));
+      this.listeners[event].forEach(cb => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error(`[DatasetCaptureService] Error in listener '${event}':`, e);
+        }
+      });
+    }
+  }
+
+  _loadCurrentClass() {
+    try {
+      const saved = localStorage.getItem('visionx_dataset_current_class');
+      return saved ? validateClassName(saved) : 'earphone';
+    } catch (e) {
+      return 'earphone';
     }
   }
 
@@ -157,13 +169,19 @@ export class DatasetCaptureService {
   }
 
   /**
-   * Mengatur nama kelas aktif dengan validasi.
+   * Mengatur nama kelas aktif dengan validasi & persistensi.
    * @param {string} className 
    * @returns {string} Sanitized class name
    */
   setClass(className) {
     const sanitized = validateClassName(className);
     this.currentClass = sanitized;
+    try {
+      localStorage.setItem('visionx_dataset_current_class', sanitized);
+    } catch (e) {
+      console.warn('Gagal menyimpan current class ke localStorage:', e);
+    }
+
     if (this.classCounts[sanitized] === undefined) {
       this.classCounts[sanitized] = 0;
     }
@@ -185,7 +203,7 @@ export class DatasetCaptureService {
   }
 
   /**
-   * Mendapatkan jumlah gambar yang telah diambil untuk kelas aktif.
+   * Mendapatkan jumlah gambar yang telah diambil untuk kelas tertentu.
    * @param {string} [className]
    * @returns {number}
    */
@@ -208,7 +226,7 @@ export class DatasetCaptureService {
    */
   async selectDirectory() {
     if (!('showDirectoryPicker' in window)) {
-      throw new Error('File System Access API tidak didukung pada browser ini. Gambar akan disimpan via unduhan browser.');
+      throw new Error('File System Access API tidak didukung pada browser ini. Data otomatis disimpan langsung ke server disk.');
     }
 
     try {
@@ -217,23 +235,19 @@ export class DatasetCaptureService {
         startIn: 'documents'
       });
       this.dirName = this.dirHandle.name;
-      this._notify('directoryChange', { dirName: this.dirName, isSupported: true });
+      this._notify('directoryChange', { dirName: this.dirName, hasDirectoryHandle: true, isSupported: true });
       return this.dirName;
     } catch (err) {
       if (err.name === 'AbortError') {
-        return null; // Pengguna membatalkan pemilihan folder
+        return null;
       }
       throw err;
     }
   }
 
   /**
-   * Generate nama file unik sesuai standar VisionX V0.4.1.
+   * Generate nama file unik sesuai standar VisionX V0.4.1 / V0.5.1.
    * Format: <class_name>_<source_tag>_YYYYMMDD_HHMMSS_<short_uuid>.<ext>
-   * @param {string} className 
-   * @param {string} source 
-   * @param {string} ext 
-   * @returns {string}
    */
   generateFilename(className = this.currentClass, source = this.currentSource, ext = 'jpg') {
     const now = new Date();
@@ -253,10 +267,60 @@ export class DatasetCaptureService {
   }
 
   /**
-   * Menangkap frame asli (clean raw frame) dari video element.
+   * Memuat dataset yang telah tersimpan pada disk melalui endpoint API dev server.
+   */
+  async loadExistingDataset() {
+    try {
+      const response = await fetch('/api/dataset/list');
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.success || !Array.isArray(data.items)) return;
+
+      // Update hitungan kelas nyata dari disk
+      const newCounts = {};
+      data.items.forEach(item => {
+        const cls = item.className || 'object';
+        newCounts[cls] = (newCounts[cls] || 0) + 1;
+      });
+      this.classCounts = { ...this.classCounts, ...newCounts };
+      this._saveCounts();
+
+      // Transform items ke format recentCaptures standar
+      this.recentCaptures = data.items.map(item => {
+        const meta = this.sourcesMetadata.items ? this.sourcesMetadata.items[item.filename] : null;
+        const width = (meta && meta.width) || (item.width) || 0;
+        const height = (meta && meta.height) || (item.height) || 0;
+        const resolution = (width && height) ? `${width}x${height}` : (meta && meta.resolution) || '-';
+
+        return {
+          id: item.filename,
+          filename: item.filename,
+          className: item.className,
+          source: item.source || 'own_capture',
+          width: width,
+          height: height,
+          resolution: resolution,
+          sizeBytes: item.sizeBytes || 0,
+          formattedSize: item.formattedSize || (item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-'),
+          timestamp: item.timestamp || '-',
+          previewUrl: item.url,
+          dataUrl: item.url,
+          url: item.url,
+          storageType: 'disk'
+        };
+      });
+
+      this._notify('countChange', { currentClass: this.currentClass, count: this.getCount() });
+      return this.recentCaptures;
+    } catch (err) {
+      console.warn('[DatasetCaptureService] Gagal memuat dataset dari disk API:', err);
+    }
+  }
+
+  /**
+   * Menangkap frame asli (clean raw frame) dari video element tanpa overlay atau HUD.
    * 
    * @param {HTMLVideoElement} videoElement Elemen video sumber stream
-   * @returns {Promise<{ filename: string, className: string, count: number, blob: Blob, previewUrl: string, hash: string, storageType: string }>}
    */
   async captureFrame(videoElement) {
     if (!videoElement || videoElement.readyState < 2) {
@@ -266,11 +330,11 @@ export class DatasetCaptureService {
     const vw = videoElement.videoWidth;
     const vh = videoElement.videoHeight;
 
-    if (vw === 0 || vh === 0) {
+    if (!vw || !vh || vw <= 0 || vh <= 0) {
       throw new Error('Resolusi frame video tidak valid (0x0).');
     }
 
-    // 1. Gambar frame video murni ke offscreen canvas pada resolusi aslinya
+    // 1. Gambar frame video murni ke offscreen canvas pada resolusi aslinya (tanpa canvasOverlay / HUD)
     this.offscreenCanvas.width = vw;
     this.offscreenCanvas.height = vh;
     this.offscreenCtx.drawImage(videoElement, 0, 0, vw, vh);
@@ -279,15 +343,22 @@ export class DatasetCaptureService {
     const blob = await new Promise((resolve, reject) => {
       this.offscreenCanvas.toBlob(
         (b) => {
-          if (b) resolve(b);
-          else reject(new Error('Gagal mengonversi frame ke Blob format JPEG.'));
+          if (b && b.size > 0) resolve(b);
+          else reject(new Error('Gagal mengonversi frame ke Blob format JPEG (ukuran 0 bytes).'));
         },
         'image/jpeg',
         0.95
       );
     });
 
-    // 3. Hitung SHA-256 Hash untuk pencegahan duplikasi
+    if (blob.size === 0) {
+      throw new Error('Citra yang diambil kosong (0 bytes).');
+    }
+
+    // 3. Konversi ke base64 dataUrl untuk transmisi & preview instan
+    const dataUrl = this.offscreenCanvas.toDataURL('image/jpeg', 0.95);
+
+    // 4. Hitung SHA-256 Hash untuk pencegahan duplikasi
     const arrayBuffer = await blob.arrayBuffer();
     const imageHash = await computeBufferHash(arrayBuffer);
 
@@ -295,87 +366,138 @@ export class DatasetCaptureService {
       throw new Error(`Citra identik/duplikat terdeteksi (SHA256: ${imageHash.slice(0, 10)}...). Pengambilan dibatalkan.`);
     }
 
-    const filename = this.generateFilename(this.currentClass, 'own_capture', 'jpg');
-    let storageType = 'download';
+    const captureClass = this.currentClass;
+    const filename = this.generateFilename(captureClass, 'own_capture', 'jpg');
 
-    // 4. Simpan gambar ke folder tujuan berjenjang: own/<class_name>/
+    // 5. Simpan ke disk secara persisten melalui API server lokal
+    let saveResult = null;
+    let storageType = 'disk';
+
+    try {
+      const apiRes = await fetch('/api/dataset/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename,
+          className: captureClass,
+          source: 'own_capture',
+          width: vw,
+          height: vh,
+          dataUrl
+        })
+      });
+
+      if (!apiRes.ok) {
+        const errorText = await apiRes.text();
+        throw new Error(`Server API save gagal (${apiRes.status}): ${errorText}`);
+      }
+
+      saveResult = await apiRes.json();
+      if (!saveResult.success) {
+        throw new Error(saveResult.error || 'Server gagal menyimpan citra.');
+      }
+    } catch (saveErr) {
+      console.error('[DatasetCaptureService] Gagal menyimpan ke disk API:', saveErr);
+      throw new Error(`Penyimpanan dataset gagal: ${saveErr.message}`);
+    }
+
+    // 6. Jika user juga menghubungkan File System Access API, tulis juga ke directory handle
     if (this.dirHandle) {
       try {
         const ownDirHandle = await this.dirHandle.getDirectoryHandle('own', { create: true });
-        const classDirHandle = await ownDirHandle.getDirectoryHandle(this.currentClass, { create: true });
+        const classDirHandle = await ownDirHandle.getDirectoryHandle(captureClass, { create: true });
         const fileHandle = await classDirHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
         await writable.write(blob);
         await writable.close();
-        storageType = 'direct_fs';
+        storageType = 'disk_and_fsa';
       } catch (fsErr) {
-        console.warn('Gagal menyimpan via File System Access API, fallback ke unduhan browser:', fsErr);
-        this._triggerDownload(blob, filename);
-        storageType = 'download_fallback';
+        console.warn('Peringatan: Gagal sinkronisasi ke File System Access API:', fsErr);
       }
-    } else {
-      this._triggerDownload(blob, filename);
-      storageType = 'download';
     }
 
-    // 5. Catat hash & update count
+    // 7. Catat hash & update count
     this.knownHashes.add(imageHash);
     this._saveHashes();
 
-    this.classCounts[this.currentClass] = (this.classCounts[this.currentClass] || 0) + 1;
-    const newCount = this.classCounts[this.currentClass];
+    this.classCounts[captureClass] = (this.classCounts[captureClass] || 0) + 1;
+    const newCount = this.classCounts[captureClass];
     this._saveCounts();
 
-    // 6. Catat metadata sumber
+    const formattedSize = `${(blob.size / 1024).toFixed(1)} KB`;
+
+    // 8. Catat metadata sumber
     this.sourcesMetadata.items[filename] = {
-      class: this.currentClass,
+      class: captureClass,
       source: 'own_capture',
       hash_sha256: imageHash,
+      width: vw,
+      height: vh,
       resolution: `${vw}x${vh}`,
       size_bytes: blob.size,
+      formatted_size: formattedSize,
       recorded_at: new Date().toISOString()
     };
     this._saveMetadata();
 
-    // 7. Simpan thumbnail preview
-    const previewUrl = URL.createObjectURL(blob);
+    // 9. Simpan record galeri dengan semua properti yang lengkap dan konsisten
     const captureRecord = {
       id: filename,
       filename,
-      className: this.currentClass,
+      className: captureClass,
       source: 'own_capture',
       count: newCount,
       timestamp: new Date().toLocaleTimeString(),
-      previewUrl,
+      previewUrl: dataUrl,
+      dataUrl: dataUrl,
+      url: saveResult.url || `/datasets/raw/own/${captureClass}/${filename}`,
       hash: imageHash,
+      width: vw,
+      height: vh,
       resolution: `${vw}x${vh}`,
       sizeBytes: blob.size,
+      formattedSize: formattedSize,
       storageType
     };
 
     this.recentCaptures.unshift(captureRecord);
-    if (this.recentCaptures.length > 50) {
-      const removed = this.recentCaptures.pop();
-      if (removed && removed.previewUrl) {
-        URL.revokeObjectURL(removed.previewUrl);
-      }
+    if (this.recentCaptures.length > 100) {
+      this.recentCaptures.pop();
     }
 
     this._notify('capture', captureRecord);
-    this._notify('countChange', { currentClass: this.currentClass, count: newCount });
+    this._notify('countChange', { currentClass: captureClass, count: newCount });
 
     return captureRecord;
   }
 
   /**
-   * Menghapus satu citra dari dataset dan membebaskan counter.
+   * Menghapus satu citra dari dataset dan mengupdate counter.
    * @param {string} filename 
    * @param {string} [className] 
    */
   async deleteImage(filename, className = this.currentClass) {
     const targetClass = className || this.currentClass;
 
-    // 1. Hapus dari FileSystem jika ada dirHandle
+    // 1. Hapus dari disk via server API
+    try {
+      const res = await fetch('/api/dataset/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename,
+          className: targetClass,
+          source: 'own_capture'
+        })
+      });
+      if (!res.ok) {
+        console.warn('[DatasetCaptureService] Response delete tidak OK:', res.status);
+      }
+    } catch (err) {
+      console.error('[DatasetCaptureService] Gagal request delete API:', err);
+    }
+
+    // 2. Hapus dari FileSystem handle jika aktif
     if (this.dirHandle) {
       try {
         const ownDirHandle = await this.dirHandle.getDirectoryHandle('own', { create: false }).catch(() => null);
@@ -386,20 +508,19 @@ export class DatasetCaptureService {
           }
         }
       } catch (err) {
-        console.warn(`Gagal menghapus file ${filename} dari disk:`, err);
+        console.warn(`Gagal menghapus file ${filename} dari directory handle:`, err);
       }
     }
 
-    // 2. Hapus dari recentCaptures
+    // 3. Hapus dari recentCaptures
     const idx = this.recentCaptures.findIndex(c => c.filename === filename);
     if (idx !== -1) {
       const item = this.recentCaptures[idx];
-      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       if (item.hash) this.knownHashes.delete(item.hash);
       this.recentCaptures.splice(idx, 1);
     }
 
-    // 3. Hapus dari metadata
+    // 4. Hapus dari metadata
     if (this.sourcesMetadata.items[filename]) {
       const itemMeta = this.sourcesMetadata.items[filename];
       if (itemMeta.hash_sha256) this.knownHashes.delete(itemMeta.hash_sha256);
@@ -408,7 +529,7 @@ export class DatasetCaptureService {
     }
     this._saveHashes();
 
-    // 4. Update counter (kurang 1 jika > 0)
+    // 5. Update counter
     if (this.classCounts[targetClass] && this.classCounts[targetClass] > 0) {
       this.classCounts[targetClass] -= 1;
       this._saveCounts();
@@ -472,29 +593,43 @@ export class DatasetCaptureService {
         const cleanExt = ext.replace(/^\./, '');
         const filename = this.generateFilename(validClass, source, cleanExt);
 
-        let storageType = 'download';
-        if (this.dirHandle) {
-          try {
-            const folderCategory = source.startsWith('own') ? 'own' : `external/${source}`;
-            const subFolders = folderCategory.split('/');
-            let currentFolderHandle = this.dirHandle;
-            for (const sf of subFolders) {
-              currentFolderHandle = await currentFolderHandle.getDirectoryHandle(sf, { create: true });
-            }
-            const classDirHandle = await currentFolderHandle.getDirectoryHandle(validClass, { create: true });
-            const fileHandle = await classDirHandle.getFileHandle(filename, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            storageType = 'direct_fs';
-          } catch (e) {
-            this._triggerDownload(blob, filename);
-            storageType = 'download_fallback';
-          }
-        } else {
-          this._triggerDownload(blob, filename);
-          storageType = 'download';
+        // Baca dimensi gambar
+        let width = 0;
+        let height = 0;
+        try {
+          const imgBitmap = await createImageBitmap(blob);
+          width = imgBitmap.width;
+          height = imgBitmap.height;
+          imgBitmap.close();
+        } catch (e) {
+          // Fallback image dimensions
         }
+
+        // Konversi ke base64 dataUrl untuk pengiriman ke server
+        const reader = new FileReader();
+        const dataUrlPromise = new Promise((res, rej) => {
+          reader.onload = () => res(reader.result);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        const dataUrl = await dataUrlPromise;
+
+        // Simpan via API dev server
+        const apiRes = await fetch('/api/dataset/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename,
+            className: validClass,
+            source,
+            width,
+            height,
+            dataUrl
+          })
+        });
+
+        const saveRes = await apiRes.json();
+        const formattedSize = `${(file.size / 1024).toFixed(1)} KB`;
 
         this.knownHashes.add(hash);
         this.classCounts[validClass] = (this.classCounts[validClass] || 0) + 1;
@@ -504,11 +639,14 @@ export class DatasetCaptureService {
           source: source,
           hash_sha256: hash,
           original_name: file.name,
+          width: width,
+          height: height,
+          resolution: (width && height) ? `${width}x${height}` : '-',
           size_bytes: file.size,
+          formatted_size: formattedSize,
           recorded_at: new Date().toISOString()
         };
 
-        const previewUrl = URL.createObjectURL(blob);
         const record = {
           id: filename,
           filename,
@@ -516,10 +654,16 @@ export class DatasetCaptureService {
           source,
           count: this.classCounts[validClass],
           timestamp: new Date().toLocaleTimeString(),
-          previewUrl,
+          previewUrl: dataUrl,
+          dataUrl: dataUrl,
+          url: (saveRes && saveRes.url) || `/datasets/raw/own/${validClass}/${filename}`,
           hash,
+          width,
+          height,
+          resolution: (width && height) ? `${width}x${height}` : '-',
           sizeBytes: file.size,
-          storageType
+          formattedSize: formattedSize,
+          storageType: 'disk'
         };
 
         this.recentCaptures.unshift(record);
@@ -543,32 +687,46 @@ export class DatasetCaptureService {
 
   /**
    * Mengimpor seluruh isi folder gambar.
-   * @param {FileList|Array<File>} fileList 
-   * @param {string} targetClass 
-   * @param {string} source 
    */
   async importFolder(fileList, targetClass = this.currentClass, source = 'own_import') {
     return await this.importImages(fileList, targetClass, source);
   }
 
   /**
-   * Memicu download browser standar.
+   * Mengambil daftar capture
    */
-  _triggerDownload(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  getRecentCaptures() {
+    return this.recentCaptures || [];
+  }
+
+  /**
+   * Alias untuk deleteImage
+   */
+  async deleteItem(filename, className = this.currentClass) {
+    return await this.deleteImage(filename, className);
+  }
+
+  /**
+   * Menghapus banyak item berdasarkan daftar nama file
+   */
+  async deleteMultiple(filenames = []) {
+    const items = filenames.map(fn => {
+      const meta = this.sourcesMetadata.items ? this.sourcesMetadata.items[fn] : null;
+      const cls = meta ? meta.class : this.currentClass;
+      return { filename: fn, className: cls };
+    });
+    const deleted = await this.deleteMultipleImages(items);
+    return { deleted };
+  }
+
+  /**
+   * Alias untuk selectDirectory
+   */
+  async requestDirectoryAccess() {
+    return await this.selectDirectory();
   }
 
   destroy() {
-    this.recentCaptures.forEach(c => {
-      if (c.previewUrl) URL.revokeObjectURL(c.previewUrl);
-    });
     this.recentCaptures = [];
   }
 }

@@ -91,7 +91,7 @@ class VisionXWebApp {
       iouVal: document.getElementById('iouVal'),
       toggleDebug: document.getElementById('toggleDebug'),
 
-      // Debug Panel (V0.5.1)
+      // Debug Panel & Live Diagnostics (V0.5.1 Audit)
       debugPanel: document.getElementById('debugPanel'),
       debugModelName: document.getElementById('debugModelName'),
       debugLoadTime: document.getElementById('debugLoadTime'),
@@ -99,6 +99,20 @@ class VisionXWebApp {
       debugObjectCount: document.getElementById('debugObjectCount'),
       debugFrameId: document.getElementById('debugFrameId'),
       debugTableBody: document.getElementById('debugTableBody'),
+      diagModelState: document.getElementById('diagModelState'),
+      diagLoadStarted: document.getElementById('diagLoadStarted'),
+      diagFetchStarted: document.getElementById('diagFetchStarted'),
+      diagFetchCompleted: document.getElementById('diagFetchCompleted'),
+      diagModelSize: document.getElementById('diagModelSize'),
+      diagSessionInit: document.getElementById('diagSessionInit'),
+      diagInputShape: document.getElementById('diagInputShape'),
+      diagOutputShape: document.getElementById('diagOutputShape'),
+      diagFirstInferStart: document.getElementById('diagFirstInferStart'),
+      diagFirstInferComplete: document.getElementById('diagFirstInferComplete'),
+      diagFirstInferLatency: document.getElementById('diagFirstInferLatency'),
+      diagRawPreds: document.getElementById('diagRawPreds'),
+      diagAfterConf: document.getElementById('diagAfterConf'),
+      diagAfterNms: document.getElementById('diagAfterNms'),
 
       // Collection Mode Controls
       collectionControls: document.getElementById('collectionControls'),
@@ -152,24 +166,39 @@ class VisionXWebApp {
   }
 
   async init() {
-    // 1. Attach video ke CameraService
-    this.cameraService.attachVideoElement(this.elements.video);
+    try {
+      // 1. Attach video ke CameraService
+      this.cameraService.attachVideoElement(this.elements.video);
 
-    // 2. Inisialisasi DetectionRenderer
-    this.renderer = new DetectionRenderer(this.elements.canvas);
+      // 2. Inisialisasi DetectionRenderer
+      this.renderer = new DetectionRenderer(this.elements.canvas);
 
-    // 3. Bind Event Listeners
-    this.bindEvents();
+      // 3. Bind Event Listeners
+      this.bindEvents();
 
-    // 4. Update initial collection UI & render gallery
-    this.updateCollectionUI();
-    this.renderRecentCaptures();
+      // 4. Update initial collection UI & load dataset from disk
+      if (this.elements.inputClassName) {
+        this.elements.inputClassName.value = this.captureService.currentClass;
+      }
+      this.updateCollectionUI();
+      try {
+        await this.captureService.loadExistingDataset();
+        this.renderRecentCaptures();
+        this.updateCollectionUI();
+      } catch (galleryErr) {
+        console.warn('[VisionX] Peringatan inisialisasi galeri (non-blocking):', galleryErr);
+      }
 
-    // 5. Muat default model (VisionX V1 Custom 7 Classes)
-    await this.loadSelectedModel('visionx_v1');
+      // 5. Muat default model (VisionX V1 Custom 7 Classes)
+      await this.loadSelectedModel('visionx_v1');
 
-    // 6. Populate camera devices list
-    await this.loadCameraDevices();
+      // 6. Populate camera devices list
+      await this.loadCameraDevices();
+    } catch (fatalErr) {
+      console.error('[VisionX Fatal] Gagal inisialisasi aplikasi:', fatalErr);
+      this.updateInferenceUI('error', 'Init Error: ' + fatalErr.message);
+      this.showError('Gagal memuat aplikasi: ' + fatalErr.message);
+    }
   }
 
   /**
@@ -177,19 +206,23 @@ class VisionXWebApp {
    */
   async loadSelectedModel(modelId) {
     const config = MODEL_PRESETS[modelId] || MODEL_PRESETS.visionx_v1;
-    this.updateInferenceUI(false, `Memuat ${config.shortName}...`);
+    this.updateInferenceUI('loading', `Memuat ${config.shortName}...`);
+    this.updateDiagnosticsUI();
 
     try {
       const res = await this.inferenceService.switchModel(modelId, (msg) => {
-        this.updateInferenceUI(false, msg);
+        this.updateInferenceUI('loading', msg);
+        this.updateDiagnosticsUI();
       });
 
       this.updateModelUI(config, res.loadTimeMs);
-      this.updateInferenceUI(this.inferenceService.isActive, `${config.shortName} Aktif`);
+      this.updateInferenceUI('ready', `${config.shortName} Ready (${res.loadTimeMs}ms)`);
+      this.updateDiagnosticsUI();
       this.showSuccess(`Model [${config.name}] siap digunakan (${res.loadTimeMs} ms)`);
     } catch (err) {
       console.error(`[VisionX] Gagal memuat model [${modelId}]:`, err);
-      this.updateInferenceUI(false, 'Gagal memuat model');
+      this.updateInferenceUI('error', `Error: ${err.message || 'Gagal memuat model'}`);
+      this.updateDiagnosticsUI();
       this.showError(`Gagal memuat ${config.name}: ` + (err.message || 'File ONNX tidak ditemukan'));
     }
   }
@@ -225,6 +258,7 @@ class VisionXWebApp {
 
     // Render target class chips
     this.renderTargetClassChips(config);
+    this.updateDiagnosticsUI();
   }
 
   /**
@@ -496,7 +530,7 @@ class VisionXWebApp {
       const result = await this.captureService.captureFrame(this.elements.video);
       this.renderRecentCaptures();
       this.updateCollectionUI();
-      this.showSuccess(`Gambar tersimpan: ${result.filename}`);
+      this.showSuccess(`Saved successfully\nClass: ${result.className}\nFile: ${result.filename}\nResolution: ${result.resolution}\nSize: ${result.formattedSize}`);
     } catch (err) {
       console.error('[VisionX] Gagal capture dataset:', err);
       this.showError(err.message || 'Gagal mengambil gambar.');
@@ -704,11 +738,11 @@ class VisionXWebApp {
   }
 
   handleDirectoryChange(dirInfo) {
-    if (dirInfo.hasDirectoryHandle && dirInfo.directoryName) {
-      this.elements.dirStatusText.textContent = `Terhubung ke: ${dirInfo.directoryName}/`;
+    if (dirInfo.hasDirectoryHandle && dirInfo.dirName) {
+      this.elements.dirStatusText.textContent = `Terhubung ke: ${dirInfo.dirName}/ (Auto Disk Sync)`;
       this.elements.btnSelectDir.classList.add('btn-success');
     } else {
-      this.elements.dirStatusText.textContent = 'Mode Unduhan Browser Langsung';
+      this.elements.dirStatusText.textContent = 'Auto Disk Sync (datasets/raw/own/)';
       this.elements.btnSelectDir.classList.remove('btn-success');
     }
   }
@@ -728,25 +762,36 @@ class VisionXWebApp {
       const isSelected = this.selectedItems.has(item.filename);
       const selectedClass = isSelected ? 'selected' : '';
       const sourceBadge = item.source === 'own_capture' ? '📸' : '💾';
+      const imgUrl = item.previewUrl || item.dataUrl || item.url || '';
+      const dimensions = (item.width && item.height) ? `${item.width}x${item.height}` : (item.resolution && item.resolution !== 'undefinedxundefined' ? item.resolution : '-');
+      const sizeText = item.formattedSize || (item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-');
+      const displayClass = item.className || '-';
+      const displayFilename = item.filename || '-';
+      const displaySource = item.source || '-';
+      const displayTime = item.timestamp || '-';
 
       html += `
-        <div class="gallery-item-card ${selectedClass}" data-filename="${item.filename}">
+        <div class="gallery-item-card ${selectedClass}" data-filename="${displayFilename}">
           ${this.isSelectMode ? `
             <div class="item-checkbox-wrapper">
-              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${item.filename}" />
+              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${displayFilename}" />
             </div>
           ` : ''}
-          <img src="${item.dataUrl}" alt="${item.filename}" class="gallery-thumbnail" loading="lazy" />
+          <img src="${imgUrl}" alt="${displayFilename}" class="gallery-thumbnail" loading="lazy" onerror="this.style.opacity='0.4';" />
           <div class="gallery-item-info">
-            <span class="gallery-item-class" title="Kelas">${item.className}</span>
-            <span class="gallery-item-name" title="${item.filename}">${item.filename}</span>
+            <span class="gallery-item-class" title="Kelas">${displayClass}</span>
+            <span class="gallery-item-name" title="${displayFilename}">${displayFilename}</span>
             <div class="gallery-item-meta">
-              <span title="Sumber Data">${sourceBadge} ${item.source}</span>
-              <span>${item.width}x${item.height}</span>
+              <span title="Sumber Data">${sourceBadge} ${displaySource}</span>
+              <span title="Dimensi">${dimensions}</span>
+            </div>
+            <div class="gallery-item-submeta">
+              <span title="Ukuran">${sizeText}</span>
+              <span title="Waktu">${displayTime}</span>
             </div>
           </div>
           ${!this.isSelectMode ? `
-            <button type="button" class="btn-delete-single" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
+            <button type="button" class="btn-delete-single" data-filename="${displayFilename}" data-class="${displayClass}" title="Hapus gambar ini">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -879,33 +924,91 @@ class VisionXWebApp {
   }
 
   showError(msg) {
-    this.elements.errorMessage.textContent = msg;
+    this.elements.errorMessage.innerHTML = String(msg).replace(/\n/g, '<br/>');
     this.elements.errorBanner.classList.remove('hidden');
     this.elements.successBanner.classList.add('hidden');
     setTimeout(() => this.elements.errorBanner.classList.add('hidden'), 6000);
   }
 
   showSuccess(msg) {
-    this.elements.successMessage.textContent = msg;
+    this.elements.successMessage.innerHTML = String(msg).replace(/\n/g, '<br/>');
     this.elements.successBanner.classList.remove('hidden');
     this.elements.errorBanner.classList.add('hidden');
-    setTimeout(() => this.elements.successBanner.classList.add('hidden'), 4500);
+    setTimeout(() => this.elements.successBanner.classList.add('hidden'), 5000);
   }
 
-  updateInferenceUI(active, textMessage = null) {
+  updateInferenceUI(state, textMessage = null) {
     const badge = this.elements.inferenceBadge;
     const text = this.elements.inferenceStatusText;
 
     badge.className = 'badge';
-    if (active) {
-      badge.classList.add('badge-connected');
-      text.textContent = textMessage || `${this.inferenceService.modelConfig.shortName} Aktif`;
+    if (state === 'ready') {
+      badge.classList.add('badge-ready');
+      text.textContent = textMessage || 'Model Ready';
+    } else if (state === 'loading') {
+      badge.classList.add('badge-loading');
+      text.textContent = textMessage || 'Loading Model...';
+    } else if (state === 'error') {
+      badge.classList.add('badge-error');
+      text.textContent = textMessage || 'Model Error';
+      if (this.renderer && this.currentMode === 'detection') {
+        this.renderer.clear();
+      }
     } else {
       badge.classList.add('badge-disconnected');
       text.textContent = textMessage || 'Inference Inactive';
       if (this.renderer && this.currentMode === 'detection') {
         this.renderer.clear();
       }
+    }
+  }
+
+  updateDiagnosticsUI() {
+    const d = this.inferenceService.diagnostics;
+    const status = this.inferenceService.status;
+
+    if (this.elements.diagModelState) {
+      this.elements.diagModelState.textContent = status.toUpperCase();
+      this.elements.diagModelState.className = `diag-val ${status}`;
+    }
+    if (this.elements.diagLoadStarted && d.modelLoadingStarted) {
+      this.elements.diagLoadStarted.textContent = d.modelLoadingStarted;
+    }
+    if (this.elements.diagFetchStarted && d.modelFetchStarted) {
+      this.elements.diagFetchStarted.textContent = d.modelFetchStarted;
+    }
+    if (this.elements.diagFetchCompleted && d.modelFetchCompleted) {
+      this.elements.diagFetchCompleted.textContent = d.modelFetchCompleted;
+    }
+    if (this.elements.diagModelSize && d.modelSizeFormatted) {
+      this.elements.diagModelSize.textContent = d.modelSizeFormatted;
+    }
+    if (this.elements.diagSessionInit && d.sessionInitialized) {
+      this.elements.diagSessionInit.textContent = d.sessionInitialized;
+    }
+    if (this.elements.diagInputShape && d.modelInputShape) {
+      this.elements.diagInputShape.textContent = d.modelInputShape;
+    }
+    if (this.elements.diagOutputShape && d.modelOutputShape) {
+      this.elements.diagOutputShape.textContent = d.modelOutputShape;
+    }
+    if (this.elements.diagFirstInferStart && d.firstInferenceStarted) {
+      this.elements.diagFirstInferStart.textContent = d.firstInferenceStarted;
+    }
+    if (this.elements.diagFirstInferComplete && d.firstInferenceCompleted) {
+      this.elements.diagFirstInferComplete.textContent = d.firstInferenceCompleted;
+    }
+    if (this.elements.diagFirstInferLatency && d.firstInferenceLatencyMs !== null) {
+      this.elements.diagFirstInferLatency.textContent = `${d.firstInferenceLatencyMs} ms`;
+    }
+    if (this.elements.diagRawPreds) {
+      this.elements.diagRawPreds.textContent = d.lastRawPredictionsCount;
+    }
+    if (this.elements.diagAfterConf) {
+      this.elements.diagAfterConf.textContent = d.lastAfterConfidenceCount;
+    }
+    if (this.elements.diagAfterNms) {
+      this.elements.diagAfterNms.textContent = d.lastAfterNmsCount;
     }
   }
 
@@ -969,6 +1072,9 @@ class VisionXWebApp {
 
             // Highlight class chips on active detection
             this.highlightDetectedChips(detections);
+
+            // Update diagnostics UI in real time
+            this.updateDiagnosticsUI();
 
             if (this.isDebugVisible) {
               this.updateDebugTable(detections, frameId, inferenceTimeMs);

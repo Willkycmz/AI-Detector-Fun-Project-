@@ -9,7 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+  <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
+  <script src="/ort.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -256,8 +257,8 @@
                   type="text" 
                   id="inputClassName" 
                   class="text-input" 
-                  placeholder="Contoh: glass, bottle, charger" 
-                  value="object" 
+                  placeholder="Contoh: earphone, bottle, charger" 
+                  value="earphone" 
                   autocomplete="off"
                   spellcheck="false"
                 />
@@ -274,10 +275,11 @@
             <div class="quick-classes">
               <span class="quick-label">Kelas Cepat:</span>
               <div class="pills-container">
-                <button type="button" class="class-pill" data-class="glass">glass</button>
+                <button type="button" class="class-pill" data-class="earphone">earphone</button>
                 <button type="button" class="class-pill" data-class="bottle">bottle</button>
-                <button type="button" class="class-pill" data-class="charger">charger</button>
+                <button type="button" class="class-pill" data-class="glass">glass</button>
                 <button type="button" class="class-pill" data-class="cup">cup</button>
+                <button type="button" class="class-pill" data-class="charger">charger</button>
                 <button type="button" class="class-pill" data-class="person">person</button>
               </div>
             </div>
@@ -440,6 +442,74 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Live Pipeline Diagnostics Panel (V0.5.1 Audit) -->
+      <div class="diagnostics-panel" id="diagnosticsPanel">
+        <div class="diagnostics-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Live Inference Pipeline Diagnostics:</span>
+        </div>
+        <div class="diagnostics-grid">
+          <div class="diag-item">
+            <span class="diag-label">Model State:</span>
+            <span id="diagModelState" class="diag-val loading">Loading</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Load Started:</span>
+            <span id="diagLoadStarted" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Fetch Started:</span>
+            <span id="diagFetchStarted" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Fetch Completed:</span>
+            <span id="diagFetchCompleted" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Model Size:</span>
+            <span id="diagModelSize" class="diag-val">-- MB</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">ONNX Session Init:</span>
+            <span id="diagSessionInit" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Input Shape:</span>
+            <span id="diagInputShape" class="diag-val">[1, 3, 640, 640]</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Output Shape:</span>
+            <span id="diagOutputShape" class="diag-val">[1, 11, 8400]</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">First Inference Start:</span>
+            <span id="diagFirstInferStart" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">First Inference Done:</span>
+            <span id="diagFirstInferComplete" class="diag-val">--</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">First Infer Latency:</span>
+            <span id="diagFirstInferLatency" class="diag-val">-- ms</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Raw Positive Anchors:</span>
+            <span id="diagRawPreds" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">After Conf Filter:</span>
+            <span id="diagAfterConf" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">After NMS (Final):</span>
+            <span id="diagAfterNms" class="diag-val">0</span>
+          </div>
+        </div>
       </div>
     </section>
 

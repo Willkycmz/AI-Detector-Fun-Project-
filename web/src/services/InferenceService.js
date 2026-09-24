@@ -1,27 +1,18 @@
 /**
  * InferenceService - Real Ultralytics YOLOv8 ONNX Inference Engine for Browser
  * 
- * Mendukung Multi-Model Switching:
- * 1. VisionX V1 Custom Model (models/visionx_v1.onnx) - 7 Classes:
- *    ['person', 'bottle', 'cup', 'laptop', 'mouse', 'keyboard', 'cell_phone']
- * 2. Pretrained YOLOv8n Model (models/yolov8n.onnx) - 80 COCO Classes
- * 
- * Mengimplementasikan:
- * - Letterbox Preprocessing (640x640, RGB, aspect ratio preserved, gray padding 114)
- * - Planar Float32Array [1, 3, 640, 640] normalized [0, 1]
- * - Dynamic output tensor decoding ([1, 11, 8400] vs [1, 84, 8400])
- * - Non-Maximum Suppression (NMS) berbasis IoU
- * - Frame ID & timestamp sequencing
- * - Safe model switching & load timing metrics
+ * V0.5.1 Diagnostics & State Management:
+ * - Clear 3-state cycle: 'loading' -> 'ready' | 'error'
+ * - Model binary fetch tracking with HTTP status, byte size, and timing
+ * - Comprehensive diagnostics for every stage of the pipeline:
+ *   Model loading started -> fetch started -> fetch completed -> session initialized
+ *   -> input/output tensor shapes -> first inference -> NMS -> latency
+ * - Local WASM configuration (no external CDN dependency)
+ * - Safe error handling (never silently ignored)
  */
 
-// Gunakan window.ort dari ort.min.js untuk menghindari module-loader bundling issues
+// Dapatkan instance ort (utamakan window.ort dari ort.min.js lokal)
 const getOrt = () => window.ort || (typeof globalThis !== 'undefined' ? globalThis.ort : null);
-
-if (typeof window !== 'undefined' && window.ort && window.ort.env && window.ort.env.wasm) {
-  window.ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
-  window.ort.env.wasm.numThreads = 1;
-}
 
 export const VISIONX_V1_CLASSES = [
   'person',
@@ -133,12 +124,35 @@ export class YOLOInferenceService {
 
     this.session = null;
     this.isActive = true;
-    this.isModelLoaded = false;
-    this.isLoading = false;
+    
+    // UI state: 'idle' | 'loading' | 'ready' | 'error'
+    this.status = 'idle';
+    this.errorMessage = null;
     this.loadTimeMs = 0;
 
     this.confThreshold = 0.45;
     this.iouThreshold = 0.45;
+
+    // Tracking diagnostics lengkap
+    this.diagnostics = {
+      modelLoadingStarted: null,
+      modelFetchStarted: null,
+      modelFetchCompleted: null,
+      modelSizeBytes: 0,
+      modelSizeFormatted: '-- MB',
+      sessionInitialized: null,
+      modelInputName: 'images',
+      modelInputShape: '[1, 3, 640, 640]',
+      modelOutputName: 'output0',
+      modelOutputShape: `[1, ${4 + this.numClasses}, 8400]`,
+      firstInferenceStarted: null,
+      firstInferenceCompleted: null,
+      firstInferenceLatencyMs: null,
+      lastInferenceLatencyMs: 0,
+      lastRawPredictionsCount: 0,
+      lastAfterConfidenceCount: 0,
+      lastAfterNmsCount: 0
+    };
 
     // Frame sequence tracking
     this.currentFrameId = 0;
@@ -152,65 +166,112 @@ export class YOLOInferenceService {
     this.preprocessCtx = this.preprocessCanvas.getContext('2d', { willReadFrequently: true });
   }
 
+  get isModelLoaded() {
+    return this.status === 'ready' && this.session !== null;
+  }
+
   /**
-   * Memuat model aktif saat ini
+   * Mengatur konfigurasi WASM runtime
+   */
+  _setupWasmEnv(ortInstance) {
+    if (ortInstance && ortInstance.env && ortInstance.env.wasm) {
+      // Prioritaskan file WASM lokal di /public/
+      ortInstance.env.wasm.wasmPaths = '/';
+      ortInstance.env.wasm.numThreads = 1;
+      ortInstance.env.wasm.simd = true;
+    }
+  }
+
+  /**
+   * Memuat model aktif saat ini dengan tracking diagnostik penuh
    */
   async loadModel(onProgress = null) {
-    if (this.isModelLoaded && this.session) {
-      return true;
-    }
-
-    if (this.isLoading) {
-      console.warn('[VisionX] Model sedang dimuat, menunggu...');
+    if (this.status === 'loading') {
+      console.warn('[VisionX] Model sedang dimuat, abaikan panggilan ganda.');
       return false;
     }
 
-    this.isLoading = true;
+    this.status = 'loading';
+    this.errorMessage = null;
+    this.diagnostics.modelLoadingStarted = new Date().toLocaleTimeString();
     const startLoadTime = performance.now();
 
-    try {
-      console.log(`[VisionX] Memuat model [${this.modelConfig.name}] dari: ${this.modelPath}`);
-      if (onProgress) onProgress(`Memuat model ${this.modelConfig.shortName}...`);
+    console.log(`[VisionX Diagnostic] Model loading started: ${this.modelConfig.name} (${this.modelPath})`);
+    if (onProgress) onProgress(`Memuat model ${this.modelConfig.shortName}...`);
 
+    try {
+      // 1. Periksa ketersediaan library ONNX Runtime
       const ortInstance = getOrt();
       if (!ortInstance) {
-        throw new Error('ONNX Runtime Web (ort) belum dimuat.');
+        throw new Error('Library ONNX Runtime Web (ort) belum dimuat di browser window. Periksa /ort.min.js.');
       }
+      this._setupWasmEnv(ortInstance);
 
-      if (ortInstance.env && ortInstance.env.wasm) {
-        ortInstance.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
-        ortInstance.env.wasm.numThreads = 1;
-      }
-
-      // Bersihkan sesi lama jika ada
+      // 2. Bersihkan sesi lama jika ada
       if (this.session) {
         try {
           if (typeof this.session.release === 'function') {
             await this.session.release();
           }
         } catch (e) {
-          console.warn('[VisionX] Gagal merilis session lama:', e);
+          console.warn('[VisionX] Peringatan rilis session lama:', e);
         }
         this.session = null;
       }
 
-      this.session = await ortInstance.InferenceSession.create(this.modelPath, {
+      // 3. Fetch model binary secara eksplisit untuk validasi HTTP network status & file size
+      this.diagnostics.modelFetchStarted = new Date().toLocaleTimeString();
+      console.log(`[VisionX Diagnostic] Model fetch started: ${this.modelPath}`);
+      if (onProgress) onProgress(`Mengunduh file model ${this.modelConfig.shortName}...`);
+
+      const response = await fetch(this.modelPath, { cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText} saat mengunduh file model dari '${this.modelPath}'. Pastikan file ada di web/public/models/.`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      this.diagnostics.modelFetchCompleted = new Date().toLocaleTimeString();
+      this.diagnostics.modelSizeBytes = arrayBuffer.byteLength;
+      this.diagnostics.modelSizeFormatted = (arrayBuffer.byteLength / (1024 * 1024)).toFixed(2) + ' MB';
+      console.log(`[VisionX Diagnostic] Model fetch completed. Size: ${this.diagnostics.modelSizeFormatted}`);
+
+      if (onProgress) onProgress(`Menginisialisasi ONNX Runtime Web WASM (${this.diagnostics.modelSizeFormatted})...`);
+
+      // 4. Inisialisasi ONNX InferenceSession langsung dari buffer memori (Uint8Array)
+      const modelBytes = new Uint8Array(arrayBuffer);
+      this.session = await ortInstance.InferenceSession.create(modelBytes, {
         executionProviders: ['wasm'],
         graphOptimizationLevel: 'all'
       });
 
-      this.isModelLoaded = true;
+      this.diagnostics.sessionInitialized = new Date().toLocaleTimeString();
+      console.log(`[VisionX Diagnostic] ONNX session initialized successfully!`);
+
+      // 5. Ekstraksi Input & Output Tensor Shapes
+      if (this.session.inputNames && this.session.inputNames.length > 0) {
+        this.diagnostics.modelInputName = this.session.inputNames[0];
+      }
+      if (this.session.outputNames && this.session.outputNames.length > 0) {
+        this.diagnostics.modelOutputName = this.session.outputNames[0];
+      }
+      this.diagnostics.modelOutputShape = `[1, ${4 + this.numClasses}, 8400]`;
+
+      console.log(`[VisionX Diagnostic] Model input: ${this.diagnostics.modelInputName} | output: ${this.diagnostics.modelOutputName}`);
+
       this.loadTimeMs = Math.round(performance.now() - startLoadTime);
-      console.log(`[VisionX] Model [${this.modelConfig.name}] siap dalam ${this.loadTimeMs} ms!`);
-      if (onProgress) onProgress(`${this.modelConfig.shortName} Aktif (${this.loadTimeMs}ms)`);
+      this.status = 'ready';
+      this.errorMessage = null;
+
+      console.log(`[VisionX Diagnostic] Model ready in ${this.loadTimeMs} ms!`);
+      if (onProgress) onProgress(`Model Ready (${this.loadTimeMs}ms)`);
       return true;
     } catch (err) {
-      console.error(`[VisionX] Gagal memuat model [${this.modelConfig.name}]:`, err);
-      this.isModelLoaded = false;
+      this.status = 'error';
+      this.errorMessage = err.message || 'Gagal memuat model';
       this.session = null;
+      console.error(`[VisionX Diagnostic Error] Gagal memuat model [${this.modelConfig.name}]:`, err);
+      if (onProgress) onProgress(`Model Error: ${this.errorMessage}`);
       throw err;
-    } finally {
-      this.isLoading = false;
     }
   }
 
@@ -223,7 +284,7 @@ export class YOLOInferenceService {
     }
 
     if (this.activeModelId === modelId && this.isModelLoaded && this.session) {
-      return { success: true, loadTimeMs: this.loadTimeMs, modelConfig: this.modelConfig };
+      return { success: true, loadTimeMs: this.loadTimeMs, modelConfig: this.modelConfig, diagnostics: this.diagnostics };
     }
 
     console.log(`[VisionX] Mengganti model aktif ke: ${modelId}`);
@@ -233,14 +294,15 @@ export class YOLOInferenceService {
     this.classes = this.modelConfig.classes;
     this.numClasses = this.modelConfig.numClasses;
     this.modelName = this.modelConfig.name;
-    this.isModelLoaded = false;
+    this.status = 'idle';
 
     await this.loadModel(onProgress);
 
     return {
       success: true,
       loadTimeMs: this.loadTimeMs,
-      modelConfig: this.modelConfig
+      modelConfig: this.modelConfig,
+      diagnostics: this.diagnostics
     };
   }
 
@@ -297,12 +359,25 @@ export class YOLOInferenceService {
    * Menjalankan inferensi realtime pada frame video
    */
   async detect(video) {
-    if (!this.isActive || !this.session || !this.isModelLoaded) {
-      return { detections: [], rawDetections: [], frameId: 0, inferenceTimeMs: 0, modelId: this.activeModelId };
+    if (!this.isActive || !this.session || this.status !== 'ready') {
+      return {
+        detections: [],
+        rawDetections: [],
+        frameId: 0,
+        inferenceTimeMs: 0,
+        modelId: this.activeModelId,
+        diagnostics: this.diagnostics
+      };
     }
 
     if (this.isInferencing) {
       return null;
+    }
+
+    const isFirstInference = this.diagnostics.firstInferenceStarted === null;
+    if (isFirstInference) {
+      this.diagnostics.firstInferenceStarted = new Date().toLocaleTimeString();
+      console.log('[VisionX Diagnostic] First inference started!');
     }
 
     const frameId = ++this.currentFrameId;
@@ -313,7 +388,10 @@ export class YOLOInferenceService {
       const { inputTensor, scale, padX, padY, vw, vh } = this._preprocess(video);
 
       // Jalankan inferensi ONNX
-      const feeds = { images: inputTensor };
+      const feeds = {};
+      const inputName = this.diagnostics.modelInputName || 'images';
+      feeds[inputName] = inputTensor;
+
       const outputMap = await this.session.run(feeds);
 
       if (frameId < this.latestCompletedFrameId) {
@@ -321,11 +399,9 @@ export class YOLOInferenceService {
       }
       this.latestCompletedFrameId = frameId;
 
-      const outputTensor = outputMap.output0 || Object.values(outputMap)[0];
+      const outputTensor = outputMap[this.diagnostics.modelOutputName] || outputMap.output0 || Object.values(outputMap)[0];
       const outputData = outputTensor.data;
       
-      // Dynamic tensor dimension detection
-      // Format YOLOv8: [1, 4 + numClasses, numAnchors]
       const dims = outputTensor.dims || [1, 4 + this.numClasses, 8400];
       const numChannels = dims[1];
       const numAnchors = dims[2] || 8400;
@@ -333,6 +409,7 @@ export class YOLOInferenceService {
       const activeClasses = this.classes;
 
       const rawCandidates = [];
+      let totalRawCount = 0;
 
       for (let i = 0; i < numAnchors; i++) {
         let maxScore = -1;
@@ -346,6 +423,10 @@ export class YOLOInferenceService {
           }
         }
 
+        if (maxScore > 0.1) {
+          totalRawCount++;
+        }
+
         // Confidence Filtering
         if (maxScore >= this.confThreshold && maxClassId >= 0 && maxClassId < activeClasses.length) {
           const cx = outputData[0 * numAnchors + i];
@@ -353,7 +434,7 @@ export class YOLOInferenceService {
           const w = outputData[2 * numAnchors + i];
           const h = outputData[3 * numAnchors + i];
 
-          // Unpad & Scale back ke koordinat video
+          // Unpad & Scale back ke koordinat video asli
           const cxOrig = (cx - padX) / scale;
           const cyOrig = (cy - padY) / scale;
           const wOrig = w / scale;
@@ -384,6 +465,17 @@ export class YOLOInferenceService {
       const finalDetections = applyNMS(rawCandidates, this.iouThreshold);
       const inferenceTimeMs = Math.round(performance.now() - startTime);
 
+      if (isFirstInference) {
+        this.diagnostics.firstInferenceCompleted = new Date().toLocaleTimeString();
+        this.diagnostics.firstInferenceLatencyMs = inferenceTimeMs;
+        console.log(`[VisionX Diagnostic] First inference completed successfully! Latency: ${inferenceTimeMs} ms, Detected: ${finalDetections.length}`);
+      }
+
+      this.diagnostics.lastInferenceLatencyMs = inferenceTimeMs;
+      this.diagnostics.lastRawPredictionsCount = totalRawCount;
+      this.diagnostics.lastAfterConfidenceCount = rawCandidates.length;
+      this.diagnostics.lastAfterNmsCount = finalDetections.length;
+
       return {
         detections: finalDetections,
         rawDetections: rawCandidates,
@@ -391,11 +483,19 @@ export class YOLOInferenceService {
         inferenceTimeMs,
         modelId: this.activeModelId,
         modelName: this.modelConfig.name,
-        loadTimeMs: this.loadTimeMs
+        loadTimeMs: this.loadTimeMs,
+        diagnostics: this.diagnostics
       };
     } catch (err) {
-      console.error('[VisionX] Kesalahan saat inferensi:', err);
-      return { detections: [], rawDetections: [], frameId, inferenceTimeMs: 0, modelId: this.activeModelId };
+      console.error('[VisionX Diagnostic Error] Kesalahan saat inferensi:', err);
+      return {
+        detections: [],
+        rawDetections: [],
+        frameId,
+        inferenceTimeMs: 0,
+        modelId: this.activeModelId,
+        diagnostics: this.diagnostics
+      };
     } finally {
       this.isInferencing = false;
     }
