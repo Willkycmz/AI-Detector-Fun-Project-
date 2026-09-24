@@ -1,0 +1,125 @@
+model_name: VisionX V1 Object Detector
+version: 1.0.0
+base_architecture: YOLOv8n (Nano)
+created_at: '2026-09-24T13:58:38.297464'
+training_info:
+  training_duration_sec: 4884.35
+  training_duration_min: 81.41
+  best_epoch: 38
+  device_used: cpu
+  model_size_mb: 5.96
+  dataset_source: datasets/processed/dataset.yaml
+classes:
+  0: person
+  1: bottle
+  2: cup
+  3: laptop
+  4: mouse
+  5: keyboard
+  6: cell_phone
+validation_metrics:
+  mAP50: 0.6382
+  mAP50_95: 0.429
+  precision: 0.6709
+  recall: 0.6026
+  speed_ms:
+    preprocess: 1.22
+    inference: 31.69
+    loss: 0.0
+    postprocess: 1.18
+  per_class:
+    person:
+      class_id: 0
+      precision: 0.5945
+      recall: 0.71
+      map50: 0.4221
+      map50_95: 0.4453
+    bottle:
+      class_id: 1
+      precision: 0.7554
+      recall: 0.3684
+      map50: 0.2783
+      map50_95: 0.335
+    cup:
+      class_id: 2
+      precision: 0.8005
+      recall: 0.5732
+      map50: 0.4589
+      map50_95: 0.4019
+    laptop:
+      class_id: 3
+      precision: 0.667
+      recall: 0.8667
+      map50: 0.578
+      map50_95: 0.666
+    mouse:
+      class_id: 4
+      precision: 0.9308
+      recall: 0.6667
+      map50: 0.6205
+      map50_95: 0.5753
+    keyboard:
+      class_id: 5
+      precision: 0.4858
+      recall: 0.4615
+      map50: 0.2242
+      map50_95: 0.3168
+    cell_phone:
+      class_id: 6
+      precision: 0.4627
+      recall: 0.5714
+      map50: 0.2644
+      map50_95: 0.2624
+test_metrics:
+  mAP50: 0.3797
+  mAP50_95: 0.2554
+  precision: 0.4359
+  recall: 0.4079
+  speed_ms:
+    preprocess: 1.03
+    inference: 28.54
+    loss: 0.0
+    postprocess: 0.95
+  per_class:
+    person:
+      class_id: 0
+      precision: 0.5735
+      recall: 0.553
+      map50: 0.3171
+      map50_95: 0.3703
+    bottle:
+      class_id: 1
+      precision: 0.471
+      recall: 0.3529
+      map50: 0.1662
+      map50_95: 0.2473
+    cup:
+      class_id: 2
+      precision: 0.367
+      recall: 0.2105
+      map50: 0.0773
+      map50_95: 0.1546
+    laptop:
+      class_id: 3
+      precision: 0.4688
+      recall: 0.4667
+      map50: 0.2188
+      map50_95: 0.2589
+    mouse:
+      class_id: 4
+      precision: 0.5082
+      recall: 0.5556
+      map50: 0.2823
+      map50_95: 0.4106
+    keyboard:
+      class_id: 5
+      precision: 0.4797
+      recall: 0.5833
+      map50: 0.2799
+      map50_95: 0.3177
+    cell_phone:
+      class_id: 6
+      precision: 0.1828
+      recall: 0.1333
+      map50: 0.0244
+      map50_95: 0.0285
