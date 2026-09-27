@@ -1,30 +1,54 @@
 /**
- * main.js - Application Controller untuk VisionX Web Interface (V0.5.1)
+ * main.js - Application Controller untuk VisionX Web Interface (V0.6)
  * Mengorkestrasi:
  * - CameraService (Webcam stream, multi-device, auto-resolution)
  * - YOLOInferenceService (Model selector: VisionX V1 7 Classes <-> Pretrained YOLOv8n 80 Classes)
  * - DetectionRenderer (Realtime bounding boxes, synchronized canvas overlays, neon palette)
- * - DatasetCaptureService (Capture, Single Delete, Multi-Delete, Import Image & Folder, Hashing)
- * - FPS Counter & Live Debug Inspector
- * - Mode Switcher (Detection <-> Collection)
+ * - DatasetCaptureService (Clean camera raw frames capture & local disk saving)
+ * - DatasetManagerService (Module 1: Disk filesystem browser, search, filter, Recycle Bin soft-delete, restore, permanent delete)
+ * - IdentityService (Module 2: Identity Lab, face detection, SFace 128-d embeddings, similarity matching, safety protocols)
+ * - Mode Switcher (Detection <-> Collection <-> Dataset Manager <-> Identity Lab)
  */
 
 import { CameraService } from './services/CameraService.js';
 import { YOLOInferenceService, MODEL_PRESETS, VISIONX_V1_CLASSES } from './services/InferenceService.js';
 import { DetectionRenderer } from './services/DetectionRenderer.js';
 import { DatasetCaptureService, validateClassName, SUPPORTED_IMPORT_EXTENSIONS } from './services/DatasetCaptureService.js';
+import { DatasetManagerService } from './services/DatasetManagerService.js';
+import { IdentityService } from './services/IdentityService.js';
+import { CoordinateMapper } from './services/CoordinateMapper.js';
+import { FrameSource } from './services/FrameSource.js';
+import { FaceDetector } from './services/FaceDetector.js';
+import { FaceRecognizer } from './services/FaceRecognizer.js';
+import { DetectionFusion } from './services/DetectionFusion.js';
+import { UnifiedRenderer } from './services/UnifiedRenderer.js';
+import { TrackingEngine } from './services/TrackingEngine.js';
+import { VoiceEngine, SpeechPriority, VoiceMode, VoiceState, DEFAULT_VOICE_CONFIG } from './services/VoiceEngine.js';
+import { EventEngine } from './services/EventEngine.js';
+import { MessageFormatter } from './services/MessageFormatter.js';
+import { OCRService, OCRStatus, OCR_PROFILES, ROI_MODES, ImageQualityAssessor } from './services/OCRService.js';
+import { VisionContextBuilder } from './services/VisionContextBuilder.js';
+import { BackendAIProvider } from './services/AIProvider.js';
+import { VisionAssistant, AssistantState } from './services/VisionAssistant.js';
+import { ObjectMemory } from './services/ObjectMemory.js';
+import { PersonalObjectRegistry } from './services/PersonalObjectRegistry.js';
+import { PersonalObjectRecognizer } from './services/PersonalObjectRecognizer.js';
+import { ObjectEnrollment } from './services/ObjectEnrollment.js';
+import { SafetyEngine } from './services/SafetyEngine.js';
+import { AlertManager, AlertState } from './services/AlertManager.js';
+import { NavigationManager } from './ui/NavigationManager.js';
+import { BottomSheetManager } from './ui/BottomSheetManager.js';
+import { ThemeManager } from './ui/ThemeManager.js';
+import { ContextualPanelManager } from './ui/ContextualPanelManager.js';
+import { SceneHistoryEngine } from './services/SceneHistoryEngine.js';
 
 class VisionXWebApp {
   constructor() {
-    // Services
-    this.cameraService = new CameraService();
-    // Default aktif ke Custom VisionX V1 (7 classes)
-    this.inferenceService = new YOLOInferenceService('visionx_v1');
-    this.captureService = new DatasetCaptureService();
-    this.renderer = null;
+    // 1. Kumpulkan seluruh referensi elemen DOM
+    this.collectElements();
 
-    // State
-    this.currentMode = 'detection'; // 'detection' | 'collection'
+    // 2. Inisialisasi state aplikasi & rendering
+    this.currentMode = 'detection'; // 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
     this.animationFrameId = null;
     this.prevTime = performance.now();
     this.fpsSmooth = 0;
@@ -32,12 +56,178 @@ class VisionXWebApp {
     this.isProcessingFrame = false;
     this.isDebugVisible = true;
 
-    // Multi-Select State
+    // Face Recognition Layer State (V0.6.2 Unified Vision)
+    this.isProcessingFace = false;
+    this.lastFaceCheckTime = 0;
+    this.currentFaceDetections = [];
+    this.currentIdentityFaces = [];
+    this.currentFrameId = 0;
+    this.faceOffscreenCanvas = document.createElement('canvas');
+    this.faceOffscreenCtx = this.faceOffscreenCanvas.getContext('2d');
+
+    // Multimodal Vision Context Caches (V1.0)
+    this.lastDetections = [];
+    this.lastIdentityState = null;
+
+    // Multi-Select State (Collection Mode)
     this.isSelectMode = false;
     this.selectedItems = new Set();
     this.pendingDeleteAction = null;
     this.pendingFolderImportFiles = null;
 
+    // 3. Inisialisasi Core Vision Services
+    this.cameraService = new CameraService();
+    this.frameSource = new FrameSource(this.cameraService);
+    this.inferenceService = new YOLOInferenceService('visionx_v1');
+    this.captureService = new DatasetCaptureService();
+    this.managerService = new DatasetManagerService();
+    this.identityService = new IdentityService();
+    this.faceDetector = new FaceDetector(this.identityService, this.frameSource);
+    this.faceRecognizer = new FaceRecognizer(this.identityService, this.frameSource);
+    this.trackingEngine = new TrackingEngine();
+    this.renderer = null;
+
+    // 4. Inisialisasi Voice Assistant Engine (V0.8) - Terisolasi agar kegagalan tidak memblokir UI
+    this.voiceEngine = null;
+    this.eventEngine = null;
+    try {
+      let savedVoiceConfig = {};
+      try {
+        const storedVoice = localStorage.getItem('visionx_voice_config');
+        if (storedVoice) savedVoiceConfig = JSON.parse(storedVoice);
+      } catch (e) {
+        console.warn('[VisionX] Failed reading voice config from localStorage', e);
+      }
+      this.voiceEngine = new VoiceEngine(savedVoiceConfig);
+      this.eventEngine = new EventEngine(this.voiceEngine, {
+        cooldownMs: this.voiceEngine.config.cooldownMs,
+        batchWindowMs: this.voiceEngine.config.batchWindowMs
+      });
+      this.voiceEngine.onStateChange((state) => this.handleVoiceStateChange(state));
+    } catch (voiceInitErr) {
+      console.warn('[VisionX] Peringatan inisialisasi VoiceEngine (terisolasi):', voiceInitErr);
+    }
+
+    // OCR & Read Text Engine (V0.9) - Terisolasi agar kegagalan tidak memblokir UI
+    this.ocrService = null;
+    this.currentOcrResult = null;
+    this.currentOcrRegions = [];
+    this.isAutoReadOcr = false;
+    this.autoReadCooldownMs = 3000;
+    this.lastAutoReadScanTime = 0;
+    this.lastSpokenOcrHash = '';
+    try {
+      this.ocrService = new OCRService({ defaultLanguage: 'ind', cooldownMs: 2000 });
+      this.ocrService.on('statusChange', (status, info) => this.handleOcrStatusChange(status));
+    } catch (ocrInitErr) {
+      console.warn('[VisionX] Peringatan inisialisasi OCRService (terisolasi):', ocrInitErr);
+    }
+
+    // 4b. Inisialisasi Object Memory Engine (V1.1) - Terisolasi agar kegagalan tidak memblokir UI
+    this.objectMemory = null;
+    try {
+      this.objectMemory = new ObjectMemory();
+      this.objectMemory.onMemoryUpdate(() => this.updateObjectMemoryUI());
+    } catch (memErr) {
+      console.warn('[VisionX] Peringatan inisialisasi ObjectMemory (terisolasi):', memErr);
+    }
+
+    // 4c. Inisialisasi Personal Object Services (V1.2) - Local-First & Zero Retraining
+    this.personalObjectRegistry = null;
+    this.personalObjectRecognizer = null;
+    this.objectEnrollment = null;
+    this.tempEnrollmentReferences = [];
+    try {
+      this.personalObjectRegistry = new PersonalObjectRegistry();
+      this.personalObjectRecognizer = new PersonalObjectRecognizer(this.personalObjectRegistry);
+      this.objectEnrollment = new ObjectEnrollment(this.personalObjectRegistry);
+      this.personalObjectRegistry.onRegistryUpdate(() => this.updatePersonalObjectsUI());
+    } catch (poInitErr) {
+      console.warn('[VisionX] Peringatan inisialisasi PersonalObject services (terisolasi):', poInitErr);
+    }
+
+    // 4d. Inisialisasi AI Vision Assistant (V1.0/V1.1/V1.2) - Terisolasi agar kegagalan tidak memblokir UI
+    this.visionAssistant = null;
+    try {
+      this.visionAssistant = new VisionAssistant({
+        aiProvider: new BackendAIProvider(),
+        voiceEngine: this.voiceEngine,
+        objectMemory: this.objectMemory,
+        personalObjectRegistry: this.personalObjectRegistry,
+        snapshotFn: () => this.captureCameraSnapshot(),
+        contextFn: () => this.buildCurrentVisionContext(),
+        autoSpeak: false
+      });
+      this.visionAssistant.onStateChange((statePayload) => this.handleAssistantStateChange(statePayload));
+    } catch (assistantInitErr) {
+      console.warn('[VisionX] Peringatan inisialisasi VisionAssistant (terisolasi):', assistantInitErr);
+    }
+
+    // 4e. Inisialisasi Safety Engine (V1.3 Event-Driven Environmental Safety)
+    this.safetyEngine = null;
+    try {
+      this.safetyEngine = new SafetyEngine();
+    } catch (safetyErr) {
+      console.warn('[VisionX] Peringatan inisialisasi SafetyEngine (terisolasi):', safetyErr);
+    }
+
+    // 4f. Inisialisasi Alert Manager (V1.3.1 Realtime Safety Alert Manager)
+    this.alertManager = null;
+    try {
+      let savedSafetyConfig = {};
+      try {
+        const stored = localStorage.getItem('visionx_safety_alert_config');
+        if (stored) savedSafetyConfig = JSON.parse(stored);
+      } catch (e) {
+        console.warn('[VisionX] Failed reading safety alert config from localStorage', e);
+      }
+      this.alertManager = new AlertManager(this.voiceEngine, savedSafetyConfig);
+      this.alertManager.onAlertUpdate(() => this.updateSafetyAlertsUI());
+      if (this.safetyEngine) {
+        this.safetyEngine.onSafetyEvent((evt) => {
+          if (this.alertManager) {
+            this.alertManager.processEvent(evt);
+          }
+        });
+      }
+    } catch (alertErr) {
+      console.warn('[VisionX] Peringatan inisialisasi AlertManager (terisolasi):', alertErr);
+    }
+
+    // 4g. Inisialisasi Scene History Engine (V1.6 Phase C - 1 Hz background sampler)
+    this.sceneHistoryEngine = null;
+    this.historySamplerInterval = null;
+    try {
+      this.sceneHistoryEngine = new SceneHistoryEngine();
+      if (this.visionAssistant) {
+        this.visionAssistant.sceneHistoryEngine = this.sceneHistoryEngine;
+      }
+      this.startSceneHistorySampler();
+    } catch (sheInitErr) {
+      console.warn('[VisionX] Peringatan inisialisasi SceneHistoryEngine (terisolasi):', sheInitErr);
+    }
+
+    // 5. Hubungkan Video & Overlay Canvas
+    try {
+      if (this.elements.video) {
+        this.cameraService.attachVideoElement(this.elements.video);
+        this.frameSource.attachVideoElement(this.elements.video);
+      }
+      if (this.elements.canvas) {
+        this.renderer = new UnifiedRenderer(this.elements.canvas);
+      }
+    } catch (attachErr) {
+      console.warn('[VisionX] Gagal attach video/canvas overlay:', attachErr);
+    }
+
+    // 6. Pasang SELURUH event listener tombol UI SEGERA (interaktivitas terjamin sebelum async ops)
+    this.bindEvents();
+
+    // 7. Mulai inisialisasi asinkron (load model, populate devices, render UI)
+    this.init();
+  }
+
+  collectElements() {
     // DOM Elements
     this.elements = {
       // Stage & Video
@@ -52,16 +242,22 @@ class VisionXWebApp {
       // Header & Badges
       btnModeDetect: document.getElementById('btnModeDetect'),
       btnModeCollect: document.getElementById('btnModeCollect'),
+      btnModeManager: document.getElementById('btnModeManager'),
+      btnModeIdentity: document.getElementById('btnModeIdentity'),
       modeBadge: document.getElementById('modeBadge'),
       modeStatusText: document.getElementById('modeStatusText'),
       cameraBadge: document.getElementById('cameraBadge'),
       cameraStatusText: document.getElementById('cameraStatusText'),
       activeModelBadge: document.getElementById('activeModelBadge'),
       activeModelBadgeText: document.getElementById('activeModelBadgeText'),
+      voiceBadge: document.getElementById('voiceBadge'),
+      voiceBadgeText: document.getElementById('voiceBadgeText'),
       inferenceBadge: document.getElementById('inferenceBadge'),
       inferenceStatusText: document.getElementById('inferenceStatusText'),
       detectionCountBadge: document.getElementById('detectionCountBadge'),
       detectionCountValue: document.getElementById('detectionCountValue'),
+      trackedCountBadge: document.getElementById('trackedCountBadge'),
+      trackedCountValue: document.getElementById('trackedCountValue'),
       classBadge: document.getElementById('classBadge'),
       badgeClassName: document.getElementById('badgeClassName'),
       countBadge: document.getElementById('countBadge'),
@@ -75,9 +271,15 @@ class VisionXWebApp {
       // Global Camera Controls
       btnStart: document.getElementById('btnStart'),
       btnStop: document.getElementById('btnStop'),
+      btnQuickAskVision: document.getElementById('btnQuickAskVision'),
+      summaryDetectionCount: document.getElementById('summaryDetectionCount'),
+      summaryTrackedCount: document.getElementById('summaryTrackedCount'),
+      summaryFpsDisplay: document.getElementById('summaryFpsDisplay'),
+      btnToggleMirror: document.getElementById('btnToggleMirror'),
+      mirrorBtnText: document.getElementById('mirrorBtnText'),
       deviceSelect: document.getElementById('deviceSelect'),
 
-      // Detection Mode Controls (V0.5.1)
+      // Detection Mode Controls
       detectionControls: document.getElementById('detectionControls'),
       modelSelect: document.getElementById('modelSelect'),
       modelArchTag: document.getElementById('modelArchTag'),
@@ -89,9 +291,27 @@ class VisionXWebApp {
       confVal: document.getElementById('confVal'),
       iouSlider: document.getElementById('iouSlider'),
       iouVal: document.getElementById('iouVal'),
+      toggleFaceRecognition: document.getElementById('toggleFaceRecognition'),
+      toggleTracking: document.getElementById('toggleTracking'),
       toggleDebug: document.getElementById('toggleDebug'),
 
-      // Debug Panel & Live Diagnostics (V0.5.1 Audit)
+      // Voice Assistant Panel (V0.8)
+      voicePanel: document.getElementById('voicePanel'),
+      toggleVoice: document.getElementById('toggleVoice'),
+      toggleVoiceStateLabel: document.getElementById('toggleVoiceStateLabel'),
+      voiceModeSelect: document.getElementById('voiceModeSelect'),
+      voiceVolumeSlider: document.getElementById('voiceVolumeSlider'),
+      voiceVolumeVal: document.getElementById('voiceVolumeVal'),
+      voiceSpeedSlider: document.getElementById('voiceSpeedSlider'),
+      voiceSpeedVal: document.getElementById('voiceSpeedVal'),
+      btnVoiceReplay: document.getElementById('btnVoiceReplay'),
+      btnVoiceStop: document.getElementById('btnVoiceStop'),
+      btnVoiceClearQueue: document.getElementById('btnVoiceClearQueue'),
+      voiceStatusBadge: document.getElementById('voiceStatusBadge'),
+      voiceStatusText: document.getElementById('voiceStatusText'),
+      voiceLastMsgText: document.getElementById('voiceLastMsgText'),
+
+      // Debug Panel & Live Diagnostics
       debugPanel: document.getElementById('debugPanel'),
       debugModelName: document.getElementById('debugModelName'),
       debugLoadTime: document.getElementById('debugLoadTime'),
@@ -100,6 +320,22 @@ class VisionXWebApp {
       debugFrameId: document.getElementById('debugFrameId'),
       debugTableBody: document.getElementById('debugTableBody'),
       diagModelState: document.getElementById('diagModelState'),
+      diagTrackingStatus: document.getElementById('diagTrackingStatus'),
+      diagVisibleTracks: document.getElementById('diagVisibleTracks'),
+      diagTotalActiveTracks: document.getElementById('diagTotalActiveTracks'),
+      diagNewTracks: document.getElementById('diagNewTracks'),
+      diagLostTracks: document.getElementById('diagLostTracks'),
+      diagTrackSummary: document.getElementById('diagTrackSummary'),
+      diagVoiceEnabled: document.getElementById('diagVoiceEnabled'),
+      diagVoiceState: document.getElementById('diagVoiceState'),
+      diagVoiceQueue: document.getElementById('diagVoiceQueue'),
+      diagVoiceAnnouncements: document.getElementById('diagVoiceAnnouncements'),
+      diagVoiceLastMessage: document.getElementById('diagVoiceLastMessage'),
+      diagFaceDetectStatus: document.getElementById('diagFaceDetectStatus'),
+      diagFaceRecogStatus: document.getElementById('diagFaceRecogStatus'),
+      diagFaceDetectionsCount: document.getElementById('diagFaceDetectionsCount'),
+      diagIdentityMatchesCount: document.getElementById('diagIdentityMatchesCount'),
+      diagCoordTransform: document.getElementById('diagCoordTransform'),
       diagLoadStarted: document.getElementById('diagLoadStarted'),
       diagFetchStarted: document.getElementById('diagFetchStarted'),
       diagFetchCompleted: document.getElementById('diagFetchCompleted'),
@@ -113,6 +349,9 @@ class VisionXWebApp {
       diagRawPreds: document.getElementById('diagRawPreds'),
       diagAfterConf: document.getElementById('diagAfterConf'),
       diagAfterNms: document.getElementById('diagAfterNms'),
+      diagFinalDetections: document.getElementById('diagFinalDetections'),
+      diagTensorMinMax: document.getElementById('diagTensorMinMax'),
+      btnRunGoldenTest: document.getElementById('btnRunGoldenTest'),
 
       // Collection Mode Controls
       collectionControls: document.getElementById('collectionControls'),
@@ -128,13 +367,13 @@ class VisionXWebApp {
       storagePathDisplay: document.getElementById('storagePathDisplay'),
       classPills: document.querySelectorAll('.class-pill'),
 
-      // Import Toolbar
+      // Import Toolbar (Collection Mode)
       inputImportImages: document.getElementById('inputImportImages'),
       btnTriggerImportImages: document.getElementById('btnTriggerImportImages'),
       inputImportFolder: document.getElementById('inputImportFolder'),
       btnTriggerImportFolder: document.getElementById('btnTriggerImportFolder'),
 
-      // Gallery & Multi-Delete
+      // Gallery & Multi-Delete (Collection Mode)
       recentCapturesList: document.getElementById('recentCapturesList'),
       recentCapturesCount: document.getElementById('recentCapturesCount'),
       btnToggleSelectMode: document.getElementById('btnToggleSelectMode'),
@@ -144,7 +383,65 @@ class VisionXWebApp {
       btnDeleteSelected: document.getElementById('btnDeleteSelected'),
       deleteSelectedText: document.getElementById('deleteSelectedText'),
 
-      // Modals
+      // Module 1 — Dataset Manager Elements (V0.6)
+      managerControls: document.getElementById('managerControls'),
+      mgrStatTotalImages: document.getElementById('mgrStatTotalImages'),
+      mgrStatTotalSize: document.getElementById('mgrStatTotalSize'),
+      mgrStatTotalClasses: document.getElementById('mgrStatTotalClasses'),
+      mgrStatTrashCount: document.getElementById('mgrStatTrashCount'),
+      mgrTrashBadgeCount: document.getElementById('mgrTrashBadgeCount'),
+      btnMgrViewActive: document.getElementById('btnMgrViewActive'),
+      btnMgrViewTrash: document.getElementById('btnMgrViewTrash'),
+      mgrSelectClass: document.getElementById('mgrSelectClass'),
+      mgrSelectSource: document.getElementById('mgrSelectSource'),
+      mgrSearchInput: document.getElementById('mgrSearchInput'),
+      inputMgrImportFiles: document.getElementById('inputMgrImportFiles'),
+      inputMgrImportFolder: document.getElementById('inputMgrImportFolder'),
+      btnMgrImportFiles: document.getElementById('btnMgrImportFiles'),
+      btnMgrImportFolder: document.getElementById('btnMgrImportFolder'),
+      btnMgrSelectAll: document.getElementById('btnMgrSelectAll'),
+      btnMgrClearSelect: document.getElementById('btnMgrClearSelect'),
+      btnMgrTrashSelected: document.getElementById('btnMgrTrashSelected'),
+      mgrSelectedCountTrash: document.getElementById('mgrSelectedCountTrash'),
+      btnMgrRestoreSelected: document.getElementById('btnMgrRestoreSelected'),
+      mgrSelectedCountRestore: document.getElementById('mgrSelectedCountRestore'),
+      btnMgrPermanentDeleteSelected: document.getElementById('btnMgrPermanentDeleteSelected'),
+      mgrSelectedCountPerm: document.getElementById('mgrSelectedCountPerm'),
+      btnMgrRefresh: document.getElementById('btnMgrRefresh'),
+      mgrGridContainer: document.getElementById('mgrGridContainer'),
+
+      // Dataset Manager Preview Modal
+      mgrPreviewModal: document.getElementById('mgrPreviewModal'),
+      mgrPreviewImg: document.getElementById('mgrPreviewImg'),
+      mgrPreviewCloseBtn: document.getElementById('mgrPreviewCloseBtn'),
+      mgrPreviewCloseFooterBtn: document.getElementById('mgrPreviewCloseFooterBtn'),
+      mgrMetaFilename: document.getElementById('mgrMetaFilename'),
+      mgrMetaClass: document.getElementById('mgrMetaClass'),
+      mgrMetaSource: document.getElementById('mgrMetaSource'),
+      mgrMetaDimensions: document.getElementById('mgrMetaDimensions'),
+      mgrMetaSize: document.getElementById('mgrMetaSize'),
+      mgrMetaDate: document.getElementById('mgrMetaDate'),
+      mgrMetaStatus: document.getElementById('mgrMetaStatus'),
+      mgrMetaPath: document.getElementById('mgrMetaPath'),
+
+      // Module 2 — Identity Lab Elements (V0.6)
+      identityControls: document.getElementById('identityControls'),
+      idLabProfileName: document.getElementById('idLabProfileName'),
+      idLabRefCount: document.getElementById('idLabRefCount'),
+      idLabThresholdSlider: document.getElementById('idLabThresholdSlider'),
+      idLabThresholdVal: document.getElementById('idLabThresholdVal'),
+      inputIdLabImport: document.getElementById('inputIdLabImport'),
+      btnIdLabImport: document.getElementById('btnIdLabImport'),
+      btnIdLabCaptureCam: document.getElementById('btnIdLabCaptureCam'),
+      idLabGalleryCount: document.getElementById('idLabGalleryCount'),
+      idLabRefGallery: document.getElementById('idLabRefGallery'),
+      idLabDecisionBadge: document.getElementById('idLabDecisionBadge'),
+      idLabSimilarityScore: document.getElementById('idLabSimilarityScore'),
+      idLabSimilarityBar: document.getElementById('idLabSimilarityBar'),
+      idLabThresholdMarker: document.getElementById('idLabThresholdMarker'),
+      idLabMatchDetail: document.getElementById('idLabMatchDetail'),
+
+      // Shared Modals
       confirmModal: document.getElementById('confirmModal'),
       modalTitle: document.getElementById('modalTitle'),
       modalDescription: document.getElementById('modalDescription'),
@@ -159,28 +456,133 @@ class VisionXWebApp {
       folderTargetSource: document.getElementById('folderTargetSource'),
       folderModalCloseBtn: document.getElementById('folderModalCloseBtn'),
       folderModalCancelBtn: document.getElementById('folderModalCancelBtn'),
-      folderModalConfirmBtn: document.getElementById('folderModalConfirmBtn')
-    };
+      folderModalConfirmBtn: document.getElementById('folderModalConfirmBtn'),
 
-    this.init();
+      // Read Text Mode Elements (V0.9 / V1.2.1 Hardening)
+      btnModeReadText: document.getElementById('btnModeReadText'),
+      ocrBadge: document.getElementById('ocrBadge'),
+      ocrBadgeText: document.getElementById('ocrBadgeText'),
+      readTextControls: document.getElementById('readTextControls'),
+      btnTriggerOcr: document.getElementById('btnTriggerOcr'),
+      btnReScanOcr: document.getElementById('btnReScanOcr'),
+      btnStopOcr: document.getElementById('btnStopOcr'),
+      btnSpeakOcr: document.getElementById('btnSpeakOcr'),
+      ocrLangSelect: document.getElementById('ocrLangSelect'),
+      ocrProfileSelect: document.getElementById('ocrProfileSelect'),
+      ocrRoiSelect: document.getElementById('ocrRoiSelect'),
+      toggleAutoReadOcr: document.getElementById('toggleAutoReadOcr'),
+      autoReadStateLabel: document.getElementById('autoReadStateLabel'),
+      ocrStatusBadge: document.getElementById('ocrStatusBadge'),
+      ocrStatusText: document.getElementById('ocrStatusText'),
+      ocrTelemetryStatus: document.getElementById('ocrTelemetryStatus'),
+      ocrTelemetryLatency: document.getElementById('ocrTelemetryLatency'),
+      ocrTelemetryRegions: document.getElementById('ocrTelemetryRegions'),
+      ocrTelemetryConfidence: document.getElementById('ocrTelemetryConfidence'),
+      ocrTelemetryQuality: document.getElementById('ocrTelemetryQuality'),
+      ocrTelemetryResolution: document.getElementById('ocrTelemetryResolution'),
+      ocrTelemetryTime: document.getElementById('ocrTelemetryTime'),
+      ocrCharWordCount: document.getElementById('ocrCharWordCount'),
+      btnCopyOcrText: document.getElementById('btnCopyOcrText'),
+      btnClearOcrText: document.getElementById('btnClearOcrText'),
+      ocrResultBox: document.getElementById('ocrResultBox'),
+      ocrResultPlaceholder: document.getElementById('ocrResultPlaceholder'),
+      ocrResultContent: document.getElementById('ocrResultContent'),
+      ocrTelemetryMethod: document.getElementById('ocrTelemetryMethod'),
+      ocrWarningBanner: document.getElementById('ocrWarningBanner'),
+      ocrWarningText: document.getElementById('ocrWarningText'),
+
+      // Camera Diagnostics Strip (V1.2.1)
+      camDiagResolution: document.getElementById('camDiagResolution'),
+      camDiagFps: document.getElementById('camDiagFps'),
+      camDiagBrightness: document.getElementById('camDiagBrightness'),
+      camDiagSharpness: document.getElementById('camDiagSharpness'),
+      camDiagOcrInput: document.getElementById('camDiagOcrInput'),
+
+      // OCR Diagnostics (V0.9)
+      diagOcrStatus: document.getElementById('diagOcrStatus'),
+      diagOcrLatency: document.getElementById('diagOcrLatency'),
+      diagOcrRegions: document.getElementById('diagOcrRegions'),
+      diagOcrTime: document.getElementById('diagOcrTime'),
+
+      // AI Vision Assistant (V1.0 - ASK VISIONX)
+      askVisionPanel: document.getElementById('askVisionPanel'),
+      aiAssistantStatusBadge: document.getElementById('aiAssistantStatusBadge'),
+      aiAssistantStatusText: document.getElementById('aiAssistantStatusText'),
+      askVisionForm: document.getElementById('askVisionForm'),
+      askVisionInput: document.getElementById('askVisionInput'),
+      btnAskVisionSubmit: document.getElementById('btnAskVisionSubmit'),
+      askVisionLoading: document.getElementById('askVisionLoading'),
+      askVisionError: document.getElementById('askVisionError'),
+      askVisionErrorMessage: document.getElementById('askVisionErrorMessage'),
+      askVisionResponseArea: document.getElementById('askVisionResponseArea'),
+      askVisionResponseText: document.getElementById('askVisionResponseText'),
+      btnReadAloudResponse: document.getElementById('btnReadAloudResponse'),
+      btnStopSpeechResponse: document.getElementById('btnStopSpeechResponse'),
+      btnClearResponse: document.getElementById('btnClearResponse'),
+      btnResetConversation: document.getElementById('btnResetConversation'),
+      visionConversationThread: document.getElementById('visionConversationThread'),
+      askVisionMeta: document.getElementById('askVisionMeta'),
+      quickPromptChips: document.querySelectorAll('.quick-prompt-chip'),
+
+      // Object Memory Panel (V1.1)
+      objectMemoryPanel: document.getElementById('objectMemoryPanel'),
+      memoryRecordsCount: document.getElementById('memoryRecordsCount'),
+      btnClearObjectMemory: document.getElementById('btnClearObjectMemory'),
+      memoryActiveBadge: document.getElementById('memoryActiveBadge'),
+      memoryCurrentObjectsList: document.getElementById('memoryCurrentObjectsList'),
+      memoryEventsCount: document.getElementById('memoryEventsCount'),
+      memoryRecentEventsList: document.getElementById('memoryRecentEventsList'),
+      memoryTotalObjectsVal: document.getElementById('memoryTotalObjectsVal'),
+      memoryLastEventTimeVal: document.getElementById('memoryLastEventTimeVal'),
+
+      // Personal Objects Panel (V1.2)
+      personalObjectsPanel: document.getElementById('personalObjectsPanel'),
+      personalObjectsCount: document.getElementById('personalObjectsCount'),
+      btnToggleEnrollForm: document.getElementById('btnToggleEnrollForm'),
+      enrollmentFormSection: document.getElementById('enrollmentFormSection'),
+      enrollObjectNameInput: document.getElementById('enrollObjectNameInput'),
+      enrollBaseClassSelect: document.getElementById('enrollBaseClassSelect'),
+      btnCaptureRefCam: document.getElementById('btnCaptureRefCam'),
+      inputRefFile: document.getElementById('inputRefFile'),
+      refAngleSelect: document.getElementById('refAngleSelect'),
+      enrollRefPreviewGallery: document.getElementById('enrollRefPreviewGallery'),
+      btnSaveEnrolledObject: document.getElementById('btnSaveEnrolledObject'),
+      btnCancelEnroll: document.getElementById('btnCancelEnroll'),
+      personalMatchThresholdSlider: document.getElementById('personalMatchThresholdSlider'),
+      personalThresholdVal: document.getElementById('personalThresholdVal'),
+      personalObjectsList: document.getElementById('personalObjectsList'),
+
+      // Safety Alerts Panel (V1.3.1)
+      safetyAlertsPanel: document.getElementById('safetyAlertsPanel'),
+      safetyAlertsCount: document.getElementById('safetyAlertsCount'),
+      btnClearSafetyAlerts: document.getElementById('btnClearSafetyAlerts'),
+      toggleSafetyAlerts: document.getElementById('toggleSafetyAlerts'),
+      toggleVoiceSafetyAlerts: document.getElementById('toggleVoiceSafetyAlerts'),
+      togglePersistentAlerts: document.getElementById('togglePersistentAlerts'),
+      sliderAlertCooldown: document.getElementById('sliderAlertCooldown'),
+      alertCooldownVal: document.getElementById('alertCooldownVal'),
+      safetyAlertsList: document.getElementById('safetyAlertsList')
+    };
   }
 
   async init() {
     try {
-      // 1. Attach video ke CameraService
-      this.cameraService.attachVideoElement(this.elements.video);
+      // Inisialisasi V1.5 UI Helper Modules (Theme, Navigation, Bottom Sheet)
+      this.themeManager = new ThemeManager();
+      this.bottomSheetManager = new BottomSheetManager();
+      this.navigationManager = new NavigationManager({
+        onModeChange: (mode) => this.setMode(mode)
+      });
+      this.contextualPanelManager = new ContextualPanelManager();
 
-      // 2. Inisialisasi DetectionRenderer
-      this.renderer = new DetectionRenderer(this.elements.canvas);
-
-      // 3. Bind Event Listeners
-      this.bindEvents();
-
-      // 4. Update initial collection UI & load dataset from disk
+      // Inisialisasi input nama kelas dari localStorage
       if (this.elements.inputClassName) {
         this.elements.inputClassName.value = this.captureService.currentClass;
       }
       this.updateCollectionUI();
+      this.syncVoiceUIFromConfig();
+
+      // Muat dataset disk untuk galeri sesi capture
       try {
         await this.captureService.loadExistingDataset();
         this.renderRecentCaptures();
@@ -189,21 +591,1348 @@ class VisionXWebApp {
         console.warn('[VisionX] Peringatan inisialisasi galeri (non-blocking):', galleryErr);
       }
 
-      // 5. Muat default model (VisionX V1 Custom 7 Classes)
-      await this.loadSelectedModel('visionx_v1');
+      // Muat default model YOLO (VisionX V2 Real-World Improved)
+      const initialModelId = (this.elements.modelSelect && this.elements.modelSelect.value) || 'visionx_v2';
+      await this.loadSelectedModel(initialModelId);
 
-      // 6. Populate camera devices list
+      // Populate camera devices list
       await this.loadCameraDevices();
+
+      // Inisialisasi UI Personal Objects (V1.2)
+      this.updatePersonalObjectsUI();
+
+      // Inisialisasi UI Safety Alerts (V1.3.1)
+      this.syncSafetyAlertsUIFromConfig();
+      this.updateSafetyAlertsUI();
+
+      // Prefetch data Identity Lab & Dataset Manager di background
+      this.identityService.getProfile().catch(() => {});
+      this.managerService.fetchStats().catch(() => {});
     } catch (fatalErr) {
-      console.error('[VisionX Fatal] Gagal inisialisasi aplikasi:', fatalErr);
+      console.error('[VisionX Fatal] Peringatan inisialisasi background:', fatalErr);
       this.updateInferenceUI('error', 'Init Error: ' + fatalErr.message);
-      this.showError('Gagal memuat aplikasi: ' + fatalErr.message);
+      this.showError('Gagal memuat beberapa komponen: ' + fatalErr.message);
     }
   }
 
   /**
-   * Memuat model ONNX yang dipilih dan memperbarui semua tampilan UI
+   * Bind semua event listener UI
    */
+  bindEvents() {
+    // Mode Switcher Tabs (5 Modes)
+    if (this.elements.btnModeDetect) this.elements.btnModeDetect.addEventListener('click', () => this.setMode('detection'));
+    if (this.elements.btnModeCollect) this.elements.btnModeCollect.addEventListener('click', () => this.setMode('collection'));
+    if (this.elements.btnModeManager) this.elements.btnModeManager.addEventListener('click', () => this.setMode('manager'));
+    if (this.elements.btnModeIdentity) this.elements.btnModeIdentity.addEventListener('click', () => this.setMode('identity'));
+    if (this.elements.btnModeReadText) {
+      this.elements.btnModeReadText.addEventListener('click', () => this.setMode('read_text'));
+    }
+
+    // OCR & Read Text Controls (V0.9 / V1.2.1 Hardening)
+    if (this.elements.btnTriggerOcr) {
+      this.elements.btnTriggerOcr.addEventListener('click', () => this.handleTriggerOcr(false, false));
+    }
+    if (this.elements.btnReScanOcr) {
+      this.elements.btnReScanOcr.addEventListener('click', () => this.handleTriggerOcr(false, true));
+    }
+    if (this.elements.btnStopOcr) {
+      this.elements.btnStopOcr.addEventListener('click', () => this.handleStopOcr());
+    }
+    if (this.elements.btnSpeakOcr) {
+      this.elements.btnSpeakOcr.addEventListener('click', () => this.handleSpeakOcr());
+    }
+    if (this.elements.ocrLangSelect) {
+      this.elements.ocrLangSelect.addEventListener('change', (e) => this.handleOcrLanguageChange(e.target.value));
+    }
+    if (this.elements.ocrProfileSelect) {
+      this.elements.ocrProfileSelect.addEventListener('change', (e) => this.handleOcrProfileChange(e.target.value));
+    }
+    if (this.elements.ocrRoiSelect) {
+      this.elements.ocrRoiSelect.addEventListener('change', (e) => this.handleOcrRoiChange(e.target.value));
+    }
+    if (this.elements.toggleAutoReadOcr) {
+      this.elements.toggleAutoReadOcr.addEventListener('change', (e) => this.handleToggleAutoReadOcr(e.target.checked));
+    }
+    if (this.elements.btnCopyOcrText) {
+      this.elements.btnCopyOcrText.addEventListener('click', () => this.handleCopyOcrText());
+    }
+    if (this.elements.btnClearOcrText) {
+      this.elements.btnClearOcrText.addEventListener('click', () => this.handleClearOcrText());
+    }
+
+    // Ask VisionX Assistant Events (V1.0)
+    if (this.elements.askVisionForm) {
+      this.elements.askVisionForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const query = this.elements.askVisionInput ? this.elements.askVisionInput.value : '';
+        this.handleAskVisionSubmit(query);
+      });
+    }
+
+    if (this.elements.quickPromptChips) {
+      this.elements.quickPromptChips.forEach((chip) => {
+        chip.addEventListener('click', () => {
+          const prompt = chip.getAttribute('data-prompt');
+          if (prompt) {
+            if (this.elements.askVisionInput) {
+              this.elements.askVisionInput.value = prompt;
+            }
+            this.handleAskVisionSubmit(prompt);
+          }
+        });
+      });
+    }
+
+    if (this.elements.btnReadAloudResponse) {
+      this.elements.btnReadAloudResponse.addEventListener('click', () => {
+        if (this.visionAssistant) {
+          this.visionAssistant.speakResponse();
+        }
+      });
+    }
+
+    if (this.elements.btnStopSpeechResponse) {
+      this.elements.btnStopSpeechResponse.addEventListener('click', () => {
+        if (this.visionAssistant) {
+          this.visionAssistant.stopSpeech();
+        }
+      });
+    }
+
+    if (this.elements.btnClearResponse) {
+      this.elements.btnClearResponse.addEventListener('click', () => {
+        this.handleClearAssistantResponse();
+      });
+    }
+
+    if (this.elements.btnResetConversation) {
+      this.elements.btnResetConversation.addEventListener('click', () => {
+        this.handleClearAssistantResponse();
+      });
+    }
+
+    // Object Memory Events (V1.1)
+    if (this.elements.btnClearObjectMemory) {
+      this.elements.btnClearObjectMemory.addEventListener('click', () => {
+        if (this.objectMemory) {
+          this.objectMemory.clear();
+          this.updateObjectMemoryUI();
+          this.showSuccess('Memori sesi objek berhasil dikosongkan.');
+        }
+      });
+    }
+
+    // Personal Objects Controls (V1.2)
+    if (this.elements.btnToggleEnrollForm) {
+      this.elements.btnToggleEnrollForm.addEventListener('click', () => {
+        if (this.elements.enrollmentFormSection) {
+          this.elements.enrollmentFormSection.classList.toggle('hidden');
+        }
+      });
+    }
+
+    if (this.elements.btnCancelEnroll) {
+      this.elements.btnCancelEnroll.addEventListener('click', () => {
+        if (this.elements.enrollmentFormSection) {
+          this.elements.enrollmentFormSection.classList.add('hidden');
+        }
+        this.tempEnrollmentReferences = [];
+        this.renderEnrollRefGallery();
+      });
+    }
+
+    if (this.elements.btnCaptureRefCam) {
+      this.elements.btnCaptureRefCam.addEventListener('click', async () => {
+        await this.handleCaptureEnrollRefCam();
+      });
+    }
+
+    if (this.elements.inputRefFile) {
+      this.elements.inputRefFile.addEventListener('change', async (e) => {
+        await this.handleUploadEnrollRefFile(e.target.files);
+      });
+    }
+
+    if (this.elements.btnSaveEnrolledObject) {
+      this.elements.btnSaveEnrolledObject.addEventListener('click', async () => {
+        await this.handleSaveEnrolledObject();
+      });
+    }
+
+    if (this.elements.personalMatchThresholdSlider) {
+      this.elements.personalMatchThresholdSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        if (this.elements.personalThresholdVal) {
+          this.elements.personalThresholdVal.textContent = val.toFixed(2);
+        }
+        if (this.personalObjectRecognizer) {
+          this.personalObjectRecognizer.config.defaultThreshold = val;
+        }
+      });
+    }
+
+    // Safety Alert Manager Controls (V1.3.1)
+    if (this.elements.btnClearSafetyAlerts) {
+      this.elements.btnClearSafetyAlerts.addEventListener('click', () => {
+        if (this.alertManager) {
+          this.alertManager.clearAlerts();
+          this.showSuccess('Riwayat alert keselamatan dibersihkan.');
+        }
+      });
+    }
+
+    if (this.elements.toggleSafetyAlerts) {
+      this.elements.toggleSafetyAlerts.addEventListener('change', (e) => {
+        if (this.alertManager) {
+          this.alertManager.updateConfig({ safetyAlertsEnabled: e.target.checked });
+        }
+      });
+    }
+
+    if (this.elements.toggleVoiceSafetyAlerts) {
+      this.elements.toggleVoiceSafetyAlerts.addEventListener('change', (e) => {
+        if (this.alertManager) {
+          this.alertManager.updateConfig({ voiceSafetyAlertsEnabled: e.target.checked });
+        }
+      });
+    }
+
+    if (this.elements.togglePersistentAlerts) {
+      this.elements.togglePersistentAlerts.addEventListener('change', (e) => {
+        if (this.alertManager) {
+          this.alertManager.updateConfig({ persistentAlertsEnabled: e.target.checked });
+        }
+      });
+    }
+
+    if (this.elements.sliderAlertCooldown) {
+      this.elements.sliderAlertCooldown.addEventListener('input', (e) => {
+        const sec = parseInt(e.target.value, 10);
+        if (this.elements.alertCooldownVal) {
+          this.elements.alertCooldownVal.textContent = `${sec}s`;
+        }
+        if (this.alertManager) {
+          const ms = sec * 1000;
+          this.alertManager.updateConfig({
+            defaultCooldownMs: ms,
+            personalLeftCooldownMs: ms,
+            anomalyCooldownMs: ms
+          });
+        }
+      });
+    }
+
+    // Camera Start / Stop
+    if (this.elements.btnStart) this.elements.btnStart.addEventListener('click', () => this.handleStartCamera());
+    if (this.elements.btnStop) this.elements.btnStop.addEventListener('click', () => this.handleStopCamera());
+
+    // Phase C: Realtime Summary Strip Synchronization (Decoupled DOM sync)
+    const syncSummary = () => {
+      if (this.elements.summaryDetectionCount && this.elements.detectionCountValue) {
+        this.elements.summaryDetectionCount.textContent = this.elements.detectionCountValue.textContent;
+      }
+      if (this.elements.summaryTrackedCount && this.elements.trackedCountValue) {
+        this.elements.summaryTrackedCount.textContent = this.elements.trackedCountValue.textContent;
+      }
+      if (this.elements.summaryFpsDisplay && this.elements.fpsValue) {
+        const fpsNum = parseFloat(this.elements.fpsValue.textContent);
+        this.elements.summaryFpsDisplay.textContent = isNaN(fpsNum) || fpsNum <= 0
+          ? (this.cameraService.state.status === 'connected' ? 'Live' : 'Ready')
+          : `${fpsNum.toFixed(1)} FPS`;
+      }
+    };
+    try {
+      const summaryObserver = new MutationObserver(() => syncSummary());
+      if (this.elements.detectionCountValue) {
+        summaryObserver.observe(this.elements.detectionCountValue, { childList: true, characterData: true, subtree: true });
+      }
+      if (this.elements.trackedCountValue) {
+        summaryObserver.observe(this.elements.trackedCountValue, { childList: true, characterData: true, subtree: true });
+      }
+      if (this.elements.fpsValue) {
+        summaryObserver.observe(this.elements.fpsValue, { childList: true, characterData: true, subtree: true });
+      }
+    } catch (obsErr) {
+      console.warn('[VisionX] Summary observer initialization skipped:', obsErr);
+    }
+
+    // Toggle Mirror Camera
+    if (this.elements.btnToggleMirror) {
+      this.elements.btnToggleMirror.addEventListener('click', () => {
+        const isMirrored = this.frameSource.toggleMirror();
+        if (this.elements.mirrorBtnText) {
+          this.elements.mirrorBtnText.textContent = isMirrored ? 'Mirrored' : 'Mirror';
+        }
+        this.elements.btnToggleMirror.classList.toggle('active', isMirrored);
+        this.updateDiagnosticsUI();
+      });
+    }
+
+    // Toggle Face Recognition Layer
+    if (this.elements.toggleFaceRecognition) {
+      this.elements.toggleFaceRecognition.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        this.faceDetector.setEnabled(enabled);
+        this.faceRecognizer.setEnabled(enabled);
+        this.updateDiagnosticsUI();
+      });
+    }
+
+    // Toggle Object Tracking Engine (V0.7)
+    if (this.elements.toggleTracking) {
+      this.elements.toggleTracking.addEventListener('change', (e) => {
+        this.trackingEngine.isEnabled = e.target.checked;
+        this.updateDiagnosticsUI();
+      });
+    }
+
+    // Voice Assistant Engine Controls (V0.8)
+    if (this.elements.toggleVoice) {
+      this.elements.toggleVoice.addEventListener('change', (e) => {
+        this.setVoiceEnabled(e.target.checked);
+      });
+    }
+
+    if (this.elements.voiceModeSelect) {
+      this.elements.voiceModeSelect.addEventListener('change', (e) => {
+        this.setVoiceMode(e.target.value);
+      });
+    }
+
+    if (this.elements.voiceVolumeSlider) {
+      this.elements.voiceVolumeSlider.addEventListener('input', (e) => {
+        this.setVoiceVolume(parseFloat(e.target.value));
+      });
+    }
+
+    if (this.elements.voiceSpeedSlider) {
+      this.elements.voiceSpeedSlider.addEventListener('input', (e) => {
+        this.setVoiceSpeed(parseFloat(e.target.value));
+      });
+    }
+
+    if (this.elements.btnVoiceReplay) {
+      this.elements.btnVoiceReplay.addEventListener('click', () => {
+        if (this.voiceEngine) this.voiceEngine.replayLastMessage();
+      });
+    }
+
+    if (this.elements.btnVoiceStop) {
+      this.elements.btnVoiceStop.addEventListener('click', () => {
+        if (this.voiceEngine) this.voiceEngine.stop();
+      });
+    }
+
+    if (this.elements.btnVoiceClearQueue) {
+      this.elements.btnVoiceClearQueue.addEventListener('click', () => {
+        if (this.voiceEngine) {
+          this.voiceEngine.clearQueue();
+          this.showSuccessBanner('Antrean suara dikosongkan.');
+        }
+      });
+    }
+
+    // Switch device kamera
+    this.elements.deviceSelect.addEventListener('change', (e) => {
+      const selectedId = e.target.value || null;
+      if (this.cameraService.state.status === 'connected') {
+        this.handleStartCamera(selectedId);
+      }
+    });
+
+    // Model Selector Change
+    this.elements.modelSelect.addEventListener('change', async (e) => {
+      await this.loadSelectedModel(e.target.value);
+    });
+
+    // Toggle Inferensi AI
+    this.elements.toggleInference.addEventListener('change', (e) => {
+      this.inferenceService.isActive = e.target.checked;
+      const modelName = this.inferenceService.modelConfig.shortName;
+      this.updateInferenceUI(e.target.checked, e.target.checked ? `${modelName} Aktif` : 'Inference Inactive');
+    });
+
+    // Sliders Threshold
+    this.elements.confSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.inferenceService.confThreshold = val;
+      this.elements.confVal.textContent = val.toFixed(2);
+    });
+    this.elements.iouSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.inferenceService.iouThreshold = val;
+      this.elements.iouVal.textContent = val.toFixed(2);
+    });
+
+    // Toggle Debug Mode
+    this.elements.toggleDebug.addEventListener('change', (e) => {
+      this.isDebugVisible = e.target.checked;
+      if (this.currentMode === 'detection') {
+        this.elements.debugPanel.classList.toggle('hidden', !this.isDebugVisible);
+      }
+    });
+
+    // Golden Test Trigger (V0.6.1 Diagnostic)
+    if (this.elements.btnRunGoldenTest) {
+      this.elements.btnRunGoldenTest.addEventListener('click', () => this.runGoldenTest());
+    }
+
+    // Collection Mode Class Input & Buttons
+    this.elements.btnSetClass.addEventListener('click', () => this.handleSetClass());
+    this.elements.inputClassName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.handleSetClass();
+      }
+    });
+    this.elements.sourceSelect.addEventListener('change', (e) => {
+      this.captureService.setSource(e.target.value);
+      this.updateCollectionUI();
+    });
+    this.elements.classPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const cls = pill.dataset.class;
+        if (cls) {
+          this.elements.inputClassName.value = cls;
+          this.handleSetClass(cls);
+        }
+      });
+    });
+
+    // Capture Button
+    this.elements.btnCapture.addEventListener('click', () => this.handleCapture());
+    this.elements.btnSelectDir.addEventListener('click', () => this.handleSelectDirectory());
+
+    // Import Toolbar (Collection)
+    this.elements.btnTriggerImportImages.addEventListener('click', () => this.elements.inputImportImages.click());
+    this.elements.inputImportImages.addEventListener('change', (e) => this.handleImportImages(e.target.files));
+    this.elements.btnTriggerImportFolder.addEventListener('click', () => this.elements.inputImportFolder.click());
+    this.elements.inputImportFolder.addEventListener('change', (e) => this.handleFolderSelected(e.target.files));
+
+    // Multi-Select Gallery (Collection)
+    this.elements.btnToggleSelectMode.addEventListener('click', () => this.toggleSelectMode());
+    this.elements.btnSelectAll.addEventListener('click', () => this.selectAllCaptures());
+    this.elements.btnClearSelection.addEventListener('click', () => this.clearSelection());
+    this.elements.btnDeleteSelected.addEventListener('click', () => this.handleDeleteSelectedPrompt());
+
+    // ========================================================================
+    // MODULE 1 — DATASET MANAGER EVENT LISTENERS (V0.6)
+    // ========================================================================
+    this.elements.btnMgrViewActive.addEventListener('click', () => {
+      this.elements.btnMgrViewActive.classList.add('active');
+      this.elements.btnMgrViewTrash.classList.remove('active');
+      this.elements.btnMgrTrashSelected.classList.remove('hidden');
+      this.elements.btnMgrRestoreSelected.classList.add('hidden');
+      this.elements.btnMgrPermanentDeleteSelected.classList.add('hidden');
+      this.managerService.currentView = 'active';
+      this.managerService.clearSelection();
+      this.loadManagerData();
+    });
+
+    this.elements.btnMgrViewTrash.addEventListener('click', () => {
+      this.elements.btnMgrViewTrash.classList.add('active');
+      this.elements.btnMgrViewActive.classList.remove('active');
+      this.elements.btnMgrTrashSelected.classList.add('hidden');
+      this.elements.btnMgrRestoreSelected.classList.remove('hidden');
+      this.elements.btnMgrPermanentDeleteSelected.classList.remove('hidden');
+      this.managerService.currentView = 'trash';
+      this.managerService.clearSelection();
+      this.loadManagerData();
+    });
+
+    this.elements.mgrSelectClass.addEventListener('change', (e) => {
+      this.managerService.selectedClass = e.target.value;
+      this.managerService.fetchList().then(() => this.renderManagerGrid());
+    });
+
+    this.elements.mgrSelectSource.addEventListener('change', (e) => {
+      this.managerService.selectedSource = e.target.value;
+      this.managerService.fetchList().then(() => this.renderManagerGrid());
+    });
+
+    this.elements.mgrSearchInput.addEventListener('input', (e) => {
+      this.managerService.searchQuery = e.target.value;
+      this.managerService.fetchList().then(() => this.renderManagerGrid());
+    });
+
+    this.elements.btnMgrRefresh.addEventListener('click', () => this.loadManagerData());
+
+    this.elements.btnMgrSelectAll.addEventListener('click', () => {
+      this.managerService.selectAll();
+      this.updateManagerSelectionUI();
+      this.renderManagerGrid();
+    });
+
+    this.elements.btnMgrClearSelect.addEventListener('click', () => {
+      this.managerService.clearSelection();
+      this.updateManagerSelectionUI();
+      this.renderManagerGrid();
+    });
+
+    this.elements.btnMgrTrashSelected.addEventListener('click', async () => {
+      const count = this.managerService.selectedIds.size;
+      if (count === 0) return;
+      try {
+        await this.managerService.trashSelected();
+        this.showSuccess(`${count} item berhasil dipindahkan ke Recycle Bin.`);
+        this.loadManagerData();
+      } catch (err) {
+        this.showError('Gagal memindahkan ke trash: ' + err.message);
+      }
+    });
+
+    this.elements.btnMgrRestoreSelected.addEventListener('click', async () => {
+      const count = this.managerService.selectedIds.size;
+      if (count === 0) return;
+      try {
+        await this.managerService.restoreSelected();
+        this.showSuccess(`${count} item berhasil di-restore ke dataset aktif.`);
+        this.loadManagerData();
+      } catch (err) {
+        this.showError('Gagal merestore: ' + err.message);
+      }
+    });
+
+    this.elements.btnMgrPermanentDeleteSelected.addEventListener('click', async () => {
+      const count = this.managerService.selectedIds.size;
+      if (count === 0) return;
+      if (!confirm(`Hapus permanen ${count} gambar dari disk? Tindakan ini tidak dapat dibatalkan.`)) return;
+      try {
+        await this.managerService.deletePermanentSelected();
+        this.showSuccess(`${count} item berhasil dihapus permanen dari disk.`);
+        this.loadManagerData();
+      } catch (err) {
+        this.showError('Gagal menghapus permanen: ' + err.message);
+      }
+    });
+
+    this.elements.btnMgrImportFiles.addEventListener('click', () => this.elements.inputMgrImportFiles.click());
+    this.elements.inputMgrImportFiles.addEventListener('change', async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      try {
+        const res = await this.managerService.importFileItems(e.target.files, 'object');
+        this.showSuccess(`Berhasil mengimpor ${res.count} file ke dataset.`);
+        this.loadManagerData();
+        e.target.value = '';
+      } catch (err) {
+        this.showError('Gagal impor: ' + err.message);
+      }
+    });
+
+    this.elements.btnMgrImportFolder.addEventListener('click', () => this.elements.inputMgrImportFolder.click());
+    this.elements.inputMgrImportFolder.addEventListener('change', async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      try {
+        const res = await this.managerService.importFileItems(e.target.files, 'object');
+        this.showSuccess(`Berhasil mengimpor ${res.count} file folder ke dataset.`);
+        this.loadManagerData();
+        e.target.value = '';
+      } catch (err) {
+        this.showError('Gagal impor folder: ' + err.message);
+      }
+    });
+
+    // Preview Modal Events
+    this.elements.mgrPreviewCloseBtn.addEventListener('click', () => this.elements.mgrPreviewModal.classList.add('hidden'));
+    this.elements.mgrPreviewCloseFooterBtn.addEventListener('click', () => this.elements.mgrPreviewModal.classList.add('hidden'));
+
+    // ========================================================================
+    // MODULE 2 — IDENTITY LAB EVENT LISTENERS (V0.6)
+    // ========================================================================
+    this.elements.idLabThresholdSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      this.identityService.threshold = val;
+      this.elements.idLabThresholdVal.textContent = val.toFixed(2);
+      if (this.elements.idLabThresholdMarker) {
+        this.elements.idLabThresholdMarker.style.left = `${val * 100}%`;
+      }
+    });
+
+    this.elements.btnIdLabImport.addEventListener('click', () => this.elements.inputIdLabImport.click());
+    this.elements.inputIdLabImport.addEventListener('change', async (e) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      const files = Array.from(e.target.files);
+      let successCount = 0;
+      for (const file of files) {
+        try {
+          const reader = new FileReader();
+          const dataUrl = await new Promise((res, rej) => {
+            reader.onload = () => res(reader.result);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          });
+          await this.identityService.addReference(dataUrl, file.name);
+          successCount++;
+        } catch (err) {
+          console.warn('[Identity Lab Import]', err);
+        }
+      }
+      this.showSuccess(`Berhasil menambahkan ${successCount} foto referensi wajah.`);
+      this.loadIdentityData();
+      e.target.value = '';
+    });
+
+    this.elements.btnIdLabCaptureCam.addEventListener('click', async () => {
+      if (this.cameraService.state.status !== 'connected') {
+        this.showError('Nyalakan kamera terlebih dahulu untuk mengambil foto wajah referensi.');
+        return;
+      }
+      const video = this.elements.video;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      this.faceOffscreenCanvas.width = vw;
+      this.faceOffscreenCanvas.height = vh;
+      this.faceOffscreenCtx.drawImage(video, 0, 0, vw, vh);
+      const dataUrl = this.faceOffscreenCanvas.toDataURL('image/jpeg', 0.95);
+      const filename = `developer_cam_${Date.now()}.jpg`;
+
+      try {
+        const res = await this.identityService.addReference(dataUrl, filename);
+        this.showSuccess(`Foto referensi webcam tersimpan: ${filename}`);
+        this.loadIdentityData();
+      } catch (err) {
+        this.showError('Gagal menambahkan foto referensi: ' + err.message);
+      }
+    });
+
+    // Modals Shared
+    this.elements.modalCloseBtn.addEventListener('click', () => this.closeConfirmModal());
+    this.elements.modalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
+    this.elements.modalConfirmBtn.addEventListener('click', () => {
+      if (this.pendingDeleteAction) this.pendingDeleteAction();
+      this.closeConfirmModal();
+    });
+
+    this.elements.folderModalCloseBtn.addEventListener('click', () => this.closeFolderModal());
+    this.elements.folderModalCancelBtn.addEventListener('click', () => this.closeFolderModal());
+    this.elements.folderModalConfirmBtn.addEventListener('click', () => this.executeFolderImport());
+
+    // Service Listeners
+    this.cameraService.on('stateChange', (state) => this.handleCameraStateChange(state));
+    this.cameraService.on('error', (err) => this.handleCameraError(err));
+    this.cameraService.on('devicesChange', (devices) => this.populateDeviceSelect(devices));
+    this.captureService.on('classChange', () => this.updateCollectionUI());
+    this.captureService.on('countChange', () => this.updateCollectionUI());
+    this.captureService.on('directoryChange', (dirInfo) => this.handleDirectoryChange(dirInfo));
+
+    window.addEventListener('keydown', (e) => this.handleGlobalKeydown(e));
+  }
+
+  /**
+   * Mengganti Mode aplikasi: 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+   */
+  setMode(mode) {
+    if (!['detection', 'collection', 'manager', 'identity', 'read_text'].includes(mode)) return;
+    this.currentMode = mode;
+
+    if (this.navigationManager && this.navigationManager.getActiveMode() !== mode) {
+      this.navigationManager.setActiveMode(mode, { triggerCallback: false });
+    }
+
+    // Reset tab styles
+    [this.elements.btnModeDetect, this.elements.btnModeCollect, this.elements.btnModeManager, this.elements.btnModeIdentity, this.elements.btnModeReadText]
+      .forEach(btn => {
+        if (btn) {
+          btn.classList.remove('active');
+          btn.setAttribute('aria-selected', 'false');
+        }
+      });
+
+    // Sembunyikan semua kontrol panel
+    this.elements.detectionControls.classList.add('hidden');
+    this.elements.collectionControls.classList.add('hidden');
+    this.elements.managerControls.classList.add('hidden');
+    this.elements.identityControls.classList.add('hidden');
+    if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+    this.elements.debugPanel.classList.add('hidden');
+    if (this.elements.ocrBadge) this.elements.ocrBadge.classList.add('hidden');
+
+    if (mode === 'detection') {
+      this.elements.btnModeDetect.classList.add('active');
+      this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
+      this.elements.modeBadge.className = 'badge badge-mode-detect';
+      this.elements.modeStatusText.textContent = 'Detection Mode';
+
+      this.elements.activeModelBadge.classList.remove('hidden');
+      this.elements.inferenceBadge.classList.remove('hidden');
+      this.elements.detectionCountBadge.classList.remove('hidden');
+      this.elements.classBadge.classList.add('hidden');
+      this.elements.countBadge.classList.add('hidden');
+
+      this.elements.detectionControls.classList.remove('hidden');
+      if (this.isDebugVisible) this.elements.debugPanel.classList.remove('hidden');
+
+      this.elements.stageWatermark.className = 'stage-watermark';
+      this.elements.watermarkMode.textContent = 'DETECTION';
+      this.elements.watermarkExtra.textContent = '';
+    } else if (mode === 'collection') {
+      this.elements.btnModeCollect.classList.add('active');
+      this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
+      this.elements.modeBadge.className = 'badge badge-mode-collect';
+      this.elements.modeStatusText.textContent = 'Collection Mode';
+
+      this.elements.activeModelBadge.classList.add('hidden');
+      this.elements.inferenceBadge.classList.add('hidden');
+      this.elements.detectionCountBadge.classList.add('hidden');
+      this.elements.classBadge.classList.remove('hidden');
+      this.elements.countBadge.classList.remove('hidden');
+
+      this.elements.collectionControls.classList.remove('hidden');
+      if (this.renderer) this.renderer.clear();
+
+      this.elements.stageWatermark.className = 'stage-watermark collect-mode';
+      this.elements.watermarkMode.textContent = 'COLLECTION';
+      this.elements.watermarkExtra.textContent = `[${this.captureService.currentClass}]`;
+      this.updateCollectionUI();
+    } else if (mode === 'manager') {
+      this.elements.btnModeManager.classList.add('active');
+      this.elements.btnModeManager.setAttribute('aria-selected', 'true');
+      this.elements.modeBadge.className = 'badge badge-mode-manager';
+      this.elements.modeStatusText.textContent = 'Dataset Manager';
+
+      this.elements.activeModelBadge.classList.add('hidden');
+      this.elements.inferenceBadge.classList.add('hidden');
+      this.elements.detectionCountBadge.classList.add('hidden');
+      this.elements.classBadge.classList.add('hidden');
+      this.elements.countBadge.classList.add('hidden');
+
+      this.elements.managerControls.classList.remove('hidden');
+      if (this.renderer) this.renderer.clear();
+
+      this.elements.stageWatermark.className = 'stage-watermark';
+      this.elements.watermarkMode.textContent = 'MANAGER';
+      this.elements.watermarkExtra.textContent = '';
+      this.loadManagerData();
+    } else if (mode === 'identity') {
+      this.elements.btnModeIdentity.classList.add('active');
+      this.elements.btnModeIdentity.setAttribute('aria-selected', 'true');
+      this.elements.modeBadge.className = 'badge badge-mode-identity';
+      this.elements.modeStatusText.textContent = 'Identity Lab';
+
+      this.elements.activeModelBadge.classList.add('hidden');
+      this.elements.inferenceBadge.classList.add('hidden');
+      this.elements.detectionCountBadge.classList.add('hidden');
+      this.elements.classBadge.classList.add('hidden');
+      this.elements.countBadge.classList.add('hidden');
+
+      this.elements.identityControls.classList.remove('hidden');
+      if (this.renderer) this.renderer.clear();
+
+      this.elements.stageWatermark.className = 'stage-watermark';
+      this.elements.watermarkMode.textContent = 'IDENTITY';
+      this.elements.watermarkExtra.textContent = '[VisionX Developer]';
+      this.loadIdentityData();
+    } else if (mode === 'read_text') {
+      if (this.elements.btnModeReadText) {
+        this.elements.btnModeReadText.classList.add('active');
+        this.elements.btnModeReadText.setAttribute('aria-selected', 'true');
+      }
+      this.elements.modeBadge.className = 'badge badge-mode-readtext';
+      this.elements.modeStatusText.textContent = 'Read Text Mode';
+
+      this.elements.activeModelBadge.classList.remove('hidden');
+      this.elements.inferenceBadge.classList.remove('hidden');
+      this.elements.detectionCountBadge.classList.remove('hidden');
+      this.elements.classBadge.classList.add('hidden');
+      this.elements.countBadge.classList.add('hidden');
+      if (this.elements.ocrBadge) this.elements.ocrBadge.classList.remove('hidden');
+
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.remove('hidden');
+
+      this.elements.stageWatermark.className = 'stage-watermark';
+      this.elements.watermarkMode.textContent = 'READ TEXT';
+      this.elements.watermarkExtra.textContent = '[OCR & TTS]';
+    }
+  }
+
+  // ==========================================================================
+  // MODULE 1 — DATASET MANAGER RENDERING & ACTIONS (V0.6)
+  // ==========================================================================
+  async loadManagerData() {
+    try {
+      const stats = await this.managerService.fetchStats();
+      this.elements.mgrStatTotalImages.textContent = stats.totalImages;
+      this.elements.mgrStatTotalSize.textContent = stats.formattedTotalSize;
+      this.elements.mgrStatTotalClasses.textContent = stats.classesCount;
+      this.elements.mgrStatTrashCount.textContent = stats.trashCount;
+      this.elements.mgrTrashBadgeCount.textContent = stats.trashCount;
+
+      // Populate class filter dropdown
+      const selClass = this.elements.mgrSelectClass;
+      const currentVal = selClass.value;
+      let opts = '<option value="all">Semua Kelas</option>';
+      Object.keys(stats.classCounts || {}).forEach(cls => {
+        opts += `<option value="${cls}">${cls} (${stats.classCounts[cls]})</option>`;
+      });
+      selClass.innerHTML = opts;
+      if (currentVal) selClass.value = currentVal;
+
+      await this.managerService.fetchList();
+      this.renderManagerGrid();
+      this.updateManagerSelectionUI();
+    } catch (e) {
+      console.error('[VisionX] Gagal memuat data manager:', e);
+    }
+  }
+
+  updateManagerSelectionUI() {
+    const count = this.managerService.selectedIds.size;
+    this.elements.mgrSelectedCountTrash.textContent = count;
+    this.elements.mgrSelectedCountRestore.textContent = count;
+    this.elements.mgrSelectedCountPerm.textContent = count;
+
+    this.elements.btnMgrTrashSelected.disabled = count === 0;
+    this.elements.btnMgrRestoreSelected.disabled = count === 0;
+    this.elements.btnMgrPermanentDeleteSelected.disabled = count === 0;
+  }
+
+  renderManagerGrid() {
+    const container = this.elements.mgrGridContainer;
+    const items = this.managerService.items;
+
+    if (!items || items.length === 0) {
+      const isTrash = this.managerService.currentView === 'trash';
+      container.innerHTML = `<div class="empty-gallery-text" style="grid-column: 1/-1;">
+        ${isTrash ? 'Recycle Bin kosong. Tidak ada file yang di-soft-delete.' : 'Tidak ditemukan citra dataset pada disk.'}
+      </div>`;
+      return;
+    }
+
+    let html = '';
+    items.forEach(it => {
+      const isSelected = this.managerService.selectedIds.has(it.id);
+      const selClass = isSelected ? 'selected' : '';
+      const isTrash = it.isTrash;
+
+      html += `
+        <div class="manager-card ${selClass}" data-id="${it.id}">
+          <div class="manager-card-thumb-wrapper" data-action="preview" data-id="${it.id}">
+            <input type="checkbox" class="manager-card-checkbox" data-id="${it.id}" ${isSelected ? 'checked' : ''} />
+            <img src="${it.url}" alt="${it.filename}" class="manager-card-thumb" loading="lazy" />
+          </div>
+          <div class="manager-card-body">
+            <span class="manager-card-class">${it.className}</span>
+            <span class="manager-card-filename" title="${it.filename}">${it.filename}</span>
+            <div class="manager-card-meta">
+              <span>${it.formattedSize}</span>
+              <span>${it.source}</span>
+            </div>
+          </div>
+          <div class="manager-card-actions">
+            <button type="button" class="btn-card-action" data-action="preview" data-id="${it.id}" title="Preview Metadata">
+              Detail
+            </button>
+            ${!isTrash ? `
+              <button type="button" class="btn-card-action danger" data-action="trash" data-id="${it.id}" title="Pindah ke Recycle Bin">
+                Trash
+              </button>
+            ` : `
+              <button type="button" class="btn-card-action success" data-action="restore" data-id="${it.id}" title="Restore ke dataset">
+                Restore
+              </button>
+              <button type="button" class="btn-card-action danger" data-action="perm-delete" data-id="${it.id}" title="Hapus Permanen">
+                Hapus
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    // Attach click listeners to cards
+    container.querySelectorAll('.manager-card-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const id = e.target.dataset.id;
+        this.managerService.toggleSelect(id);
+        this.updateManagerSelectionUI();
+        const card = container.querySelector(`.manager-card[data-id="${id}"]`);
+        if (card) card.classList.toggle('selected', e.target.checked);
+      });
+    });
+
+    container.querySelectorAll('[data-action="preview"]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('manager-card-checkbox')) return;
+        const id = el.dataset.id;
+        const item = this.managerService.items.find(i => i.id === id);
+        if (item) this.openManagerPreview(item);
+      });
+    });
+
+    container.querySelectorAll('[data-action="trash"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const item = this.managerService.items.find(i => i.id === id);
+        if (item) {
+          try {
+            await fetch('/api/manager/trash', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: [item] })
+            });
+            this.showSuccess(`"${item.filename}" dipindahkan ke Recycle Bin.`);
+            this.loadManagerData();
+          } catch (e) {
+            this.showError('Gagal trash item: ' + e.message);
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll('[data-action="restore"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const item = this.managerService.items.find(i => i.id === id);
+        if (item) {
+          try {
+            await fetch('/api/manager/restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: [item] })
+            });
+            this.showSuccess(`"${item.filename}" berhasil di-restore.`);
+            this.loadManagerData();
+          } catch (e) {
+            this.showError('Gagal restore item: ' + e.message);
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll('[data-action="perm-delete"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const item = this.managerService.items.find(i => i.id === id);
+        if (item) {
+          if (!confirm(`Hapus permanen "${item.filename}" dari disk?`)) return;
+          try {
+            await fetch('/api/manager/delete-permanent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: [item] })
+            });
+            this.showSuccess(`"${item.filename}" berhasil dihapus permanen.`);
+            this.loadManagerData();
+          } catch (e) {
+            this.showError('Gagal hapus permanen: ' + e.message);
+          }
+        }
+      });
+    });
+  }
+
+  openManagerPreview(item) {
+    this.elements.mgrPreviewImg.src = item.url;
+    this.elements.mgrMetaFilename.textContent = item.filename;
+    this.elements.mgrMetaClass.textContent = item.className;
+    this.elements.mgrMetaSource.textContent = item.source;
+    this.elements.mgrMetaDimensions.textContent = item.resolution || '-';
+    this.elements.mgrMetaSize.textContent = item.formattedSize || '-';
+    this.elements.mgrMetaDate.textContent = item.timestamp || '-';
+    this.elements.mgrMetaStatus.textContent = item.isTrash ? 'In Recycle Bin' : 'Active Dataset';
+    this.elements.mgrMetaPath.textContent = item.url;
+    this.elements.mgrPreviewModal.classList.remove('hidden');
+  }
+
+  // ==========================================================================
+  // MODULE 2 — IDENTITY LAB RENDERING & ACTIONS (V0.6)
+  // ==========================================================================
+  async loadIdentityData() {
+    try {
+      const profile = await this.identityService.getProfile();
+      if (profile) {
+        this.elements.idLabProfileName.textContent = profile.profile_name || 'VisionX Developer';
+        this.elements.idLabRefCount.textContent = `${profile.reference_count} foto`;
+        this.elements.idLabGalleryCount.textContent = profile.reference_count;
+        this.elements.idLabThresholdVal.textContent = parseFloat(profile.threshold).toFixed(2);
+        this.elements.idLabThresholdSlider.value = profile.threshold;
+        if (this.elements.idLabThresholdMarker) {
+          this.elements.idLabThresholdMarker.style.left = `${profile.threshold * 100}%`;
+        }
+      }
+
+      const refs = await this.identityService.getReferences();
+      this.renderIdentityRefGallery(refs);
+    } catch (e) {
+      console.error('[VisionX] Gagal memuat data Identity Lab:', e);
+    }
+  }
+
+  renderIdentityRefGallery(refs = []) {
+    const container = this.elements.idLabRefGallery;
+    if (!refs || refs.length === 0) {
+      container.innerHTML = `<div class="empty-gallery-text" style="grid-column: 1/-1;">Belum ada foto referensi wajah terdaftar.</div>`;
+      return;
+    }
+
+    let html = '';
+    refs.forEach(r => {
+      html += `
+        <div class="id-ref-card" data-filename="${r.filename}">
+          <button type="button" class="btn-delete-ref" data-filename="${r.filename}" title="Hapus foto referensi ini">
+            &times;
+          </button>
+          <img src="${r.url}" alt="${r.filename}" class="id-ref-thumb" loading="lazy" />
+          <div class="id-ref-meta">
+            <span title="${r.filename}">${r.filename}</span>
+            <span>${r.formatted_size}</span>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+
+    container.querySelectorAll('.btn-delete-ref').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const fn = btn.dataset.filename;
+        if (confirm(`Hapus foto referensi "${fn}" dari profil pengembang?`)) {
+          try {
+            await this.identityService.deleteReference(fn);
+            this.showSuccess(`Foto referensi "${fn}" berhasil dihapus.`);
+            this.loadIdentityData();
+          } catch (err) {
+            this.showError('Gagal menghapus: ' + err.message);
+          }
+        }
+      });
+    });
+  }
+
+  // ==========================================================================
+  // REALTIME RENDER LOOP & DETECTION / FACE INFERENCE
+  // ==========================================================================
+  startRenderLoop() {
+    if (this.animationFrameId) return;
+    this.prevTime = performance.now();
+    const renderFrame = async () => {
+      await this.processFrame();
+      this.animationFrameId = requestAnimationFrame(renderFrame);
+    };
+    this.animationFrameId = requestAnimationFrame(renderFrame);
+  }
+
+  stopRenderLoop() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
+  async processFrame() {
+    if (!this.frameSource || !this.frameSource.isReady()) return;
+    const video = this.elements.video;
+
+    const currTime = performance.now();
+    const delta = (currTime - this.prevTime) / 1000;
+    this.prevTime = currTime;
+
+    if (delta > 0) {
+      const currentFps = 1.0 / delta;
+      this.fpsSmooth = this.fpsSmooth === 0 ? currentFps : (this.alphaFps * this.fpsSmooth + (1 - this.alphaFps) * currentFps);
+      this.elements.fpsValue.textContent = this.fpsSmooth.toFixed(1);
+    }
+
+    const dims = this.frameSource.getDimensions();
+    const vw = dims.width;
+    const vh = dims.height;
+    if (vw > 0 && vh > 0) {
+      this.renderer.resize(vw, vh);
+    }
+
+    if (this.currentMode === 'detection' || this.currentMode === 'read_text') {
+      const letterboxedFrame = this.frameSource.getLetterboxedFrame(640);
+      if (!letterboxedFrame) return;
+
+      let objectDetections = [];
+      let yoloResult = null;
+
+      // 1. YOLO Object Detection (Realtime rate)
+      if (this.inferenceService.isActive && !this.isProcessingFrame) {
+        this.isProcessingFrame = true;
+        try {
+          yoloResult = await this.inferenceService.detect(video, this.frameSource.isMirrored);
+          if (yoloResult && Array.isArray(yoloResult.detections)) {
+            objectDetections = yoloResult.detections;
+            this.lastDetections = objectDetections;
+          } else {
+            this.lastDetections = [];
+          }
+        } catch (yoloErr) {
+          console.warn('[VisionX] YOLO Inference error:', yoloErr.message);
+          this.lastDetections = [];
+        } finally {
+          this.isProcessingFrame = false;
+        }
+      } else if (!this.inferenceService.isActive) {
+        this.lastDetections = [];
+      }
+
+      const activeFrameId = yoloResult?.frameId || ++this.currentFrameId;
+
+      // 1.5. TrackingEngine (V0.7): Persistent Track IDs & Velocity
+      let trackedObjects = objectDetections;
+      let trackingOutput = null;
+      const isTrackingActive = this.elements.toggleTracking ? this.elements.toggleTracking.checked : true;
+      this.trackingEngine.isEnabled = isTrackingActive;
+
+      if (isTrackingActive && this.inferenceService.isActive) {
+        // Hanya update tracker saat ada siklus inferensi aktual yang selesai
+        if (yoloResult !== null) {
+          trackingOutput = this.trackingEngine.update(objectDetections, activeFrameId);
+          this.lastTrackingOutput = trackingOutput;
+        } else if (this.lastTrackingOutput) {
+          trackingOutput = this.lastTrackingOutput;
+        } else {
+          trackingOutput = this.trackingEngine.update([], activeFrameId);
+          this.lastTrackingOutput = trackingOutput;
+        }
+        trackedObjects = trackingOutput.visibleTracks;
+
+        // 1.55. Personalized Recognition (V1.2): Non-blocking & Throttled Visual Similarity
+        try {
+          if (this.personalObjectRecognizer && trackingOutput) {
+            const tracksToProcess = trackingOutput.allTracks || trackingOutput.activeTracks || trackingOutput.visibleTracks;
+            this.personalObjectRecognizer.processTracks(tracksToProcess, video || this.elements.canvas);
+          }
+        } catch (poErr) {
+          console.warn('[VisionX] Personal recognition error:', poErr);
+        }
+
+        // 1.6. Voice Assistant Engine (V0.8): Spoken accessibility feedback
+        try {
+          if (this.eventEngine && this.voiceEngine && this.voiceEngine.config.enabled) {
+            this.eventEngine.processTracks(trackingOutput.allTracks || trackingOutput.activeTracks);
+          }
+        } catch (voiceErr) {
+          console.warn('[VisionX] Voice event processing error:', voiceErr);
+        }
+
+        // 1.7. Object Memory Engine (V1.1): Temporal & Spatial Tracking Lifecycle
+        try {
+          if (this.objectMemory) {
+            this.objectMemory.update(trackingOutput.allTracks || trackingOutput.activeTracks, {
+              frameWidth: vw,
+              frameHeight: vh
+            });
+            this.updateObjectMemoryUI();
+          }
+        } catch (memErr) {
+          console.warn('[VisionX] Object memory update error:', memErr);
+        }
+
+        // 1.8. Safety Engine (V1.3): Spatio-Temporal Safety Rule Evaluation
+        try {
+          if (this.safetyEngine) {
+            this.safetyEngine.evaluate({
+              activeTracks: trackingOutput.allTracks || trackingOutput.activeTracks || [],
+              memoryEvents: this.objectMemory ? this.objectMemory.getRecentEvents() : [],
+              personalRecognizer: this.personalObjectRecognizer,
+              timestamp: Date.now()
+            });
+          }
+        } catch (safetyErr) {
+          console.warn('[VisionX] SafetyEngine evaluation error:', safetyErr);
+        }
+      }
+
+      // 2. Face Detection & Recognition (Decoupled & Non-blocking)
+      let faceDetections = [];
+      let identityResult = null;
+      const isFaceLayerActive = this.elements.toggleFaceRecognition ? this.elements.toggleFaceRecognition.checked : true;
+
+      if (isFaceLayerActive) {
+        try {
+          this.faceDetector.setEnabled(true);
+          this.faceRecognizer.setEnabled(true);
+
+          // Face Detection runs at realtime rate
+          faceDetections = await this.faceDetector.detect(letterboxedFrame);
+
+          // Face Recognition runs at lower rate, reusing latest identity
+          identityResult = await this.faceRecognizer.recognize(faceDetections, letterboxedFrame);
+          if (identityResult) {
+            this.lastIdentityState = identityResult;
+          }
+        } catch (faceErr) {
+          console.warn('[VisionX] Face engine error:', faceErr.message);
+        }
+      } else {
+        this.faceDetector.setEnabled(false);
+        this.faceRecognizer.setEnabled(false);
+      }
+
+      // 3. DetectionFusion: Combine Tracked Objects + Face Detections
+      const unifiedDetections = DetectionFusion.fuse(
+        trackedObjects,
+        faceDetections,
+        identityResult || this.faceRecognizer.getLatestIdentity(),
+        {
+          enableObjects: this.inferenceService.isActive,
+          enableFace: isFaceLayerActive
+        }
+      );
+
+      // 4. UnifiedRenderer: Render to Canvas with OCR Text Regions Overlay
+      const activeInferenceLatency = yoloResult?.inferenceTimeMs || this.faceDetector.lastLatencyMs || 0;
+
+      this.renderer.renderUnified(unifiedDetections, {
+        frameId: activeFrameId,
+        inferenceTimeMs: activeInferenceLatency,
+        modelName: this.inferenceService.modelConfig.shortName
+      }, this.currentOcrRegions);
+
+      // 5. Update UI, Counters, & Live Diagnostics
+      this.elements.detectionCountValue.textContent = unifiedDetections.length;
+      if (this.elements.trackedCountValue && trackingOutput) {
+        this.elements.trackedCountValue.textContent = trackingOutput.stats.totalActiveCount;
+      }
+      this.highlightDetectedChips(unifiedDetections);
+      this.updateDiagnosticsUI(trackingOutput);
+
+      // 5.5 Update Camera Quality Strip (V1.2.1)
+      if (this.elements.camDiagResolution) {
+        this.elements.camDiagResolution.textContent = `${vw}×${vh}`;
+      }
+      if (this.elements.camDiagFps) {
+        this.elements.camDiagFps.textContent = this.fpsSmooth.toFixed(1);
+      }
+
+      if (this.isDebugVisible) {
+        this.updateDebugTable(unifiedDetections, activeFrameId, activeInferenceLatency);
+      }
+
+      // 6. Read Text Mode Auto Read Background Loop (Non-blocking)
+      if (this.currentMode === 'read_text' && this.isAutoReadOcr) {
+        const now = performance.now();
+        if (now - this.lastAutoReadScanTime > this.autoReadCooldownMs && this.ocrService.getStatus() === OCRStatus.READY) {
+          this.lastAutoReadScanTime = now;
+          this.handleTriggerOcr(true); // Background auto scan
+        }
+      }
+    } else if (this.currentMode === 'identity') {
+      // Live test di Identity Lab studio (management tab)
+      await this.processIdentityLabLiveTest(video, vw, vh);
+    } else {
+      this.renderer.clear();
+    }
+  }
+
+
+  async processIdentityLabLiveTest(video, vw, vh) {
+    // 1. Dapatkan letterboxed frame standar (640x640)
+    const letterboxedFrame = this.frameSource ? this.frameSource.getLetterboxedFrame(640) : null;
+    if (!letterboxedFrame) {
+      if (this.renderer) this.renderer.clear();
+      return;
+    }
+
+    // 2. Render deteksi wajah aktif pada canvas setiap frame untuk mencegah kedipan visual (smooth 60fps)
+    if (this.currentIdentityFaces && this.currentIdentityFaces.length > 0) {
+      this.renderer.renderUnified(this.currentIdentityFaces);
+    } else {
+      this.renderer.clear();
+    }
+
+    // 3. Throttle background request agar tidak membebani server/inferensi
+    const now = performance.now();
+    if (now - this.lastFaceCheckTime < 180 || this.isProcessingFace) return;
+    this.isProcessingFace = true;
+    this.lastFaceCheckTime = now;
+
+    try {
+      const { canvas, params, isMirrored } = letterboxedFrame;
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.80);
+
+      const res = await this.identityService.matchFace(dataUrl, this.identityService.threshold);
+      if (res && res.detected && Array.isArray(res.faces) && res.faces.length > 0) {
+        const pm = res.primary_match || res.faces[0];
+        const isMatch = Boolean(pm.matched);
+        const simPercent = Math.max(0, Math.min(100, (pm.similarity || 0) * 100));
+
+        // Update Panel UI Identity Lab
+        if (this.elements.idLabDecisionBadge) {
+          this.elements.idLabDecisionBadge.textContent = isMatch ? 'Person — Developer VisionX' : 'Person';
+          this.elements.idLabDecisionBadge.className = `identity-badge ${isMatch ? 'badge-developer' : 'badge-unknown'}`;
+        }
+        if (this.elements.idLabSimilarityScore) {
+          this.elements.idLabSimilarityScore.textContent = `${simPercent.toFixed(1)}%`;
+        }
+        if (this.elements.idLabSimilarityBar) {
+          this.elements.idLabSimilarityBar.style.width = `${simPercent}%`;
+          this.elements.idLabSimilarityBar.style.background = isMatch
+            ? 'linear-gradient(90deg, #10b981, #059669)'
+            : 'linear-gradient(90deg, #f59e0b, #d97706)';
+        }
+        if (this.elements.idLabMatchDetail) {
+          const threshPercent = (this.identityService.threshold * 100).toFixed(0);
+          this.elements.idLabMatchDetail.textContent = isMatch
+            ? `MATCH TERVERIFIKASI: Skor ${simPercent.toFixed(1)}% ≥ Threshold (${threshPercent}%) • Developer VisionX`
+            : `TIDAK COCOK: Skor ${simPercent.toFixed(1)}% < Threshold (${threshPercent}%) • Ditandai Person`;
+        }
+
+        // 4. Transformasi koordinat model 640x640 ke resolusi video asli via CoordinateMapper
+        const mappedFaces = res.faces.map((f, idx) => {
+          const rawBox = f.bbox || {
+            x1: f.box[0],
+            y1: f.box[1],
+            x2: f.box[0] + f.box[2],
+            y2: f.box[1] + f.box[3]
+          };
+          const videoBbox = CoordinateMapper.modelToVideo(rawBox, params, isMirrored);
+          const faceMatch = Boolean(f.matched);
+          const faceScore = f.score_percent || `${Math.round((f.similarity || 0) * 100)}%`;
+          const customLabel = faceMatch
+            ? `Person — Developer VisionX (${faceScore})`
+            : 'Person';
+
+          return {
+            type: 'face',
+            id: `identity_face_${idx + 1}`,
+            bbox: videoBbox,
+            label: customLabel,
+            confidence: f.confidence || 0.9,
+            identityStatus: faceMatch ? 'REGISTERED' : 'UNREGISTERED',
+            isDeveloper: faceMatch,
+            similarity: f.similarity || 0,
+            score_percent: faceScore,
+            timestamp: Date.now()
+          };
+        });
+
+        this.currentIdentityFaces = mappedFaces;
+        this.renderer.renderUnified(this.currentIdentityFaces);
+      } else {
+        // Tidak ada wajah terdeteksi pada frame ini
+        this.currentIdentityFaces = [];
+        this.renderer.clear();
+
+        if (this.elements.idLabDecisionBadge) {
+          this.elements.idLabDecisionBadge.textContent = 'STANDBY / NO FACE';
+          this.elements.idLabDecisionBadge.className = 'identity-badge badge-neutral';
+        }
+        if (this.elements.idLabSimilarityScore) {
+          this.elements.idLabSimilarityScore.textContent = '0.0%';
+        }
+        if (this.elements.idLabSimilarityBar) {
+          this.elements.idLabSimilarityBar.style.width = '0%';
+        }
+        if (this.elements.idLabMatchDetail) {
+          this.elements.idLabMatchDetail.textContent = 'Arahkan wajah ke kamera untuk menguji pencocokan identitas secara realtime.';
+        }
+      }
+    } catch (e) {
+      console.warn('[VisionX Identity Lab] Live test error:', e);
+    } finally {
+      this.isProcessingFace = false;
+    }
+  }
+
+  // ==========================================================================
+  // SHARED METHODS & CAMERA CONTROLS
+  // ==========================================================================
   async loadSelectedModel(modelId) {
     const config = MODEL_PRESETS[modelId] || MODEL_PRESETS.visionx_v1;
     this.updateInferenceUI('loading', `Memuat ${config.shortName}...`);
@@ -227,57 +1956,33 @@ class VisionXWebApp {
     }
   }
 
-  /**
-   * Sinkronisasi UI dengan model yang aktif
-   */
   updateModelUI(config, loadTimeMs = 0) {
-    // Update badge di header
     const badge = this.elements.activeModelBadge;
     const badgeText = this.elements.activeModelBadgeText;
     badge.className = 'badge ' + (config.isCustom ? 'badge-model-custom' : 'badge-model-pretrained');
-    badgeText.textContent = config.isCustom ? 'VisionX V1 (Custom 7 Classes)' : 'Pretrained YOLO (COCO 80 Classes)';
+    badgeText.textContent = config.name;
 
-    // Update tags di control panel
-    if (this.elements.modelArchTag) {
-      this.elements.modelArchTag.textContent = 'Arch: YOLOv8n';
-    }
-    if (this.elements.modelClassesTag) {
-      this.elements.modelClassesTag.textContent = `Classes: ${config.numClasses}`;
-    }
-    if (this.elements.modelLoadTimeTag) {
-      this.elements.modelLoadTimeTag.textContent = `Load: ${loadTimeMs || this.inferenceService.loadTimeMs || '--'} ms`;
-    }
+    if (this.elements.modelArchTag) this.elements.modelArchTag.textContent = 'Arch: YOLOv8n';
+    if (this.elements.modelClassesTag) this.elements.modelClassesTag.textContent = `Classes: ${config.numClasses}`;
+    if (this.elements.modelLoadTimeTag) this.elements.modelLoadTimeTag.textContent = `Load: ${loadTimeMs || '--'} ms`;
+    if (this.elements.debugModelName) this.elements.debugModelName.textContent = config.name;
+    if (this.elements.debugLoadTime) this.elements.debugLoadTime.textContent = `${loadTimeMs || '--'} ms`;
 
-    // Update debug panel meta
-    if (this.elements.debugModelName) {
-      this.elements.debugModelName.textContent = config.name;
-    }
-    if (this.elements.debugLoadTime) {
-      this.elements.debugLoadTime.textContent = `${loadTimeMs || this.inferenceService.loadTimeMs || 0} ms`;
-    }
-
-    // Render target class chips
     this.renderTargetClassChips(config);
-    this.updateDiagnosticsUI();
   }
 
-  /**
-   * Render chip kelas target di bawah selector model
-   */
   renderTargetClassChips(config) {
     const container = this.elements.targetChipsContainer;
     if (!container) return;
 
     if (config.isCustom) {
-      // Tampilkan 7 kelas VisionX
-      let chipsHtml = `<span class="chips-label">VisionX V1 Classes (${config.classes.length}):</span>`;
+      let chipsHtml = `<span class="chips-label">${config.shortName} Classes (${config.classes.length}):</span>`;
       config.classes.forEach(cls => {
         chipsHtml += `<span class="class-chip" data-chip-class="${cls}">${cls}</span>`;
       });
       container.innerHTML = chipsHtml;
       container.classList.remove('hidden');
     } else {
-      // COCO ada 80 kelas, tampilkan ringkasan + kelas utama
       let chipsHtml = `<span class="chips-label">COCO Classes (80 total):</span>`;
       const sampleCoco = ['person', 'bottle', 'cup', 'laptop', 'mouse', 'keyboard', 'cell phone', 'car', 'chair', '...'];
       sampleCoco.forEach(cls => {
@@ -288,207 +1993,64 @@ class VisionXWebApp {
     }
   }
 
-  bindEvents() {
-    // Mode Switcher Tabs
-    this.elements.btnModeDetect.addEventListener('click', () => this.setMode('detection'));
-    this.elements.btnModeCollect.addEventListener('click', () => this.setMode('collection'));
-
-    // Camera Start / Stop
-    this.elements.btnStart.addEventListener('click', () => this.handleStartCamera());
-    this.elements.btnStop.addEventListener('click', () => this.handleStopCamera());
-
-    // Switch device kamera
-    this.elements.deviceSelect.addEventListener('change', (e) => {
-      const selectedId = e.target.value || null;
-      if (this.cameraService.state.status === 'connected') {
-        this.handleStartCamera(selectedId);
-      }
+  highlightDetectedChips(detections) {
+    const activeClasses = new Set(
+      (detections || []).filter(d => d.type === 'object').map(d => d.class_name)
+    );
+    const chips = this.elements.targetChipsContainer.querySelectorAll('.class-chip');
+    chips.forEach(chip => {
+      const cls = chip.dataset.chipClass;
+      chip.classList.toggle('active-detected', activeClasses.has(cls));
     });
-
-    // Model Selector Change (V0.5.1)
-    this.elements.modelSelect.addEventListener('change', async (e) => {
-      const selectedModelId = e.target.value;
-      await this.loadSelectedModel(selectedModelId);
-    });
-
-    // Toggle Inferensi AI
-    this.elements.toggleInference.addEventListener('change', (e) => {
-      this.inferenceService.isActive = e.target.checked;
-      const modelName = this.inferenceService.modelConfig.shortName;
-      this.updateInferenceUI(e.target.checked, e.target.checked ? `${modelName} Aktif` : 'Inference Inactive');
-    });
-
-    // Confidence Slider
-    this.elements.confSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      this.inferenceService.confThreshold = val;
-      this.elements.confVal.textContent = val.toFixed(2);
-    });
-
-    // IoU Slider
-    this.elements.iouSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value);
-      this.inferenceService.iouThreshold = val;
-      this.elements.iouVal.textContent = val.toFixed(2);
-    });
-
-    // Toggle Debug Mode
-    this.elements.toggleDebug.addEventListener('change', (e) => {
-      this.isDebugVisible = e.target.checked;
-      if (this.currentMode === 'detection') {
-        if (this.isDebugVisible) {
-          this.elements.debugPanel.classList.remove('hidden');
-        } else {
-          this.elements.debugPanel.classList.add('hidden');
-        }
-      }
-    });
-
-    // Collection Mode: Class Name Input & Buttons
-    this.elements.btnSetClass.addEventListener('click', () => this.handleSetClass());
-    this.elements.inputClassName.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.handleSetClass();
-      }
-    });
-
-    // Source Selector
-    this.elements.sourceSelect.addEventListener('change', (e) => {
-      this.captureService.setSource(e.target.value);
-      this.updateCollectionUI();
-    });
-
-    // Quick Class Pills
-    this.elements.classPills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        const cls = pill.dataset.class;
-        if (cls) {
-          this.elements.inputClassName.value = cls;
-          this.handleSetClass(cls);
-        }
-      });
-    });
-
-    // Capture Button
-    this.elements.btnCapture.addEventListener('click', () => this.handleCapture());
-
-    // Storage Directory Picker (File System Access API)
-    this.elements.btnSelectDir.addEventListener('click', () => this.handleSelectDirectory());
-
-    // Import Image Files
-    this.elements.btnTriggerImportImages.addEventListener('click', () => {
-      this.elements.inputImportImages.click();
-    });
-    this.elements.inputImportImages.addEventListener('change', (e) => this.handleImportImages(e.target.files));
-
-    // Import Folder
-    this.elements.btnTriggerImportFolder.addEventListener('click', () => {
-      this.elements.inputImportFolder.click();
-    });
-    this.elements.inputImportFolder.addEventListener('change', (e) => this.handleFolderSelected(e.target.files));
-
-    // Multi-Select & Delete Actions
-    this.elements.btnToggleSelectMode.addEventListener('click', () => this.toggleSelectMode());
-    this.elements.btnSelectAll.addEventListener('click', () => this.selectAllCaptures());
-    this.elements.btnClearSelection.addEventListener('click', () => this.clearSelection());
-    this.elements.btnDeleteSelected.addEventListener('click', () => this.handleDeleteSelectedPrompt());
-
-    // Confirmation Modal Listeners
-    this.elements.modalCloseBtn.addEventListener('click', () => this.closeConfirmModal());
-    this.elements.modalCancelBtn.addEventListener('click', () => this.closeConfirmModal());
-    this.elements.modalConfirmBtn.addEventListener('click', () => {
-      if (this.pendingDeleteAction) {
-        this.pendingDeleteAction();
-      }
-      this.closeConfirmModal();
-    });
-
-    // Folder Import Modal Listeners
-    this.elements.folderModalCloseBtn.addEventListener('click', () => this.closeFolderModal());
-    this.elements.folderModalCancelBtn.addEventListener('click', () => this.closeFolderModal());
-    this.elements.folderModalConfirmBtn.addEventListener('click', () => this.executeFolderImport());
-
-    // Camera Service Listeners
-    this.cameraService.on('stateChange', (state) => this.handleCameraStateChange(state));
-    this.cameraService.on('error', (err) => this.handleCameraError(err));
-    this.cameraService.on('devicesChange', (devices) => this.populateDeviceSelect(devices));
-
-    // Dataset Capture Service Listeners
-    this.captureService.on('classChange', () => this.updateCollectionUI());
-    this.captureService.on('countChange', () => this.updateCollectionUI());
-    this.captureService.on('directoryChange', (dirInfo) => this.handleDirectoryChange(dirInfo));
-
-    // Keyboard Shortcuts (Space, C, N, M)
-    window.addEventListener('keydown', (e) => this.handleGlobalKeydown(e));
   }
 
-  /**
-   * Mengganti Mode aplikasi: 'detection' atau 'collection'
-   */
-  setMode(mode) {
-    if (mode !== 'detection' && mode !== 'collection') return;
-    this.currentMode = mode;
+  updateDebugTable(detections, frameId, inferenceTimeMs) {
+    const tbody = this.elements.debugTableBody;
+    this.elements.debugLatency.textContent = `${inferenceTimeMs || 0} ms`;
+    this.elements.debugFrameId.textContent = `#${frameId || 0}`;
+    this.elements.debugObjectCount.textContent = detections ? detections.length : 0;
 
-    if (mode === 'detection') {
-      this.elements.btnModeDetect.classList.add('active');
-      this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
-      this.elements.btnModeCollect.classList.remove('active');
-      this.elements.btnModeCollect.setAttribute('aria-selected', 'false');
-
-      this.elements.modeBadge.className = 'badge badge-mode-detect';
-      this.elements.modeStatusText.textContent = 'Detection Mode';
-
-      this.elements.activeModelBadge.classList.remove('hidden');
-      this.elements.inferenceBadge.classList.remove('hidden');
-      this.elements.detectionCountBadge.classList.remove('hidden');
-      this.elements.classBadge.classList.add('hidden');
-      this.elements.countBadge.classList.add('hidden');
-
-      this.elements.detectionControls.classList.remove('hidden');
-      this.elements.collectionControls.classList.add('hidden');
-      if (this.isDebugVisible) {
-        this.elements.debugPanel.classList.remove('hidden');
-      }
-
-      this.elements.stageWatermark.className = 'stage-watermark';
-      this.elements.watermarkMode.textContent = 'DETECTION';
-      this.elements.watermarkExtra.textContent = '';
-    } else {
-      this.elements.btnModeCollect.classList.add('active');
-      this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
-      this.elements.btnModeDetect.classList.remove('active');
-      this.elements.btnModeDetect.setAttribute('aria-selected', 'false');
-
-      this.elements.modeBadge.className = 'badge badge-mode-collect';
-      this.elements.modeStatusText.textContent = 'Collection Mode';
-
-      this.elements.activeModelBadge.classList.add('hidden');
-      this.elements.inferenceBadge.classList.add('hidden');
-      this.elements.detectionCountBadge.classList.add('hidden');
-      this.elements.classBadge.classList.remove('hidden');
-      this.elements.countBadge.classList.remove('hidden');
-
-      this.elements.detectionControls.classList.add('hidden');
-      this.elements.collectionControls.classList.remove('hidden');
-      this.elements.debugPanel.classList.add('hidden');
-
-      if (this.renderer) {
-        this.renderer.clear();
-      }
-
-      this.elements.stageWatermark.className = 'stage-watermark collect-mode';
-      this.elements.watermarkMode.textContent = 'COLLECTION';
-      this.elements.watermarkExtra.textContent = `[${this.captureService.currentClass}]`;
-
-      this.updateCollectionUI();
+    if (!detections || detections.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Belum ada objek/wajah terdeteksi pada frame ini.</td></tr>';
+      return;
     }
+
+    let rows = '';
+    detections.forEach((d, idx) => {
+      const confPercent = ((d.confidence || 0) * 100).toFixed(1) + '%';
+      const b = d.bbox || d;
+      const boxStr = `[${Math.round(b.x1)}, ${Math.round(b.y1)}, ${Math.round(b.x2)}, ${Math.round(b.y2)}]`;
+      
+      const trackIdStr = d.trackIdFormatted || (d.trackId ? `#${String(d.trackId).padStart(2, '0')}` : '--');
+      const velStr = d.velocity
+        ? `${d.velocity.x >= 0 ? '+' : ''}${d.velocity.x}, ${d.velocity.y >= 0 ? '+' : ''}${d.velocity.y}`
+        : '0, 0';
+      const hitsMissedStr = `${d.hits || 1} / ${d.missedFrames || 0}`;
+      const stateStr = d.state || (d.type === 'face' ? (d.identityStatus === 'REGISTERED' ? 'dev' : 'unknown') : 'confirmed');
+
+      const typeBadge = d.type === 'face'
+        ? (d.identityStatus === 'REGISTERED' ? '<span style="color:#10b981;font-weight:700;">[DEV]</span>' : '<span style="color:#f59e0b;font-weight:700;">[UNKNOWN]</span>')
+        : '<span style="color:#38bdf8;font-weight:700;">[OBJ]</span>';
+
+      rows += `
+        <tr>
+          <td>${idx + 1}</td>
+          <td><strong style="color:#38bdf8;">${trackIdStr}</strong></td>
+          <td><strong>${d.class_name || d.label}</strong> ${typeBadge}</td>
+          <td>${confPercent}</td>
+          <td><code>${boxStr}</code></td>
+          <td><code>${velStr}</code></td>
+          <td>${hitsMissedStr}</td>
+          <td><span style="font-size:11px; font-weight:600; text-transform:uppercase; color:${stateStr === 'confirmed' || stateStr === 'dev' ? '#10b981' : stateStr === 'lost' ? '#f59e0b' : '#38bdf8'};">${stateStr}</span></td>
+        </tr>
+      `;
+    });
+    tbody.innerHTML = rows;
   }
 
   handleSetClass(targetName = null) {
     const rawName = targetName || this.elements.inputClassName.value;
     const hint = this.elements.classValidationHint;
-
     try {
       const sanitized = this.captureService.setClass(rawName);
       this.elements.inputClassName.value = sanitized;
@@ -540,27 +2102,18 @@ class VisionXWebApp {
   triggerShutterFlash() {
     const flash = this.elements.shutterFlash;
     flash.classList.add('active');
-    setTimeout(() => {
-      flash.classList.remove('active');
-    }, 80);
+    setTimeout(() => flash.classList.remove('active'), 80);
   }
 
   async handleImportImages(files) {
     if (!files || files.length === 0) return;
-
     try {
       const targetClass = this.captureService.currentClass;
       const source = this.captureService.currentSource;
-
       const result = await this.captureService.importImages(files, targetClass, source);
       this.renderRecentCaptures();
       this.updateCollectionUI();
-
-      let msg = `Berhasil mengimpor ${result.imported} gambar ke kelas "${targetClass}".`;
-      if (result.duplicates > 0) msg += ` (${result.duplicates} duplikat dilewati).`;
-      if (result.skipped > 0) msg += ` (${result.skipped} format tidak didukung).`;
-
-      this.showSuccess(msg);
+      this.showSuccess(`Berhasil mengimpor ${result.imported} gambar ke kelas "${targetClass}".`);
       this.elements.inputImportImages.value = '';
     } catch (err) {
       this.showError('Gagal mengimpor citra: ' + (err.message || err));
@@ -569,23 +2122,21 @@ class VisionXWebApp {
 
   handleFolderSelected(files) {
     if (!files || files.length === 0) return;
-
     const validImages = Array.from(files).filter(f => {
       const ext = '.' + f.name.split('.').pop().toLowerCase();
       return SUPPORTED_IMPORT_EXTENSIONS.includes(ext);
     });
 
     if (validImages.length === 0) {
-      this.showError('Tidak ditemukan file gambar yang didukung (.jpg, .jpeg, .png, .webp) di folder tersebut.');
+      this.showError('Tidak ditemukan file gambar yang didukung (.jpg, .jpeg, .png, .webp).');
       this.elements.inputImportFolder.value = '';
       return;
     }
 
     this.pendingFolderImportFiles = validImages;
-    this.elements.folderModalSummary.textContent = `Ditemukan ${validImages.length} file gambar valid di folder yang dipilih.`;
+    this.elements.folderModalSummary.textContent = `Ditemukan ${validImages.length} file gambar valid di folder.`;
     this.elements.folderTargetClass.value = this.captureService.currentClass;
     this.elements.folderTargetSource.value = this.captureService.currentSource;
-
     this.elements.folderImportModal.classList.remove('hidden');
   }
 
@@ -600,7 +2151,6 @@ class VisionXWebApp {
       this.closeFolderModal();
       return;
     }
-
     const targetClass = this.elements.folderTargetClass.value.trim() || this.captureService.currentClass;
     const targetSource = this.elements.folderTargetSource.value;
 
@@ -608,14 +2158,82 @@ class VisionXWebApp {
       const result = await this.captureService.importFolder(this.pendingFolderImportFiles, targetClass, targetSource);
       this.renderRecentCaptures();
       this.updateCollectionUI();
-
-      let msg = `Impor folder selesai: ${result.imported} gambar berhasil diimpor ke "${targetClass}".`;
-      if (result.duplicates > 0) msg += ` (${result.duplicates} duplikat diabaikan).`;
-      this.showSuccess(msg);
+      this.showSuccess(`Impor folder selesai: ${result.imported} gambar berhasil diimpor.`);
     } catch (err) {
       this.showError('Gagal impor folder: ' + err.message);
     } finally {
       this.closeFolderModal();
+    }
+  }
+
+  renderRecentCaptures() {
+    const list = this.captureService.getRecentCaptures();
+    const container = this.elements.recentCapturesList;
+    this.elements.recentCapturesCount.textContent = `${list.length} item`;
+
+    if (list.length === 0) {
+      container.innerHTML = `<div class="empty-gallery-text">Belum ada gambar pada sesi ini. Tekan tombol Capture, SPACE, atau Impor Citra.</div>`;
+      return;
+    }
+
+    let html = '';
+    list.forEach(item => {
+      const isSelected = this.selectedItems.has(item.filename);
+      const selectedClass = isSelected ? 'selected' : '';
+      const sourceBadge = item.source === 'own_capture' ? '📸' : '💾';
+      const imgUrl = item.previewUrl || item.dataUrl || item.url || '';
+      const dimensions = (item.width && item.height) ? `${item.width}x${item.height}` : (item.resolution && item.resolution !== 'undefinedxundefined' ? item.resolution : '-');
+      const sizeText = item.formattedSize || (item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-');
+
+      html += `
+        <div class="gallery-item-card ${selectedClass}" data-filename="${item.filename}">
+          ${this.isSelectMode ? `
+            <div class="item-checkbox-wrapper">
+              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${item.filename}" />
+            </div>
+          ` : ''}
+          <img src="${imgUrl}" alt="${item.filename}" class="gallery-thumbnail" loading="lazy" />
+          <div class="gallery-item-info">
+            <span class="gallery-item-class" title="Kelas">${item.className}</span>
+            <span class="gallery-item-name" title="${item.filename}">${item.filename}</span>
+            <div class="gallery-item-meta">
+              <span>${sourceBadge} ${item.source}</span>
+              <span>${dimensions}</span>
+            </div>
+            <div class="gallery-item-submeta">
+              <span>${sizeText}</span>
+              <span>${item.timestamp}</span>
+            </div>
+          </div>
+          ${!this.isSelectMode ? `
+            <button type="button" class="btn-delete-single" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+
+    if (this.isSelectMode) {
+      container.querySelectorAll('.gallery-item-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const fn = card.dataset.filename;
+          if (fn) this.toggleItemSelection(fn);
+        });
+      });
+    } else {
+      container.querySelectorAll('.btn-delete-single').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fn = btn.dataset.filename;
+          const cls = btn.dataset.class;
+          if (fn && cls) this.promptDeleteSingle(fn, cls);
+        });
+      });
     }
   }
 
@@ -637,32 +2255,25 @@ class VisionXWebApp {
         this.showError('Gagal menghapus file: ' + err.message);
       }
     };
-
     this.elements.confirmModal.classList.remove('hidden');
   }
 
   toggleSelectMode() {
     this.isSelectMode = !this.isSelectMode;
-    if (!this.isSelectMode) {
-      this.selectedItems.clear();
-    }
+    if (!this.isSelectMode) this.selectedItems.clear();
     this.updateMultiSelectUI();
     this.renderRecentCaptures();
   }
 
   toggleItemSelection(filename) {
-    if (this.selectedItems.has(filename)) {
-      this.selectedItems.delete(filename);
-    } else {
-      this.selectedItems.add(filename);
-    }
+    if (this.selectedItems.has(filename)) this.selectedItems.delete(filename);
+    else this.selectedItems.add(filename);
     this.updateMultiSelectUI();
     this.renderRecentCaptures();
   }
 
   selectAllCaptures() {
-    const list = this.captureService.getRecentCaptures();
-    list.forEach(item => this.selectedItems.add(item.filename));
+    this.captureService.getRecentCaptures().forEach(item => this.selectedItems.add(item.filename));
     this.updateMultiSelectUI();
     this.renderRecentCaptures();
   }
@@ -676,7 +2287,6 @@ class VisionXWebApp {
   handleDeleteSelectedPrompt() {
     const count = this.selectedItems.size;
     if (count === 0) return;
-
     this.elements.modalTitle.textContent = 'Konfirmasi Hapus Massal';
     this.elements.modalDescription.textContent = `Apakah Anda yakin ingin menghapus ${count} gambar yang dipilih dari dataset?`;
     this.elements.modalItemPreview.textContent = `${count} gambar terpilih`;
@@ -685,17 +2295,17 @@ class VisionXWebApp {
     this.pendingDeleteAction = async () => {
       try {
         const filenames = Array.from(this.selectedItems);
-        const result = await this.captureService.deleteMultiple(filenames);
+        await this.captureService.deleteMultiple(filenames);
         this.selectedItems.clear();
+        this.isSelectMode = false;
+        this.updateMultiSelectUI();
         this.renderRecentCaptures();
         this.updateCollectionUI();
-        this.updateMultiSelectUI();
-        this.showSuccess(`Berhasil menghapus ${result.deleted} gambar dari dataset.`);
+        this.showSuccess(`${count} gambar berhasil dihapus.`);
       } catch (err) {
-        this.showError('Gagal menghapus massal: ' + err.message);
+        this.showError('Gagal hapus massal: ' + err.message);
       }
     };
-
     this.elements.confirmModal.classList.remove('hidden');
   }
 
@@ -721,7 +2331,6 @@ class VisionXWebApp {
       btnToggle.classList.add('btn-outline');
       selectionControls.classList.add('hidden');
     }
-
     this.elements.deleteSelectedText.textContent = `Hapus Terpilih (${count})`;
     btnDelete.disabled = count === 0;
   }
@@ -729,9 +2338,7 @@ class VisionXWebApp {
   async handleSelectDirectory() {
     try {
       const ok = await this.captureService.requestDirectoryAccess();
-      if (ok) {
-        this.showSuccess('Folder datasets/raw berhasil terhubung langsung!');
-      }
+      if (ok) this.showSuccess('Folder datasets/raw berhasil terhubung langsung!');
     } catch (err) {
       this.showError('Akses direktori dibatalkan atau tidak didukung browser ini.');
     }
@@ -747,96 +2354,26 @@ class VisionXWebApp {
     }
   }
 
-  renderRecentCaptures() {
-    const list = this.captureService.getRecentCaptures();
-    const container = this.elements.recentCapturesList;
-    this.elements.recentCapturesCount.textContent = `${list.length} item`;
-
-    if (list.length === 0) {
-      container.innerHTML = `<div class="empty-gallery-text">Belum ada gambar pada sesi ini. Tekan tombol Capture, SPACE, atau Impor Citra.</div>`;
-      return;
-    }
-
-    let html = '';
-    list.forEach(item => {
-      const isSelected = this.selectedItems.has(item.filename);
-      const selectedClass = isSelected ? 'selected' : '';
-      const sourceBadge = item.source === 'own_capture' ? '📸' : '💾';
-      const imgUrl = item.previewUrl || item.dataUrl || item.url || '';
-      const dimensions = (item.width && item.height) ? `${item.width}x${item.height}` : (item.resolution && item.resolution !== 'undefinedxundefined' ? item.resolution : '-');
-      const sizeText = item.formattedSize || (item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-');
-      const displayClass = item.className || '-';
-      const displayFilename = item.filename || '-';
-      const displaySource = item.source || '-';
-      const displayTime = item.timestamp || '-';
-
-      html += `
-        <div class="gallery-item-card ${selectedClass}" data-filename="${displayFilename}">
-          ${this.isSelectMode ? `
-            <div class="item-checkbox-wrapper">
-              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${displayFilename}" />
-            </div>
-          ` : ''}
-          <img src="${imgUrl}" alt="${displayFilename}" class="gallery-thumbnail" loading="lazy" onerror="this.style.opacity='0.4';" />
-          <div class="gallery-item-info">
-            <span class="gallery-item-class" title="Kelas">${displayClass}</span>
-            <span class="gallery-item-name" title="${displayFilename}">${displayFilename}</span>
-            <div class="gallery-item-meta">
-              <span title="Sumber Data">${sourceBadge} ${displaySource}</span>
-              <span title="Dimensi">${dimensions}</span>
-            </div>
-            <div class="gallery-item-submeta">
-              <span title="Ukuran">${sizeText}</span>
-              <span title="Waktu">${displayTime}</span>
-            </div>
-          </div>
-          ${!this.isSelectMode ? `
-            <button type="button" class="btn-delete-single" data-filename="${displayFilename}" data-class="${displayClass}" title="Hapus gambar ini">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
-          ` : ''}
-        </div>
-      `;
-    });
-
-    container.innerHTML = html;
-
-    // Attach listeners
-    if (this.isSelectMode) {
-      container.querySelectorAll('.gallery-item-card').forEach(card => {
-        card.addEventListener('click', (e) => {
-          const fn = card.dataset.filename;
-          if (fn) this.toggleItemSelection(fn);
-        });
-      });
-    } else {
-      container.querySelectorAll('.btn-delete-single').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const fn = btn.dataset.filename;
-          const cls = btn.dataset.class;
-          if (fn && cls) this.promptDeleteSingle(fn, cls);
-        });
-      });
-    }
-  }
-
   handleGlobalKeydown(e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
-      return;
-    }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
 
     if (e.code === 'Space' || e.key === 'c' || e.key === 'C') {
       e.preventDefault();
-      if (this.currentMode === 'collection') {
-        this.handleCapture();
-      }
+      if (this.currentMode === 'collection') this.handleCapture();
     } else if (e.key === 'm' || e.key === 'M') {
       const nextMode = this.currentMode === 'detection' ? 'collection' : 'detection';
       this.setMode(nextMode);
+    } else if (e.key === 'v' || e.key === 'V') {
+      e.preventDefault();
+      const nextState = !this.voiceEngine.config.enabled;
+      this.setVoiceEnabled(nextState);
+      this.showSuccessBanner(nextState ? 'Voice Assistant diaktifkan (V)' : 'Voice Assistant dimatikan (V)');
+    } else if (e.key === 'r' || e.key === 'R') {
+      e.preventDefault();
+      if (this.currentMode !== 'read_text') {
+        this.setMode('read_text');
+      }
+      this.handleTriggerOcr();
     }
   }
 
@@ -858,9 +2395,7 @@ class VisionXWebApp {
       const opt = document.createElement('option');
       opt.value = dev.deviceId;
       opt.textContent = dev.label || `Camera ${idx + 1}`;
-      if (dev.deviceId === currentVal) {
-        opt.selected = true;
-      }
+      if (dev.deviceId === currentVal) opt.selected = true;
       select.appendChild(opt);
     });
   }
@@ -891,10 +2426,10 @@ class VisionXWebApp {
     const text = this.elements.cameraStatusText;
 
     badge.className = 'badge';
-
     if (status === 'connected') {
       badge.classList.add('badge-connected');
       text.textContent = `Camera Connected (${resolution.width}x${resolution.height})`;
+      this.resetCameraPlaceholder();
       this.elements.placeholder.classList.add('hidden');
       this.elements.btnStart.disabled = true;
       this.elements.btnStop.disabled = false;
@@ -912,6 +2447,7 @@ class VisionXWebApp {
     } else {
       badge.classList.add('badge-disconnected');
       text.textContent = 'Camera Disconnected';
+      this.resetCameraPlaceholder();
       this.elements.placeholder.classList.remove('hidden');
       this.elements.btnStart.disabled = false;
       this.elements.btnStop.disabled = true;
@@ -919,15 +2455,87 @@ class VisionXWebApp {
   }
 
   handleCameraError(err) {
-    const msg = err.friendlyMessage || err.message || 'Gagal mengakses kamera.';
-    this.showError(msg);
+    const mainMsg = err.friendlyMessage || err.message || 'Gagal mengakses kamera.';
+    const suggestion = err.actionSuggestion ? `\n💡 Solusi: ${err.actionSuggestion}` : '';
+    this.showError(`${mainMsg}${suggestion}`, { duration: 9000 });
+    this.renderCameraErrorPlaceholder(err);
   }
 
-  showError(msg) {
+  renderCameraErrorPlaceholder(err) {
+    const placeholder = this.elements.placeholder;
+    if (!placeholder) return;
+
+    placeholder.classList.add('is-error');
+    const mainMsg = err.friendlyMessage || err.message || 'Gagal mengakses kamera.';
+    const suggestion = err.actionSuggestion || 'Periksa izin kamera pada browser Anda dan coba lagi.';
+    const category = err.category || 'ERROR';
+    const canRetry = err.canRetry !== false;
+
+    placeholder.innerHTML = `
+      <div class="camera-error-container">
+        <svg class="placeholder-icon error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span class="camera-error-badge">${category}</span>
+        <div class="placeholder-title error-title">${mainMsg}</div>
+        <div class="placeholder-desc error-desc">${suggestion}</div>
+        <div class="placeholder-actions">
+          ${canRetry ? `
+            <button id="btnPlaceholderRetry" class="btn btn-hero btn-placeholder-retry" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              <span>Coba Lagi (Retry)</span>
+            </button>
+          ` : ''}
+          <button id="btnPlaceholderDismiss" class="btn btn-placeholder-dismiss" type="button">
+            Tutup Pesan
+          </button>
+        </div>
+      </div>
+    `;
+
+    const btnRetry = placeholder.querySelector('#btnPlaceholderRetry');
+    if (btnRetry) {
+      btnRetry.addEventListener('click', () => {
+        this.resetCameraPlaceholder();
+        this.handleStartCamera();
+      });
+    }
+
+    const btnDismiss = placeholder.querySelector('#btnPlaceholderDismiss');
+    if (btnDismiss) {
+      btnDismiss.addEventListener('click', () => {
+        this.resetCameraPlaceholder();
+      });
+    }
+  }
+
+  resetCameraPlaceholder() {
+    const placeholder = this.elements.placeholder;
+    if (!placeholder) return;
+    placeholder.classList.remove('is-error');
+    placeholder.innerHTML = `
+      <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+      </svg>
+      <div class="placeholder-title">Kamera Belum Aktif</div>
+      <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video, deteksi YOLOv8, atau pengumpulan dataset.</div>
+    `;
+  }
+
+  showError(msg, options = {}) {
+    const duration = options.duration || 6000;
     this.elements.errorMessage.innerHTML = String(msg).replace(/\n/g, '<br/>');
     this.elements.errorBanner.classList.remove('hidden');
     this.elements.successBanner.classList.add('hidden');
-    setTimeout(() => this.elements.errorBanner.classList.add('hidden'), 6000);
+    if (this._errorBannerTimeout) clearTimeout(this._errorBannerTimeout);
+    this._errorBannerTimeout = setTimeout(() => this.elements.errorBanner.classList.add('hidden'), duration);
   }
 
   showSuccess(msg) {
@@ -951,202 +2559,1297 @@ class VisionXWebApp {
     } else if (state === 'error') {
       badge.classList.add('badge-error');
       text.textContent = textMessage || 'Model Error';
-      if (this.renderer && this.currentMode === 'detection') {
-        this.renderer.clear();
-      }
+      if (this.renderer && this.currentMode === 'detection') this.renderer.clear();
     } else {
       badge.classList.add('badge-disconnected');
       text.textContent = textMessage || 'Inference Inactive';
-      if (this.renderer && this.currentMode === 'detection') {
-        this.renderer.clear();
-      }
+      if (this.renderer && this.currentMode === 'detection') this.renderer.clear();
     }
   }
 
-  updateDiagnosticsUI() {
+  updateDiagnosticsUI(trackingOutput = null) {
     const d = this.inferenceService.diagnostics;
-    const status = this.inferenceService.status;
-
+    const status = this.inferenceService.status || d.status || 'idle';
     if (this.elements.diagModelState) {
       this.elements.diagModelState.textContent = status.toUpperCase();
       this.elements.diagModelState.className = `diag-val ${status}`;
     }
-    if (this.elements.diagLoadStarted && d.modelLoadingStarted) {
-      this.elements.diagLoadStarted.textContent = d.modelLoadingStarted;
+
+    // Tracking Engine Diagnostics (V0.7)
+    if (this.elements.diagTrackingStatus) {
+      const isTrackActive = this.trackingEngine && this.trackingEngine.isEnabled;
+      this.elements.diagTrackingStatus.textContent = isTrackActive ? 'ACTIVE' : 'STANDBY';
+      this.elements.diagTrackingStatus.className = `diag-val ${isTrackActive ? 'ready' : 'standby'}`;
     }
-    if (this.elements.diagFetchStarted && d.modelFetchStarted) {
-      this.elements.diagFetchStarted.textContent = d.modelFetchStarted;
+
+    if (this.trackingEngine) {
+      const stats = trackingOutput ? trackingOutput.stats : this.trackingEngine.getStats();
+      if (this.elements.diagVisibleTracks) {
+        this.elements.diagVisibleTracks.textContent = stats.visibleCount;
+      }
+      if (this.elements.diagTotalActiveTracks) {
+        this.elements.diagTotalActiveTracks.textContent = stats.totalActiveCount;
+      }
+      if (this.elements.diagNewTracks) {
+        this.elements.diagNewTracks.textContent = stats.newCount;
+      }
+      if (this.elements.diagLostTracks) {
+        this.elements.diagLostTracks.textContent = stats.lostCount;
+      }
+      if (this.elements.diagTrackSummary) {
+        const classEntries = Object.entries(stats.perClass || {});
+        const classStr = classEntries.length > 0
+          ? classEntries.map(([cls, cnt]) => `${cls}: ${cnt}`).join(', ')
+          : 'None';
+        this.elements.diagTrackSummary.textContent = `Unique: ${stats.uniqueTracksCount} | ${classStr}`;
+      }
     }
-    if (this.elements.diagFetchCompleted && d.modelFetchCompleted) {
-      this.elements.diagFetchCompleted.textContent = d.modelFetchCompleted;
+
+    // Unified Vision Engine Diagnostics
+    if (this.elements.diagFaceDetectStatus) {
+      const fStatus = this.faceDetector ? this.faceDetector.status : 'disabled';
+      this.elements.diagFaceDetectStatus.textContent = fStatus.toUpperCase();
+      this.elements.diagFaceDetectStatus.className = `diag-val ${fStatus === 'ready' || fStatus === 'detecting' ? 'ready' : fStatus}`;
     }
-    if (this.elements.diagModelSize && d.modelSizeFormatted) {
-      this.elements.diagModelSize.textContent = d.modelSizeFormatted;
+
+    if (this.elements.diagFaceRecogStatus) {
+      const rStatus = this.faceRecognizer ? this.faceRecognizer.status : 'disabled';
+      this.elements.diagFaceRecogStatus.textContent = rStatus.toUpperCase();
+      this.elements.diagFaceRecogStatus.className = `diag-val ${rStatus === 'ready' || rStatus === 'matching' ? 'ready' : rStatus}`;
     }
-    if (this.elements.diagSessionInit && d.sessionInitialized) {
-      this.elements.diagSessionInit.textContent = d.sessionInitialized;
+
+    if (this.elements.diagFaceDetectionsCount) {
+      this.elements.diagFaceDetectionsCount.textContent = this.faceDetector ? this.faceDetector.totalDetectionsCount : 0;
     }
-    if (this.elements.diagInputShape && d.modelInputShape) {
-      this.elements.diagInputShape.textContent = d.modelInputShape;
+
+    if (this.elements.diagIdentityMatchesCount) {
+      this.elements.diagIdentityMatchesCount.textContent = this.faceRecognizer ? this.faceRecognizer.identityMatchesCount : 0;
     }
-    if (this.elements.diagOutputShape && d.modelOutputShape) {
-      this.elements.diagOutputShape.textContent = d.modelOutputShape;
+
+    if (this.elements.diagCoordTransform) {
+      const dims = this.frameSource ? this.frameSource.getDimensions() : { width: 0, height: 0 };
+      const isMirrored = this.frameSource ? this.frameSource.isMirrored : false;
+      this.elements.diagCoordTransform.textContent = CoordinateMapper.getTransformStatus(dims, isMirrored);
     }
-    if (this.elements.diagFirstInferStart && d.firstInferenceStarted) {
-      this.elements.diagFirstInferStart.textContent = d.firstInferenceStarted;
+
+    if (this.elements.diagLoadStarted) {
+      this.elements.diagLoadStarted.textContent = `${this.inferenceService.loadTimeMs || '--'} ms`;
     }
-    if (this.elements.diagFirstInferComplete && d.firstInferenceCompleted) {
-      this.elements.diagFirstInferComplete.textContent = d.firstInferenceCompleted;
+    if (this.elements.diagModelSize && d.modelSizeFormatted) this.elements.diagModelSize.textContent = d.modelSizeFormatted;
+    if (this.elements.diagSessionInit && d.sessionInitialized) this.elements.diagSessionInit.textContent = d.sessionInitialized;
+    if (this.elements.diagInputShape && d.modelInputShape) this.elements.diagInputShape.textContent = d.modelInputShape;
+    if (this.elements.diagOutputShape && d.modelOutputShape) this.elements.diagOutputShape.textContent = d.modelOutputShape;
+    if (this.elements.diagFirstInferLatency) {
+      const yoloLat = d.lastInferenceLatencyMs || 0;
+      const faceLat = this.faceDetector ? this.faceDetector.lastLatencyMs : 0;
+      this.elements.diagFirstInferLatency.textContent = `YOLO: ${yoloLat}ms | Face: ${faceLat}ms`;
     }
-    if (this.elements.diagFirstInferLatency && d.firstInferenceLatencyMs !== null) {
-      this.elements.diagFirstInferLatency.textContent = `${d.firstInferenceLatencyMs} ms`;
+    if (this.elements.diagRawPreds) this.elements.diagRawPreds.textContent = d.lastRawPredictionsCount;
+    if (this.elements.diagAfterConf) this.elements.diagAfterConf.textContent = d.lastAfterConfidenceCount;
+    if (this.elements.diagAfterNms) this.elements.diagAfterNms.textContent = d.lastAfterNmsCount;
+    if (this.elements.diagFinalDetections) this.elements.diagFinalDetections.textContent = d.finalDetectionsCount ?? d.lastAfterNmsCount;
+    if (this.elements.diagTensorMinMax) {
+      this.elements.diagTensorMinMax.textContent = (d.tensorMin !== null && d.tensorMax !== null)
+        ? `[${d.tensorMin.toFixed(2)}, ${d.tensorMax.toFixed(2)}]`
+        : '-- / --';
     }
-    if (this.elements.diagRawPreds) {
-      this.elements.diagRawPreds.textContent = d.lastRawPredictionsCount;
+
+    // Voice Assistant Engine Diagnostics (V0.8)
+    if (this.voiceEngine) {
+      const vState = this.voiceEngine.getState();
+      if (this.elements.diagVoiceEnabled) {
+        this.elements.diagVoiceEnabled.textContent = vState.enabled ? 'ENABLED' : 'DISABLED';
+        this.elements.diagVoiceEnabled.className = `diag-val ${vState.enabled ? 'ready' : 'standby'}`;
+      }
+      if (this.elements.diagVoiceState) {
+        this.elements.diagVoiceState.textContent = vState.state;
+        const cls = vState.state === 'SPEAKING' ? 'badge-speaking ready' : (vState.state === 'READY' ? 'ready' : 'standby');
+        this.elements.diagVoiceState.className = `diag-val ${cls}`;
+      }
+      if (this.elements.diagVoiceQueue) {
+        this.elements.diagVoiceQueue.textContent = vState.queueLength;
+      }
+      if (this.elements.diagVoiceAnnouncements) {
+        this.elements.diagVoiceAnnouncements.textContent = vState.totalAnnouncements;
+      }
+      if (this.elements.diagVoiceLastMessage) {
+        this.elements.diagVoiceLastMessage.textContent = vState.lastMessage || '-';
+      }
     }
-    if (this.elements.diagAfterConf) {
-      this.elements.diagAfterConf.textContent = d.lastAfterConfidenceCount;
-    }
-    if (this.elements.diagAfterNms) {
-      this.elements.diagAfterNms.textContent = d.lastAfterNmsCount;
+
+    // OCR Engine Diagnostics (V0.9)
+    if (this.ocrService) {
+      const ocrDiag = this.ocrService.getDiagnostics();
+      if (this.elements.diagOcrStatus) {
+        this.elements.diagOcrStatus.textContent = ocrDiag.status;
+        this.elements.diagOcrStatus.className = `diag-val ${ocrDiag.status === 'READY' ? 'ready' : ocrDiag.status === 'PROCESSING' ? 'loading' : ocrDiag.status === 'ERROR' ? 'error' : 'standby'}`;
+      }
+      if (this.elements.diagOcrLatency) {
+        this.elements.diagOcrLatency.textContent = `${ocrDiag.lastLatencyMs || 0} ms`;
+      }
+      if (this.elements.diagOcrRegions) {
+        this.elements.diagOcrRegions.textContent = ocrDiag.lastRegionCount !== undefined ? ocrDiag.lastRegionCount : 0;
+      }
+      if (this.elements.diagOcrTime) {
+        this.elements.diagOcrTime.textContent = ocrDiag.lastTimestamp ? new Date(ocrDiag.lastTimestamp).toLocaleTimeString() : '--:--:--';
+      }
     }
   }
 
-  startRenderLoop() {
-    if (this.animationFrameId) return;
+  /**
+   * =========================================================================
+   * VOICE ASSISTANT ENGINE (V0.8) HANDLERS & HELPERS
+   * =========================================================================
+   */
+  syncVoiceUIFromConfig() {
+    if (!this.voiceEngine) return;
+    const cfg = this.voiceEngine.config;
 
-    this.prevTime = performance.now();
-    const renderFrame = async () => {
-      await this.processFrame();
-      this.animationFrameId = requestAnimationFrame(renderFrame);
-    };
+    if (this.elements.toggleVoice) {
+      this.elements.toggleVoice.checked = cfg.enabled;
+    }
+    if (this.elements.toggleVoiceStateLabel) {
+      this.elements.toggleVoiceStateLabel.textContent = cfg.enabled ? '● Enabled' : '○ Disabled';
+      this.elements.toggleVoiceStateLabel.className = `toggle-state-text ${cfg.enabled ? '' : 'disabled'}`;
+    }
+    if (this.elements.voiceModeSelect) {
+      this.elements.voiceModeSelect.value = cfg.mode || 'OBJECT_ALERTS';
+    }
+    if (this.elements.voiceVolumeSlider) {
+      this.elements.voiceVolumeSlider.value = cfg.volume !== undefined ? cfg.volume : 1.0;
+    }
+    if (this.elements.voiceVolumeVal) {
+      this.elements.voiceVolumeVal.textContent = `${Math.round((cfg.volume !== undefined ? cfg.volume : 1.0) * 100)}%`;
+    }
+    if (this.elements.voiceSpeedSlider) {
+      this.elements.voiceSpeedSlider.value = cfg.rate !== undefined ? cfg.rate : 1.0;
+    }
+    if (this.elements.voiceSpeedVal) {
+      this.elements.voiceSpeedVal.textContent = `${(cfg.rate !== undefined ? cfg.rate : 1.0).toFixed(1)}x`;
+    }
 
-    this.animationFrameId = requestAnimationFrame(renderFrame);
+    this.handleVoiceStateChange(this.voiceEngine.getState());
   }
 
-  stopRenderLoop() {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+  setVoiceEnabled(enabled) {
+    if (!this.voiceEngine) return;
+    this.voiceEngine.setEnabled(enabled);
+    if (this.elements.toggleVoice) {
+      this.elements.toggleVoice.checked = enabled;
+    }
+    if (this.elements.toggleVoiceStateLabel) {
+      this.elements.toggleVoiceStateLabel.textContent = enabled ? '● Enabled' : '○ Disabled';
+      this.elements.toggleVoiceStateLabel.className = `toggle-state-text ${enabled ? '' : 'disabled'}`;
+    }
+    this.saveVoiceConfig();
+    this.updateDiagnosticsUI();
+  }
+
+  setVoiceMode(mode) {
+    if (!this.voiceEngine) return;
+    this.voiceEngine.setMode(mode);
+    this.saveVoiceConfig();
+    this.updateDiagnosticsUI();
+  }
+
+  setVoiceVolume(volume) {
+    if (!this.voiceEngine) return;
+    this.voiceEngine.setVolume(volume);
+    if (this.elements.voiceVolumeVal) {
+      this.elements.voiceVolumeVal.textContent = `${Math.round(volume * 100)}%`;
+    }
+    this.saveVoiceConfig();
+  }
+
+  setVoiceSpeed(rate) {
+    if (!this.voiceEngine) return;
+    this.voiceEngine.setRate(rate);
+    if (this.elements.voiceSpeedVal) {
+      this.elements.voiceSpeedVal.textContent = `${rate.toFixed(1)}x`;
+    }
+    this.saveVoiceConfig();
+  }
+
+  saveVoiceConfig() {
+    if (!this.voiceEngine) return;
+    try {
+      const cfg = {
+        enabled: this.voiceEngine.config.enabled,
+        mode: this.voiceEngine.config.mode,
+        volume: this.voiceEngine.config.volume,
+        rate: this.voiceEngine.config.rate,
+        pitch: this.voiceEngine.config.pitch,
+        cooldownMs: this.voiceEngine.config.cooldownMs,
+        batchWindowMs: this.voiceEngine.config.batchWindowMs
+      };
+      localStorage.setItem('visionx_voice_config', JSON.stringify(cfg));
+    } catch (e) {
+      console.warn('[VisionX] Failed writing voice config to localStorage', e);
     }
   }
 
-  async processFrame() {
-    const video = this.elements.video;
+  handleVoiceStateChange(vState) {
+    // Update badge di header
+    if (this.elements.voiceBadge && this.elements.voiceBadgeText) {
+      if (!vState.isAvailable) {
+        this.elements.voiceBadge.className = 'badge badge-error';
+        this.elements.voiceBadgeText.textContent = 'Voice Unavailable';
+      } else if (!vState.enabled || vState.mode === 'OFF') {
+        this.elements.voiceBadge.className = 'badge badge-disconnected';
+        this.elements.voiceBadgeText.textContent = 'Voice: Off';
+      } else if (vState.state === 'SPEAKING') {
+        this.elements.voiceBadge.className = 'badge badge-speaking ready';
+        this.elements.voiceBadgeText.textContent = 'Voice: Speaking';
+      } else if (vState.state === 'PAUSED') {
+        this.elements.voiceBadge.className = 'badge badge-paused';
+        this.elements.voiceBadgeText.textContent = 'Voice: Paused';
+      } else {
+        this.elements.voiceBadge.className = 'badge badge-ready';
+        this.elements.voiceBadgeText.textContent = 'Voice: Ready';
+      }
+    }
 
-    if (!video || video.readyState < 2 || video.paused || video.ended) {
+    // Update status badge di panel kontrol
+    if (this.elements.voiceStatusBadge && this.elements.voiceStatusText) {
+      if (!vState.isAvailable) {
+        this.elements.voiceStatusBadge.className = 'badge badge-error';
+        this.elements.voiceStatusText.textContent = 'Voice unavailable';
+      } else if (!vState.enabled || vState.mode === 'OFF') {
+        this.elements.voiceStatusBadge.className = 'badge badge-disconnected';
+        this.elements.voiceStatusText.textContent = 'Disabled';
+      } else if (vState.state === 'SPEAKING') {
+        this.elements.voiceStatusBadge.className = 'badge badge-speaking ready';
+        this.elements.voiceStatusText.textContent = 'Speaking...';
+      } else if (vState.state === 'PAUSED') {
+        this.elements.voiceStatusBadge.className = 'badge badge-paused';
+        this.elements.voiceStatusText.textContent = 'Paused';
+      } else {
+        this.elements.voiceStatusBadge.className = 'badge badge-ready';
+        this.elements.voiceStatusText.textContent = 'Ready';
+      }
+    }
+
+    // Update text pesan terakhir
+    if (this.elements.voiceLastMsgText) {
+      this.elements.voiceLastMsgText.textContent = vState.lastMessage && vState.lastMessage !== '-'
+        ? `"${vState.lastMessage}"`
+        : 'Belum ada pengumuman suara.';
+    }
+
+    // Toggle Tombol Speech Response di Ask VisionX Panel
+    if (this.elements.btnStopSpeechResponse && this.elements.btnReadAloudResponse) {
+      if (vState.state === 'SPEAKING') {
+        this.elements.btnStopSpeechResponse.classList.remove('hidden');
+        this.elements.btnReadAloudResponse.classList.add('hidden');
+      } else {
+        this.elements.btnStopSpeechResponse.classList.add('hidden');
+        this.elements.btnReadAloudResponse.classList.remove('hidden');
+      }
+    }
+  }
+
+  // ==========================================================================
+  // V0.9 — OCR & READ TEXT MODE HANDLERS
+  // ==========================================================================
+
+  handleOcrStatusChange(statusOrInfo) {
+    const status = typeof statusOrInfo === 'string' ? statusOrInfo : (statusOrInfo && statusOrInfo.status ? statusOrInfo.status : 'READY');
+
+    if (this.elements.ocrStatusBadge && this.elements.ocrStatusText) {
+      this.elements.ocrStatusText.textContent = status;
+      this.elements.ocrStatusBadge.className = 'badge ' + (
+        status === 'READY' ? 'badge-ready' :
+        status === 'PROCESSING' || status === 'LOADING' ? 'badge-connecting' :
+        status === 'ERROR' ? 'badge-error' :
+        status === 'DONE' ? 'badge-ready' : 'badge-disconnected'
+      );
+    }
+
+    if (this.elements.ocrTelemetryStatus) {
+      this.elements.ocrTelemetryStatus.textContent = status;
+      this.elements.ocrTelemetryStatus.className = 'telemetry-value ' + (
+        status === 'READY' || status === 'DONE' ? 'status-ready' :
+        status === 'PROCESSING' || status === 'LOADING' ? 'status-processing' :
+        status === 'ERROR' ? 'status-error' : ''
+      );
+    }
+
+    if (this.elements.ocrBadge && this.elements.ocrBadgeText) {
+      this.elements.ocrBadgeText.textContent = `OCR: ${status}`;
+      this.elements.ocrBadge.className = 'badge ' + (
+        status === 'READY' || status === 'DONE' ? 'badge-ready' :
+        status === 'PROCESSING' || status === 'LOADING' ? 'badge-connecting' :
+        status === 'ERROR' ? 'badge-error' : 'badge-disconnected'
+      );
+    }
+
+    if (this.elements.btnTriggerOcr) {
+      this.elements.btnTriggerOcr.disabled = (status === 'PROCESSING' || status === 'LOADING');
+    }
+
+    this.updateDiagnosticsUI();
+  }
+
+  async handleTriggerOcr(isAuto = false, isReScan = false) {
+    if (!this.ocrService) {
+      if (!isAuto) this.showError('Layanan OCR tidak tersedia.');
       return;
     }
 
-    const currTime = performance.now();
-    const delta = (currTime - this.prevTime) / 1000;
-    this.prevTime = currTime;
-
-    if (delta > 0) {
-      const currentFps = 1.0 / delta;
-      this.fpsSmooth = this.fpsSmooth === 0 ? currentFps : (this.alphaFps * this.fpsSmooth + (1 - this.alphaFps) * currentFps);
-      this.elements.fpsValue.textContent = this.fpsSmooth.toFixed(1);
-    }
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    if (vw > 0 && vh > 0) {
-      this.renderer.resize(vw, vh);
-    }
-
-    if (this.currentMode === 'detection') {
-      if (this.inferenceService.isActive && !this.isProcessingFrame) {
-        this.isProcessingFrame = true;
-        try {
-          const result = await this.inferenceService.detect(video);
-          if (result) {
-            const { detections, frameId, inferenceTimeMs } = result;
-            this.renderer.render(detections, {
-              frameId,
-              inferenceTimeMs,
-              modelName: this.inferenceService.modelConfig.shortName
-            });
-
-            // Update badge object count
-            this.elements.detectionCountValue.textContent = detections.length;
-
-            // Highlight class chips on active detection
-            this.highlightDetectedChips(detections);
-
-            // Update diagnostics UI in real time
-            this.updateDiagnosticsUI();
-
-            if (this.isDebugVisible) {
-              this.updateDebugTable(detections, frameId, inferenceTimeMs);
-            }
-          }
-        } catch (err) {
-          console.error('[VisionX] Inference error in loop:', err);
-        } finally {
-          this.isProcessingFrame = false;
+    // 1. Verifikasi kamera aktif
+    if (this.cameraService.state.status !== 'connected' || !this.elements.video || this.elements.video.readyState < 2) {
+      if (!isAuto) {
+        this.showError('Nyalakan kamera terlebih dahulu sebelum membaca teks.');
+        if (this.voiceEngine && this.voiceEngine.config.enabled) {
+          this.voiceEngine.speak('Kamera belum aktif.', { priority: SpeechPriority.NORMAL });
         }
       }
-    } else {
-      this.renderer.clear();
-    }
-  }
-
-  highlightDetectedChips(detections) {
-    const activeClasses = new Set(detections.map(d => d.class_name));
-    const chips = this.elements.targetChipsContainer.querySelectorAll('.class-chip');
-    chips.forEach(chip => {
-      const cls = chip.dataset.chipClass;
-      if (activeClasses.has(cls)) {
-        chip.classList.add('active-detected');
-      } else {
-        chip.classList.remove('active-detected');
-      }
-    });
-  }
-
-  updateDebugTable(detections = [], frameId = 0, latencyMs = 0) {
-    this.elements.debugFrameId.textContent = `#${frameId}`;
-    this.elements.debugLatency.textContent = `${latencyMs} ms`;
-    if (this.elements.debugObjectCount) {
-      this.elements.debugObjectCount.textContent = detections.length;
-    }
-
-    const tbody = this.elements.debugTableBody;
-
-    if (!detections || detections.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" class="text-center text-muted" style="padding: 18px 10px;">
-            Tidak ada objek terdeteksi (0 bounding box). Latar bersih / objek di bawah threshold ${this.inferenceService.confThreshold}.
-          </td>
-        </tr>
-      `;
       return;
     }
 
-    let rowsHtml = '';
-    detections.forEach((det, idx) => {
-      const timeStr = new Date(det.timestamp || Date.now()).toLocaleTimeString();
-      const confBadge = (det.confidence * 100).toFixed(1) + '%';
-      const color = this.renderer.getColor(det.class_name);
+    // 2. Cegah scan jika OCR sedang sibuk
+    if (this.ocrService.getStatus() === OCRStatus.PROCESSING) {
+      return;
+    }
 
-      rowsHtml += `
-        <tr>
-          <td><strong>${idx + 1}</strong></td>
-          <td><span style="color: ${color.border}; font-weight: 700;">${det.class_name}</span></td>
-          <td><span style="color: #10b981; font-weight: 600;">${confBadge}</span></td>
-          <td>[${det.x1}, ${det.y1}, ${det.x2}, ${det.y2}]</td>
-          <td>#${det.frameId}</td>
-          <td>${timeStr}</td>
-        </tr>
-      `;
+    // 3. Suara feedback awal aksesibilitas
+    if (!isAuto && this.voiceEngine && this.voiceEngine.config.enabled) {
+      const promptText = isReScan ? 'Memindai ulang teks.' : 'Memproses teks.';
+      this.voiceEngine.speak(promptText, { priority: SpeechPriority.NORMAL });
+    }
+
+    const currentLang = this.elements.ocrLangSelect ? this.elements.ocrLangSelect.value : 'ind';
+    const profile = this.elements.ocrProfileSelect ? this.elements.ocrProfileSelect.value : OCR_PROFILES.AUTO;
+    const roiMode = this.elements.ocrRoiSelect ? this.elements.ocrRoiSelect.value : ROI_MODES.AUTO;
+
+    try {
+      // 4. Jalankan OCR secara asinkron dengan profile & ROI terpilih
+      const result = await this.ocrService.recognize(this.elements.video, {
+        language: currentLang,
+        profile,
+        roiMode
+      });
+      this.currentOcrResult = result;
+      this.currentOcrRegions = result.regions || [];
+
+      // 5. Update UI hasil baca teks
+      this.updateOcrUI(result);
+
+      if (result.text && result.text.trim().length > 0 && result.text !== 'Teks kurang jelas untuk dibaca.') {
+        const cleanText = result.text.trim();
+
+        // Voice feedback: "Berhasil membaca teks."
+        if (!isAuto && this.voiceEngine && this.voiceEngine.config.enabled) {
+          this.voiceEngine.speak('Berhasil membaca teks.', { priority: SpeechPriority.NORMAL });
+        }
+
+        // Jika Auto Read aktif, bacakan teks dengan duplicate text suppression
+        if (this.isAutoReadOcr) {
+          const textHash = cleanText.toLowerCase();
+          if (textHash !== this.lastSpokenOcrHash) {
+            this.lastSpokenOcrHash = textHash;
+            if (this.voiceEngine && this.voiceEngine.config.enabled) {
+              this.voiceEngine.speak(cleanText, { priority: SpeechPriority.NORMAL });
+            }
+          }
+        }
+      } else if (result.text === 'Teks kurang jelas untuk dibaca.') {
+        if (!isAuto && this.voiceEngine && this.voiceEngine.config.enabled) {
+          this.voiceEngine.speak('Teks kurang jelas untuk dibaca.', { priority: SpeechPriority.NORMAL });
+        }
+      } else {
+        // Teks tidak ditemukan
+        if (!isAuto && this.voiceEngine && this.voiceEngine.config.enabled) {
+          this.voiceEngine.speak('Teks tidak ditemukan.', { priority: SpeechPriority.NORMAL });
+        }
+      }
+    } catch (err) {
+      console.warn('[VisionX OCR Error]', err);
+      if (this.elements.ocrTelemetryStatus) {
+        this.elements.ocrTelemetryStatus.textContent = 'ERROR';
+        this.elements.ocrTelemetryStatus.className = 'telemetry-value status-error';
+      }
+      if (!isAuto) {
+        this.showError(`Gagal membaca teks: ${err.message}`);
+        if (this.voiceEngine && this.voiceEngine.config.enabled) {
+          this.voiceEngine.speak('Terjadi kesalahan membaca teks.', { priority: SpeechPriority.NORMAL });
+        }
+      }
+    }
+  }
+
+  handleOcrProfileChange(profile) {
+    if (this.ocrService) {
+      this.ocrService.setProfile(profile);
+    }
+    if (profile === 'HANDWRITING') {
+      this.showSuccess('Profil Handwriting aktif: menggunakan preprocessing khusus tulisan tangan.');
+    } else if (profile === 'PRINTED') {
+      this.showSuccess('Profil Printed Text aktif: dioptimalkan untuk teks cetak & buku.');
+    } else {
+      this.showSuccess('Profil Auto aktif: adaptif terhadap kualitas input.');
+    }
+  }
+
+  handleOcrRoiChange(roiMode) {
+    if (this.ocrService) {
+      this.ocrService.setRoiMode(roiMode);
+    }
+  }
+
+  handleStopOcr() {
+    if (this.ocrService) {
+      this.ocrService.stop();
+    }
+    this.currentOcrRegions = [];
+    if (this.voiceEngine) {
+      this.voiceEngine.stop();
+    }
+    this.showSuccess('Pembacaan teks dihentikan.');
+  }
+
+  handleSpeakOcr() {
+    if (!this.currentOcrResult || !this.currentOcrResult.text || this.currentOcrResult.text.trim().length === 0) {
+      if (this.voiceEngine && this.voiceEngine.config.enabled) {
+        this.voiceEngine.speak('Belum ada teks untuk dibacakan.', { priority: SpeechPriority.HIGH });
+      }
+      this.showError('Belum ada teks OCR untuk dibacakan.');
+      return;
+    }
+
+    if (this.voiceEngine) {
+      this.voiceEngine.speak(this.currentOcrResult.text, { priority: SpeechPriority.HIGH });
+    }
+  }
+
+  async handleOcrLanguageChange(lang) {
+    if (!this.ocrService) return;
+    try {
+      await this.ocrService.setLanguage(lang);
+      this.showSuccess(`Bahasa OCR diubah ke: ${lang === 'ind' ? 'Bahasa Indonesia' : 'English'}`);
+    } catch (err) {
+      this.showError(`Gagal mengubah bahasa OCR: ${err.message}`);
+    }
+  }
+
+  handleToggleAutoReadOcr(enabled) {
+    this.isAutoReadOcr = enabled;
+    if (this.elements.autoReadStateLabel) {
+      this.elements.autoReadStateLabel.textContent = enabled ? 'ON' : 'OFF';
+      this.elements.autoReadStateLabel.className = `toggle-state-text ${enabled ? '' : 'disabled'}`;
+    }
+    if (this.elements.toggleAutoReadOcr) {
+      this.elements.toggleAutoReadOcr.checked = enabled;
+    }
+
+    if (this.voiceEngine && this.voiceEngine.config.enabled) {
+      this.voiceEngine.speak(
+        enabled ? 'Membaca otomatis diaktifkan.' : 'Membaca otomatis dimatikan.',
+        { priority: SpeechPriority.NORMAL }
+      );
+    }
+  }
+
+  handleCopyOcrText() {
+    if (!this.currentOcrResult || !this.currentOcrResult.text) {
+      this.showError('Tidak ada teks untuk disalin.');
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(this.currentOcrResult.text)
+        .then(() => this.showSuccess('Teks OCR berhasil disalin ke clipboard!'))
+        .catch(() => this.fallbackCopyText(this.currentOcrResult.text));
+    } else {
+      this.fallbackCopyText(this.currentOcrResult.text);
+    }
+  }
+
+  fallbackCopyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    this.showSuccess('Teks OCR berhasil disalin ke clipboard!');
+  }
+
+  handleClearOcrText() {
+    this.currentOcrResult = null;
+    this.currentOcrRegions = [];
+    this.lastSpokenOcrHash = '';
+
+    if (this.elements.ocrResultContent) {
+      this.elements.ocrResultContent.textContent = '';
+      this.elements.ocrResultContent.classList.add('hidden');
+    }
+    if (this.elements.ocrResultPlaceholder) {
+      this.elements.ocrResultPlaceholder.textContent = 'Belum ada teks dipindai. Arahkan kamera ke teks lalu tekan tombol "Read Text" atau tombol keyboard R.';
+      this.elements.ocrResultPlaceholder.classList.remove('hidden');
+    }
+    if (this.elements.ocrResultBox) {
+      this.elements.ocrResultBox.classList.add('empty');
+    }
+    if (this.elements.ocrCharWordCount) {
+      this.elements.ocrCharWordCount.textContent = '0 kata • 0 karakter';
+    }
+    if (this.elements.ocrTelemetryLatency) this.elements.ocrTelemetryLatency.textContent = '0 ms';
+    if (this.elements.ocrTelemetryRegions) this.elements.ocrTelemetryRegions.textContent = '0 boxes';
+    if (this.elements.ocrTelemetryConfidence) this.elements.ocrTelemetryConfidence.textContent = '--';
+    if (this.elements.ocrTelemetryQuality) {
+      this.elements.ocrTelemetryQuality.textContent = 'GOOD';
+      this.elements.ocrTelemetryQuality.className = 'telemetry-value status-ready';
+    }
+    if (this.elements.ocrTelemetryResolution) this.elements.ocrTelemetryResolution.textContent = '--';
+    if (this.elements.ocrTelemetryTime) this.elements.ocrTelemetryTime.textContent = '--:--:--';
+    if (this.elements.ocrTelemetryMethod) this.elements.ocrTelemetryMethod.textContent = 'STANDARD';
+    if (this.elements.ocrWarningBanner) this.elements.ocrWarningBanner.classList.add('hidden');
+  }
+
+  updateOcrUI(result) {
+    const text = (result && result.text) ? result.text.trim() : '';
+    const wordCount = text.length > 0 ? text.split(/\s+/).length : 0;
+    const charCount = text.length;
+
+    // Telemetry bar
+    if (this.elements.ocrTelemetryLatency) {
+      this.elements.ocrTelemetryLatency.textContent = `${result.processingTimeMs || 0} ms`;
+    }
+    if (this.elements.ocrTelemetryRegions) {
+      this.elements.ocrTelemetryRegions.textContent = `${result.regions ? result.regions.length : 0} boxes`;
+    }
+    if (this.elements.ocrTelemetryConfidence) {
+      this.elements.ocrTelemetryConfidence.textContent = result.confidence !== null ? `${result.confidence}%` : '--';
+    }
+    if (this.elements.ocrTelemetryQuality) {
+      const q = result.quality || 'GOOD';
+      this.elements.ocrTelemetryQuality.textContent = q;
+      this.elements.ocrTelemetryQuality.className = `telemetry-value ${q === 'GOOD' ? 'status-ready' : q === 'FAIR' ? 'status-processing' : 'status-error'}`;
+    }
+    if (this.elements.ocrTelemetryResolution && result.roiAudit) {
+      this.elements.ocrTelemetryResolution.textContent = `${result.roiAudit.cropWidth}×${result.roiAudit.cropHeight}`;
+    }
+    if (this.elements.camDiagOcrInput && result.roiAudit) {
+      this.elements.camDiagOcrInput.textContent = `${result.roiAudit.cropWidth}×${result.roiAudit.cropHeight}`;
+    }
+    if (this.elements.ocrTelemetryTime) {
+      this.elements.ocrTelemetryTime.textContent = result.timestamp ? new Date(result.timestamp).toLocaleTimeString() : '--:--:--';
+    }
+    if (this.elements.ocrTelemetryMethod) {
+      this.elements.ocrTelemetryMethod.textContent = (result.preprocessingMethod || 'STANDARD').toUpperCase();
+    }
+
+    // Warning Banner if Low Confidence / Handwriting profile notice
+    if (this.elements.ocrWarningBanner && this.elements.ocrWarningText) {
+      if (result.isLowConfidence || (result.profile === 'HANDWRITING' && result.confidence < 75)) {
+        this.elements.ocrWarningBanner.classList.remove('hidden');
+        this.elements.ocrWarningText.textContent = result.statusMessage || `Confidence (${result.confidence}%) — coba dekatkan kamera / gunakan pencahayaan lebih baik.`;
+      } else {
+        this.elements.ocrWarningBanner.classList.add('hidden');
+      }
+    }
+
+    // Counts
+    if (this.elements.ocrCharWordCount) {
+      this.elements.ocrCharWordCount.textContent = `${wordCount} kata • ${charCount} karakter`;
+    }
+
+    // Result card display
+    if (text.length > 0) {
+      if (this.elements.ocrResultPlaceholder) this.elements.ocrResultPlaceholder.classList.add('hidden');
+      if (this.elements.ocrResultContent) {
+        this.elements.ocrResultContent.textContent = text;
+        this.elements.ocrResultContent.classList.remove('hidden');
+      }
+      if (this.elements.ocrResultBox) this.elements.ocrResultBox.classList.remove('empty');
+    } else {
+      if (this.elements.ocrResultPlaceholder) {
+        this.elements.ocrResultPlaceholder.textContent = 'Tidak ditemukan teks pada frame ini.';
+        this.elements.ocrResultPlaceholder.classList.remove('hidden');
+      }
+      if (this.elements.ocrResultContent) {
+        this.elements.ocrResultContent.textContent = '';
+        this.elements.ocrResultContent.classList.add('hidden');
+      }
+      if (this.elements.ocrResultBox) this.elements.ocrResultBox.classList.add('empty');
+    }
+
+    this.updateDiagnosticsUI();
+  }
+
+  /**
+   * Menjalankan Golden Test (coco_train_000415_1b9b81.jpg) langsung di browser ONNX Runtime
+   */
+  async runGoldenTest() {
+    if (!this.inferenceService.isModelLoaded) {
+      this.showError('Model belum siap untuk Golden Test.');
+      return;
+    }
+
+    try {
+      this.showSuccess('Menjalankan Golden Test citra terverifikasi...');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Gagal memuat file golden test /test/golden_test.jpg'));
+        img.src = '/test/golden_test.jpg?' + Date.now();
+      });
+
+      // Sesuaikan ukuran renderer dengan ukuran citra golden test
+      this.renderer.resize(img.naturalWidth, img.naturalHeight);
+
+      // Jalankan deteksi
+      const result = await this.inferenceService.detect(img);
+      if (result) {
+        const { detections, frameId, inferenceTimeMs } = result;
+        this.renderer.render(detections, {
+          frameId,
+          inferenceTimeMs,
+          modelName: this.inferenceService.modelConfig.shortName
+        });
+
+        this.elements.detectionCountValue.textContent = detections.length;
+        this.highlightDetectedChips(detections);
+        this.updateDiagnosticsUI();
+        this.updateDebugTable(detections, frameId, inferenceTimeMs);
+
+        console.log(
+          `[VisionX Golden Test] Berhasil mendeteksi ${detections.length} objek:`,
+          detections.map(d => `${d.class_name} (${(d.confidence * 100).toFixed(1)}%)`)
+        );
+
+        const summary = detections.map(d => `${d.class_name} (${(d.confidence * 100).toFixed(0)}%)`).join(', ');
+        this.showSuccess(`Golden Test Sukses: ${detections.length} objek terdeteksi [${summary}] (${inferenceTimeMs}ms)`);
+      }
+    } catch (err) {
+      console.error('[VisionX Golden Test Error]', err);
+      this.showError('Golden test gagal: ' + err.message);
+    }
+  }
+
+  // =========================================================================
+  // V1.0 AI Vision Assistant Controller Methods
+  // =========================================================================
+
+  /**
+   * Mengambil snapshot frame kamera saat ini secara on-demand
+   * @returns {string|null} Data URL JPEG snapshot atau null jika kamera belum aktif
+   */
+  captureCameraSnapshot() {
+    if (!this.elements.video || this.elements.video.readyState < 2) {
+      return null;
+    }
+    try {
+      const video = this.elements.video;
+      const w = video.videoWidth || 640;
+      const h = video.videoHeight || 480;
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = w;
+      snapCanvas.height = h;
+      const ctx = snapCanvas.getContext('2d');
+      if (this.frameSource && this.frameSource.isMirrored) {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, w, h);
+      return snapCanvas.toDataURL('image/jpeg', 0.85);
+    } catch (err) {
+      console.warn('[VisionX] Gagal membuat snapshot kamera untuk AI Assistant:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Mengompilasi VisionContext visual saat ini dari subsistem VisionX
+   * @returns {Object} JSON Context dari VisionContextBuilder
+   */
+  buildCurrentVisionContext() {
+    const video = this.elements.video;
+    const cameraInfo = {
+      width: video?.videoWidth || 640,
+      height: video?.videoHeight || 480,
+      isConnected: this.cameraService?.state?.status === 'connected',
+      label: this.cameraService?.currentDeviceId || 'Default Camera'
+    };
+
+    return VisionContextBuilder.build({
+      detections: this.lastDetections || [],
+      trackingEngine: this.trackingEngine,
+      ocrResult: this.currentOcrResult,
+      identityState: this.lastIdentityState || (this.faceRecognizer ? this.faceRecognizer.getLatestIdentity() : null),
+      objectMemory: this.objectMemory,
+      personalObjectRegistry: this.personalObjectRegistry,
+      safetyEngine: this.safetyEngine,
+      alertManager: this.alertManager,
+      sceneHistoryEngine: this.sceneHistoryEngine,
+      cameraInfo,
+      currentMode: this.currentMode
     });
+  }
 
-    tbody.innerHTML = rowsHtml;
+  /**
+   * Memulai 1 Hz background scene history sampler (terisolasi di luar processFrame)
+   */
+  startSceneHistorySampler() {
+    if (this.historySamplerInterval) return;
+    this.historySamplerInterval = setInterval(() => {
+      if (!this.sceneHistoryEngine) return;
+      try {
+        if (this.currentMode === 'detection' || this.currentMode === 'read_text') {
+          const ctx = this.buildCurrentVisionContext();
+          if (ctx) {
+            const snapshot = SceneHistoryEngine.createSnapshotFromContext(ctx);
+            this.sceneHistoryEngine.record(snapshot);
+          }
+        }
+      } catch (sampleErr) {
+        console.warn('[VisionX] Scene history sampling error:', sampleErr);
+      }
+    }, 1000);
+  }
+
+  /**
+   * Menghentikan background sampler saat teardown
+   */
+  stopSceneHistorySampler() {
+    if (this.historySamplerInterval) {
+      clearInterval(this.historySamplerInterval);
+      this.historySamplerInterval = null;
+    }
+  }
+
+  /**
+   * Menangani submit pertanyaan ke VisionX Assistant
+   * @param {string} prompt Pertanyaan pengguna
+   */
+  async handleAskVisionSubmit(prompt) {
+    const query = String(prompt || '').trim();
+    if (!query) {
+      if (this.elements.askVisionInput) this.elements.askVisionInput.focus();
+      return;
+    }
+
+    if (!this.visionAssistant) {
+      this.showAssistantError('AI Assistant belum diinisialisasi.');
+      return;
+    }
+
+    // Kosongkan input dan pertahankan fokus keyboard untuk percakapan bertingkat
+    if (this.elements.askVisionInput) {
+      this.elements.askVisionInput.value = '';
+      this.elements.askVisionInput.focus();
+    }
+
+    try {
+      await this.visionAssistant.ask(query);
+    } catch (err) {
+      console.warn('[VisionX] Peringatan handleAskVisionSubmit:', err);
+    } finally {
+      if (this.elements.askVisionInput) {
+        this.elements.askVisionInput.focus();
+      }
+    }
+  }
+
+  /**
+   * Menangani perubahan state VisionAssistant (LOADING, SUCCESS, ERROR, IDLE)
+   * @param {Object} statePayload
+   */
+  handleAssistantStateChange(statePayload) {
+    const { state, isLoading, lastResult, lastError, latencyMs } = statePayload;
+
+    // 1. Update status badge
+    if (this.elements.aiAssistantStatusBadge && this.elements.aiAssistantStatusText) {
+      if (state === AssistantState.LOADING) {
+        this.elements.aiAssistantStatusBadge.className = 'badge badge-speaking';
+        this.elements.aiAssistantStatusText.textContent = 'Menganalisis...';
+      } else if (state === AssistantState.ERROR) {
+        this.elements.aiAssistantStatusBadge.className = 'badge badge-error';
+        this.elements.aiAssistantStatusText.textContent = 'Error';
+      } else if (state === AssistantState.SUCCESS) {
+        this.elements.aiAssistantStatusBadge.className = 'badge badge-ready';
+        this.elements.aiAssistantStatusText.textContent = 'Menjawab';
+      } else {
+        this.elements.aiAssistantStatusBadge.className = 'badge badge-ready';
+        this.elements.aiAssistantStatusText.textContent = 'AI Ready';
+      }
+    }
+
+    // 2. Update Submit Button & Input loading states
+    if (this.elements.btnAskVisionSubmit) {
+      this.elements.btnAskVisionSubmit.disabled = isLoading;
+      const textSpan = this.elements.btnAskVisionSubmit.querySelector('.btn-ask-text');
+      if (textSpan) {
+        textSpan.textContent = isLoading ? '...' : 'Tanya';
+      }
+    }
+    if (this.elements.askVisionInput) {
+      this.elements.askVisionInput.disabled = isLoading;
+    }
+
+    // 3. Update Loading indicator
+    if (this.elements.askVisionLoading) {
+      this.elements.askVisionLoading.classList.toggle('hidden', !isLoading);
+    }
+
+    // 4. Update Error banner
+    if (this.elements.askVisionError) {
+      if (state === AssistantState.ERROR && lastError) {
+        this.elements.askVisionError.classList.remove('hidden');
+        if (this.elements.askVisionErrorMessage) {
+          this.elements.askVisionErrorMessage.textContent = typeof lastError === 'string' ? lastError : lastError.message || 'Terjadi kesalahan.';
+        }
+      } else {
+        this.elements.askVisionError.classList.add('hidden');
+      }
+    }
+
+    // 5. Update Response Area & Multi-turn Conversation Thread (Phase D)
+    if (state === AssistantState.SUCCESS && lastResult) {
+      if (this.elements.askVisionResponseArea) {
+        this.elements.askVisionResponseArea.classList.remove('hidden');
+      }
+      if (this.elements.askVisionResponseText) {
+        this.elements.askVisionResponseText.textContent = lastResult.answer;
+      }
+      if (this.elements.askVisionMeta) {
+        this.elements.askVisionMeta.textContent = `Provider: ${lastResult.provider} • Latency: ${latencyMs}ms • Snapshot on-demand`;
+      }
+      this.renderConversationThread();
+    }
+  }
+
+  /**
+   * Render thread percakapan multi-turn di UI (Phase D)
+   */
+  renderConversationThread() {
+    if (!this.elements.visionConversationThread || !this.visionAssistant?.conversationManager) return;
+    const turns = this.visionAssistant.conversationManager.getAllTurns();
+    if (turns.length === 0) {
+      this.elements.visionConversationThread.classList.add('hidden');
+      this.elements.visionConversationThread.innerHTML = '';
+      return;
+    }
+
+    this.elements.visionConversationThread.classList.remove('hidden');
+    this.elements.visionConversationThread.innerHTML = '';
+
+    for (const turn of turns) {
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${turn.role === 'user' ? 'chat-user' : 'chat-assistant'}`;
+
+      const content = document.createElement('div');
+      content.className = 'chat-bubble-content';
+      content.textContent = turn.content;
+      bubble.appendChild(content);
+
+      const meta = document.createElement('div');
+      meta.className = 'chat-bubble-meta';
+
+      const roleSpan = document.createElement('span');
+      roleSpan.textContent = turn.role === 'user' ? '👤 Anda' : '🤖 VisionX';
+      meta.appendChild(roleSpan);
+
+      const timeSpan = document.createElement('span');
+      timeSpan.textContent = new Date(turn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      meta.appendChild(timeSpan);
+
+      bubble.appendChild(meta);
+      this.elements.visionConversationThread.appendChild(bubble);
+    }
+
+    // Auto-scroll HANYA container thread percakapan (bukan seluruh window)
+    this.elements.visionConversationThread.scrollTop = this.elements.visionConversationThread.scrollHeight;
+  }
+
+  showAssistantError(msg) {
+    if (this.elements.askVisionError) {
+      this.elements.askVisionError.classList.remove('hidden');
+      if (this.elements.askVisionErrorMessage) {
+        this.elements.askVisionErrorMessage.textContent = msg;
+      }
+    }
+  }
+
+  handleClearAssistantResponse() {
+    if (this.visionAssistant) {
+      this.visionAssistant.clear();
+    }
+    if (this.elements.visionConversationThread) {
+      this.elements.visionConversationThread.innerHTML = '';
+      this.elements.visionConversationThread.classList.add('hidden');
+    }
+    if (this.elements.askVisionResponseArea) {
+      this.elements.askVisionResponseArea.classList.add('hidden');
+    }
+    if (this.elements.askVisionError) {
+      this.elements.askVisionError.classList.add('hidden');
+    }
+    if (this.elements.askVisionInput) {
+      this.elements.askVisionInput.value = '';
+      this.elements.askVisionInput.focus();
+    }
+  }
+
+  /**
+   * Update visualisasi panel Object Memory di UI secara realtime (V1.1)
+   */
+  updateObjectMemoryUI() {
+    if (!this.objectMemory) return;
+
+    const stats = this.objectMemory.getStats();
+    const activeObjects = this.objectMemory.getActiveObjects();
+    const recentEvents = this.objectMemory.getRecentEvents(8);
+
+    // 1. Update counter badges
+    if (this.elements.memoryRecordsCount) {
+      this.elements.memoryRecordsCount.textContent = stats.totalRecords;
+    }
+    if (this.elements.memoryActiveBadge) {
+      this.elements.memoryActiveBadge.textContent = `${activeObjects.length} aktif`;
+    }
+    if (this.elements.memoryEventsCount) {
+      this.elements.memoryEventsCount.textContent = `${stats.totalEvents} event`;
+    }
+    if (this.elements.memoryTotalObjectsVal) {
+      this.elements.memoryTotalObjectsVal.textContent = stats.totalRecords;
+    }
+    if (this.elements.memoryLastEventTimeVal) {
+      this.elements.memoryLastEventTimeVal.textContent = stats.lastEventTime || '--:--:--';
+    }
+
+    // 2. Render Current Objects Chips
+    if (this.elements.memoryCurrentObjectsList) {
+      if (activeObjects.length === 0) {
+        this.elements.memoryCurrentObjectsList.innerHTML = '<span class="memory-empty-text">Tidak ada objek yang sedang terlihat aktif.</span>';
+      } else {
+        const chipsHtml = activeObjects.map(obj => `
+          <div class="memory-object-chip" title="Posisi: ${obj.lastSpatialPosition}">
+            <span class="chip-id">#${obj.trackId}</span>
+            <span class="chip-name">${obj.className}</span>
+            <span class="chip-zone">(${obj.lastSpatialPosition})</span>
+          </div>
+        `).join('');
+        this.elements.memoryCurrentObjectsList.innerHTML = chipsHtml;
+      }
+    }
+
+    // 3. Render Recent Events Log
+    if (this.elements.memoryRecentEventsList) {
+      if (recentEvents.length === 0) {
+        this.elements.memoryRecentEventsList.innerHTML = '<span class="memory-empty-text">Belum ada rekaman aktivitas event objek.</span>';
+      } else {
+        const eventsHtml = recentEvents.map(evt => {
+          let tagClass = 'tag-updated';
+          let tagText = 'UPDATE';
+          if (evt.type === 'OBJECT_ENTERED') { tagClass = 'tag-entered'; tagText = 'ENTER'; }
+          else if (evt.type === 'OBJECT_LEFT') { tagClass = 'tag-left'; tagText = 'LEFT'; }
+          else if (evt.type === 'OBJECT_RETURNED') { tagClass = 'tag-returned'; tagText = 'RETURN'; }
+
+          return `
+            <div class="memory-event-item">
+              <span class="memory-event-time">${evt.timeString || ''}</span>
+              <span class="memory-event-tag ${tagClass}">${tagText}</span>
+              <span class="memory-event-desc">${evt.description || ''}</span>
+            </div>
+          `;
+        }).join('');
+        this.elements.memoryRecentEventsList.innerHTML = eventsHtml;
+      }
+    }
+  }
+
+  // =========================================================================
+  // V1.2 Personal Objects UI & Handlers
+  // =========================================================================
+
+  async handleCaptureEnrollRefCam() {
+    if (!this.objectEnrollment) return;
+    const video = this.elements.video;
+    if (!video || video.readyState < 2) {
+      this.showError('Kamera belum aktif. Silakan mulai kamera terlebih dahulu.');
+      return;
+    }
+
+    try {
+      const angle = this.elements.refAngleSelect ? this.elements.refAngleSelect.value : 'front';
+      const ref = await this.objectEnrollment.processReferenceImage({
+        angle,
+        sourceElement: video
+      });
+
+      this.tempEnrollmentReferences.push(ref);
+      this.renderEnrollRefGallery();
+      this.showSuccess(`Foto referensi (${angle}) berhasil ditambahkan (${this.tempEnrollmentReferences.length} foto).`);
+    } catch (err) {
+      this.showError('Gagal mengambil referensi kamera: ' + err.message);
+    }
+  }
+
+  async handleUploadEnrollRefFile(files) {
+    if (!this.objectEnrollment || !files || files.length === 0) return;
+    const file = files[0];
+    const angle = this.elements.refAngleSelect ? this.elements.refAngleSelect.value : 'front';
+
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const ref = await this.objectEnrollment.processReferenceImage({
+        angle,
+        dataUrl
+      });
+
+      this.tempEnrollmentReferences.push(ref);
+      this.renderEnrollRefGallery();
+      this.showSuccess(`Foto referensi (${angle}) berhasil diunggah (${this.tempEnrollmentReferences.length} foto).`);
+    } catch (err) {
+      this.showError('Gagal memproses file foto: ' + err.message);
+    }
+  }
+
+  renderEnrollRefGallery() {
+    if (!this.elements.enrollRefPreviewGallery) return;
+
+    if (this.tempEnrollmentReferences.length === 0) {
+      this.elements.enrollRefPreviewGallery.innerHTML = '<span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut).</span>';
+      return;
+    }
+
+    this.elements.enrollRefPreviewGallery.innerHTML = this.tempEnrollmentReferences.map((ref, idx) => `
+      <div class="ref-thumb-chip">
+        <span>#${idx + 1} (${ref.angle})</span>
+        <button type="button" class="ref-remove-btn" onclick="window.visionXApp.removeEnrollRef(${idx})" title="Hapus foto">✕</button>
+      </div>
+    `).join('');
+  }
+
+  removeEnrollRef(index) {
+    if (index >= 0 && index < this.tempEnrollmentReferences.length) {
+      this.tempEnrollmentReferences.splice(index, 1);
+      this.renderEnrollRefGallery();
+    }
+  }
+
+  async handleSaveEnrolledObject() {
+    if (!this.objectEnrollment) return;
+    const nameInput = this.elements.enrollObjectNameInput;
+    const baseClassSelect = this.elements.enrollBaseClassSelect;
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const baseClass = baseClassSelect ? baseClassSelect.value : 'laptop';
+
+    if (!name) {
+      this.showError('Nama personal objek tidak boleh kosong.');
+      if (nameInput) nameInput.focus();
+      return;
+    }
+
+    if (this.tempEnrollmentReferences.length === 0) {
+      this.showError('Ambil minimal 1 foto referensi objek dari kamera atau upload file.');
+      return;
+    }
+
+    try {
+      const enrolled = await this.objectEnrollment.enrollObject({
+        name,
+        baseClass,
+        references: this.tempEnrollmentReferences,
+        threshold: this.personalObjectRecognizer ? this.personalObjectRecognizer.config.defaultThreshold : 0.75
+      });
+
+      this.showSuccess(`Objek personal "${enrolled.name}" (${enrolled.baseClass}) berhasil didaftarkan!`);
+
+      // Reset form
+      if (nameInput) nameInput.value = '';
+      this.tempEnrollmentReferences = [];
+      this.renderEnrollRefGallery();
+      if (this.elements.enrollmentFormSection) {
+        this.elements.enrollmentFormSection.classList.add('hidden');
+      }
+
+      this.updatePersonalObjectsUI();
+    } catch (err) {
+      this.showError('Gagal mendaftarkan objek: ' + err.message);
+    }
+  }
+
+  deletePersonalObject(id) {
+    if (!this.personalObjectRegistry) return;
+    const obj = this.personalObjectRegistry.getById(id);
+    if (!obj) return;
+
+    if (confirm(`Hapus objek personal "${obj.name}" dari memori lokal?`)) {
+      this.personalObjectRegistry.delete(id);
+      if (this.personalObjectRecognizer) {
+        this.personalObjectRecognizer.resetCache();
+      }
+      this.updatePersonalObjectsUI();
+      this.showSuccess(`Objek "${obj.name}" berhasil dihapus.`);
+    }
+  }
+
+  togglePersonalObjectEnabled(id) {
+    if (!this.personalObjectRegistry) return;
+    const obj = this.personalObjectRegistry.getById(id);
+    if (!obj) return;
+
+    const nextState = !obj.enabled;
+    this.personalObjectRegistry.setEnabled(id, nextState);
+    if (this.personalObjectRecognizer) {
+      this.personalObjectRecognizer.resetCache();
+    }
+    this.updatePersonalObjectsUI();
+  }
+
+  updatePersonalObjectsUI() {
+    if (!this.personalObjectRegistry) return;
+
+    const objects = this.personalObjectRegistry.getAll();
+    const stats = this.personalObjectRegistry.getStats();
+
+    // 1. Update counter
+    if (this.elements.personalObjectsCount) {
+      this.elements.personalObjectsCount.textContent = stats.totalObjects;
+    }
+
+    // 2. Render cards
+    if (this.elements.personalObjectsList) {
+      if (objects.length === 0) {
+        this.elements.personalObjectsList.innerHTML = `
+          <div class="personal-empty-state">
+            <span>Belum ada objek personal terdaftar. Klik "+ Register Object" untuk mendaftarkan barang Anda.</span>
+          </div>
+        `;
+        return;
+      }
+
+      this.elements.personalObjectsList.innerHTML = objects.map(obj => {
+        const isEn = obj.enabled;
+        const refCount = obj.references?.length || 0;
+        return `
+          <div class="personal-object-card ${isEn ? 'enabled' : 'disabled'}">
+            <div class="card-top-row">
+              <div class="card-name-group">
+                <span class="card-personal-name">★ ${obj.name}</span>
+                <span class="card-base-class">Base YOLO: ${obj.baseClass}</span>
+              </div>
+              <div class="card-actions">
+                <button type="button" class="btn btn-sm ${isEn ? 'btn-secondary' : 'btn-outline'}"
+                  onclick="window.visionXApp.togglePersonalObjectEnabled('${obj.id}')"
+                  title="${isEn ? 'Nonaktifkan' : 'Aktifkan'}">
+                  ${isEn ? 'Active' : 'Disabled'}
+                </button>
+                <button type="button" class="btn btn-sm btn-outline text-danger"
+                  onclick="window.visionXApp.deletePersonalObject('${obj.id}')"
+                  title="Hapus objek">
+                  🗑
+                </button>
+              </div>
+            </div>
+            <div class="card-footer">
+              <span>${refCount} foto referensi</span>
+              <span>Threshold: ${(obj.threshold || 0.75).toFixed(2)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // ==========================================================================
+  // SAFETY ALERT MANAGER (V1.3.1 UI METHODS)
+  // ==========================================================================
+  dismissSafetyAlert(alertId) {
+    if (!this.alertManager) return;
+    this.alertManager.dismissAlert(alertId);
+  }
+
+  syncSafetyAlertsUIFromConfig() {
+    if (!this.alertManager) return;
+    const cfg = this.alertManager.config;
+
+    if (this.elements.toggleSafetyAlerts) {
+      this.elements.toggleSafetyAlerts.checked = Boolean(cfg.safetyAlertsEnabled);
+    }
+    if (this.elements.toggleVoiceSafetyAlerts) {
+      this.elements.toggleVoiceSafetyAlerts.checked = Boolean(cfg.voiceSafetyAlertsEnabled);
+    }
+    if (this.elements.togglePersistentAlerts) {
+      this.elements.togglePersistentAlerts.checked = Boolean(cfg.persistentAlertsEnabled);
+    }
+    if (this.elements.sliderAlertCooldown) {
+      const sec = Math.round((cfg.defaultCooldownMs || 10000) / 1000);
+      this.elements.sliderAlertCooldown.value = sec;
+      if (this.elements.alertCooldownVal) {
+        this.elements.alertCooldownVal.textContent = `${sec}s`;
+      }
+    }
+  }
+
+  updateSafetyAlertsUI() {
+    if (!this.alertManager) return;
+
+    const alerts = this.alertManager.getAlerts();
+
+    // 1. Update counter
+    if (this.elements.safetyAlertsCount) {
+      this.elements.safetyAlertsCount.textContent = alerts.length;
+    }
+
+    // 2. Render alert cards
+    if (this.elements.safetyAlertsList) {
+      if (alerts.length === 0) {
+        this.elements.safetyAlertsList.innerHTML = `
+          <div class="safety-alerts-empty">
+            <span>Belum ada peringatan keselamatan aktif. Objek Anda dalam kondisi aman.</span>
+          </div>
+        `;
+        return;
+      }
+
+      this.elements.safetyAlertsList.innerHTML = alerts.map(alert => {
+        const severityClass = `severity-${(alert.severity || 'NORMAL').toLowerCase()}`;
+        const badgeClass = `badge-${(alert.severity || 'NORMAL').toLowerCase()}`;
+        const timeStr = new Date(alert.timestamp).toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+
+        return `
+          <div class="safety-alert-card ${severityClass}" data-alert-id="${alert.id}">
+            <div class="alert-card-header">
+              <div class="alert-header-left">
+                <span class="alert-severity-badge ${badgeClass}">${alert.severity}</span>
+                <span class="alert-card-title">${alert.title || alert.objectName}</span>
+              </div>
+              <div class="alert-card-actions">
+                <span class="alert-card-time">${timeStr}</span>
+                <button type="button" class="btn-dismiss-alert" onclick="window.visionXApp.dismissSafetyAlert('${alert.id}')" title="Dismiss alert">✕</button>
+              </div>
+            </div>
+            <div class="alert-card-body">
+              ${alert.message}
+            </div>
+            <div class="alert-card-footer">
+              <span>Event: ${alert.type}</span>
+              <span>Zona: ${alert.lastZone}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   }
 }
 
-// Inisialisasi aplikasi saat DOM siap
-document.addEventListener('DOMContentLoaded', () => {
-  window.app = new VisionXWebApp();
+// Inisialisasi Aplikasi Saat DOM Siap
+window.addEventListener('DOMContentLoaded', () => {
+  window.visionXApp = new VisionXWebApp();
 });

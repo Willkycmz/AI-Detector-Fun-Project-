@@ -1,7 +1,7 @@
 {
   "name": "visionx-web",
   "private": true,
-  "version": "0.5.1",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -12,6 +12,7 @@
     "vite": "^5.4.21"
   },
   "dependencies": {
-    "onnxruntime-web": "^1.30.0"
+    "onnxruntime-web": "^1.30.0",
+    "tesseract.js": "^7.0.0"
   }
 }

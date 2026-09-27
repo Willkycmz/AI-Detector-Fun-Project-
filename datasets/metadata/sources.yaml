@@ -8638,3 +8638,663 @@ items:
     source: own_capture
     hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
     recorded_at: '2026-09-24T20:15:05.573500'
+  glass_capture_20260924_223035_53dd33.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-24T22:30:35.403392'
+  glass_capture_20260924_223035_274967.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-24T22:30:36.085802'
+  glass_capture_20260924_223036_bb7959.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-24T22:30:36.770203'
+  bottle_capture_20260924_223037_853ed5.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-24T22:30:37.471375'
+  bottle_import_20260924_223037_79ad8a.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-24T22:30:38.173523'
+  bottle_import_20260924_223038_2c2c9c.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-24T22:30:38.858188'
+  bottle_import_20260924_223039_b70d8f.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-24T22:30:39.540793'
+  charger_import_20260924_223039_bba6a6.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-24T22:30:40.225261'
+  bottle_capture_20260924_223040_5b622d.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-24T22:30:41.009943'
+  bottle_capture_20260924_223041_df491d.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-24T22:30:41.727588'
+  charger_capture_20260924_223041_ff7de0.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-24T22:30:42.395139'
+  glass_capture_20260924_223801_ab2a2e.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-24T22:38:01.958326'
+  glass_capture_20260924_223802_d5da98.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-24T22:38:02.692359'
+  glass_capture_20260924_223802_d2ce66.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-24T22:38:03.441966'
+  bottle_capture_20260924_223803_698490.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-24T22:38:04.159730'
+  bottle_import_20260924_223804_a1a69d.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-24T22:38:04.895738'
+  bottle_import_20260924_223805_1f4bef.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-24T22:38:05.678861'
+  bottle_import_20260924_223806_e31db4.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-24T22:38:06.446484'
+  charger_import_20260924_223806_3ccdf9.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-24T22:38:07.238986'
+  bottle_capture_20260924_223807_a58416.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-24T22:38:08.075278'
+  bottle_capture_20260924_223808_d86688.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-24T22:38:08.918118'
+  charger_capture_20260924_223809_a3d571.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-24T22:38:09.707432'
+  glass_capture_20260924_223953_835194.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-24T22:39:53.611646'
+  glass_capture_20260924_223953_27e87c.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-24T22:39:54.305712'
+  glass_capture_20260924_223954_a7145d.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-24T22:39:55.006805'
+  bottle_capture_20260924_223955_044ecc.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-24T22:39:55.725299'
+  bottle_import_20260924_223956_261285.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-24T22:39:56.459039'
+  bottle_import_20260924_223956_d57ef4.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-24T22:39:57.157218'
+  bottle_import_20260924_223957_4b0285.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-24T22:39:57.879872'
+  charger_import_20260924_223958_78810e.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-24T22:39:58.616428'
+  bottle_capture_20260924_223958_6c6210.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-24T22:39:59.345241'
+  bottle_capture_20260924_223959_61c9e0.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-24T22:40:00.047615'
+  charger_capture_20260924_224000_4c4c1a.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-24T22:40:00.774659'
+  glass_capture_20260925_164655_e1618e.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T16:46:56.283749'
+  glass_capture_20260925_164656_b36102.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T16:46:57.639622'
+  glass_capture_20260925_164658_5b4def.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T16:46:58.931947'
+  bottle_capture_20260925_164659_150961.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T16:47:00.298766'
+  bottle_import_20260925_164700_0f63cd.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T16:47:01.609303'
+  bottle_import_20260925_164702_45d0a9.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T16:47:02.933391'
+  bottle_import_20260925_164703_b50bff.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T16:47:04.289373'
+  charger_import_20260925_164704_48bd01.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T16:47:05.626933'
+  bottle_capture_20260925_164706_0b4907.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T16:47:07.008343'
+  bottle_capture_20260925_164707_da2674.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T16:47:08.345522'
+  charger_capture_20260925_164708_71ee4b.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T16:47:09.692768'
+  glass_capture_20260925_172722_abd59c.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T17:27:23.146489'
+  glass_capture_20260925_172723_484412.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T17:27:23.913086'
+  glass_capture_20260925_172724_09334f.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T17:27:24.717459'
+  bottle_capture_20260925_172725_d64396.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T17:27:25.568921'
+  bottle_import_20260925_172725_2c96f0.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T17:27:26.386057'
+  bottle_import_20260925_172726_ed5c8b.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T17:27:27.191822'
+  bottle_import_20260925_172727_3f24ac.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T17:27:27.948592'
+  charger_import_20260925_172728_59ed06.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T17:27:28.719425'
+  bottle_capture_20260925_172729_00607e.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T17:27:29.548963'
+  bottle_capture_20260925_172729_940c93.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T17:27:30.316332'
+  charger_capture_20260925_172730_f47403.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T17:27:31.194569'
+  glass_capture_20260925_215443_e775b0.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T21:54:44.272713'
+  glass_capture_20260925_215444_e844cf.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T21:54:45.777155'
+  glass_capture_20260925_215446_67eb53.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T21:54:47.225470'
+  bottle_capture_20260925_215447_de04cc.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T21:54:48.715313'
+  bottle_import_20260925_215449_56d6ab.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T21:54:50.188645'
+  bottle_import_20260925_215450_4c5efc.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T21:54:51.646786'
+  bottle_import_20260925_215452_532d24.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T21:54:53.030593'
+  charger_import_20260925_215453_604a9b.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T21:54:54.485078'
+  bottle_capture_20260925_215455_220cf3.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T21:54:55.864213'
+  bottle_capture_20260925_215456_3ae027.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T21:54:57.264422'
+  charger_capture_20260925_215457_043c9f.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T21:54:58.706648'
+  glass_capture_20260925_220715_a2654e.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:07:15.661434'
+  glass_capture_20260925_220716_a78dad.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:07:16.496318'
+  glass_capture_20260925_220716_3ed9cc.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:07:17.336919'
+  bottle_capture_20260925_220717_803508.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:07:18.193972'
+  bottle_import_20260925_220718_8ea893.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:07:19.054035'
+  bottle_import_20260925_220719_7e8d6b.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:07:19.920528'
+  bottle_import_20260925_220720_e443d2.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:07:20.793690'
+  charger_import_20260925_220721_7c83d5.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:07:21.632227'
+  bottle_capture_20260925_220722_8a3915.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:07:22.562804'
+  bottle_capture_20260925_220722_852cc7.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:07:23.427445'
+  charger_capture_20260925_220723_df87c4.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:07:24.245158'
+  glass_capture_20260925_220803_a96cbb.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:08:04.107337'
+  glass_capture_20260925_220804_056942.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:08:04.958354'
+  glass_capture_20260925_220805_2c67a4.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:08:05.809312'
+  bottle_capture_20260925_220806_4ae1f0.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:08:06.658835'
+  bottle_import_20260925_220807_33bea5.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:08:07.552711'
+  bottle_import_20260925_220807_71499a.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:08:08.429982'
+  bottle_import_20260925_220808_35ba25.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:08:09.324391'
+  charger_import_20260925_220809_b5d872.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:08:10.168140'
+  bottle_capture_20260925_220810_e4f84a.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:08:11.061843'
+  bottle_capture_20260925_220811_5832c6.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:08:11.918720'
+  charger_capture_20260925_220812_d8f985.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:08:12.795321'
+  glass_capture_20260925_222405_ea0157.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:24:05.680894'
+  glass_capture_20260925_222406_440352.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:24:06.536194'
+  glass_capture_20260925_222406_9eef81.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:24:07.394456'
+  bottle_capture_20260925_222407_bebca5.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:24:08.261152'
+  bottle_import_20260925_222408_e54582.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:24:09.152182'
+  bottle_import_20260925_222409_6afde7.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:24:10.024691'
+  bottle_import_20260925_222410_0d366c.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:24:10.959124'
+  charger_import_20260925_222411_c6db22.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:24:11.801926'
+  bottle_capture_20260925_222412_304412.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:24:12.708410'
+  bottle_capture_20260925_222413_2a5544.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:24:13.561226'
+  charger_capture_20260925_222413_4d1c6f.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:24:14.419012'
+  glass_capture_20260925_222553_b2c667.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:25:54.807096'
+  glass_capture_20260925_222555_0770d3.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:25:56.359456'
+  glass_capture_20260925_222556_b924ed.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:25:57.821489'
+  bottle_capture_20260925_222558_4a75e9.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:25:59.244176'
+  bottle_import_20260925_222559_e08d64.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:26:00.669816'
+  bottle_import_20260925_222601_049403.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:26:02.138386'
+  bottle_import_20260925_222602_25cbc8.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:26:03.563047'
+  charger_import_20260925_222604_be37df.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:26:05.001285'
+  bottle_capture_20260925_222605_95a497.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:26:06.389967'
+  bottle_capture_20260925_222606_7c7cc5.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:26:07.788874'
+  charger_capture_20260925_222608_e32460.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:26:09.140791'
+  glass_capture_20260925_224255_a77895.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:42:55.853858'
+  glass_capture_20260925_224256_a8e129.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:42:57.289031'
+  glass_capture_20260925_224257_c736cf.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:42:58.694967'
+  bottle_capture_20260925_224259_489829.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:43:00.093610'
+  bottle_import_20260925_224300_2371bc.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:43:01.512016'
+  bottle_import_20260925_224302_b77095.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:43:02.934878'
+  bottle_import_20260925_224303_977c7c.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:43:04.359217'
+  charger_import_20260925_224304_706fb5.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:43:05.836090'
+  bottle_capture_20260925_224306_6aa369.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:43:07.236898'
+  bottle_capture_20260925_224307_101ef0.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:43:08.655768'
+  charger_capture_20260925_224309_19b644.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:43:10.011806'
+  glass_capture_20260925_225258_92f9bf.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: acb8867e5d290446f9dc8b5b439c6750ff0a85ef7829ceb86fb9e5a915f69883
+    recorded_at: '2026-09-25T22:52:59.675693'
+  glass_capture_20260925_225300_fd409f.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: f2fd71fb45789216e9e0fc694324a52d6f766bf96143b2610b07d9f46b3ba636
+    recorded_at: '2026-09-25T22:53:01.159488'
+  glass_capture_20260925_225301_dfa663.jpg:
+    class: glass
+    source: own_capture
+    hash_sha256: e80b4f2e98d12b36a4f31d74cfc9c5558fdfb1d6fc8a512d5a8126e61cdd06c6
+    recorded_at: '2026-09-25T22:53:02.613527'
+  bottle_capture_20260925_225303_ee9c9e.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: c266b28679511e640ee3a0440ccb27236b5d138a84bd867dc96c9c6769741a5b
+    recorded_at: '2026-09-25T22:53:04.098897'
+  bottle_import_20260925_225304_52c080.png:
+    class: bottle
+    source: own_import
+    hash_sha256: c54854acbb761c2bd7e2099f802da845d1d5cf440bb04158ce5260c8924503f7
+    recorded_at: '2026-09-25T22:53:05.550504'
+  bottle_import_20260925_225306_3e28c8.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 59fe4dff64be15b08f258963536112e0177d43c593154f555716c87ff33b5c2e
+    recorded_at: '2026-09-25T22:53:06.993160'
+  bottle_import_20260925_225307_065a7a.png:
+    class: bottle
+    source: own_import
+    hash_sha256: 56e494310f2ca1c851a71860c7df5a6efce9c15f9e34695247d5cb6debf8a759
+    recorded_at: '2026-09-25T22:53:08.467675'
+  charger_import_20260925_225309_c18759.jpg:
+    class: charger
+    source: own_import
+    hash_sha256: d8b3fca27340dd25c6fdc11492f2f5500470f9ee66422922b38489045b98d6df
+    recorded_at: '2026-09-25T22:53:10.018386'
+  bottle_capture_20260925_225310_54294d.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 64494add5bc3123ad5dbc4c60e82082811d83666932e68715857ac9b1d42685a
+    recorded_at: '2026-09-25T22:53:11.438390'
+  bottle_capture_20260925_225312_80bd8c.jpg:
+    class: bottle
+    source: own_capture
+    hash_sha256: 51ca4019ce2c5f099de1d73b19c7d83eb3a34dea5246a44fbe3d5362f3574556
+    recorded_at: '2026-09-25T22:53:12.890941'
+  charger_capture_20260925_225313_bc77f4.jpg:
+    class: charger
+    source: own_capture
+    hash_sha256: 25a3a7d7b6824b91ed3825b0a33e8fd8b59b3ea05c2c698dd46127d1742fbd21
+    recorded_at: '2026-09-25T22:53:14.409770'

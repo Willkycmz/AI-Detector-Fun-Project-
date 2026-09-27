@@ -1,0 +1,458 @@
+{
+  "v1_on_v1_test": {
+    "model_path": "web/public/models/visionx_v1.onnx",
+    "model_size_mb": 11.7,
+    "total_images": 51,
+    "total_gts": 219,
+    "total_preds": 175,
+    "mAP50": 0.3329,
+    "macro_precision": 0.4552,
+    "macro_recall": 0.3887,
+    "mean_latency_ms": 47.43,
+    "scale_metrics": {
+      "small": {
+        "gt": 67,
+        "tp": 9,
+        "recall": 0.1343
+      },
+      "medium": {
+        "gt": 65,
+        "tp": 30,
+        "recall": 0.4615
+      },
+      "large": {
+        "gt": 87,
+        "tp": 60,
+        "recall": 0.6897
+      }
+    },
+    "per_class": {
+      "person": {
+        "gt": 132,
+        "pred": 103,
+        "tp": 70,
+        "fp": 33,
+        "fn": 62,
+        "fp_background": 32,
+        "fp_misclassified": 1,
+        "precision": 0.6796,
+        "recall": 0.5303,
+        "ap50": 0.5097
+      },
+      "bottle": {
+        "gt": 17,
+        "pred": 12,
+        "tp": 6,
+        "fp": 6,
+        "fn": 11,
+        "fp_background": 6,
+        "fp_misclassified": 0,
+        "precision": 0.5,
+        "recall": 0.3529,
+        "ap50": 0.3106
+      },
+      "cup": {
+        "gt": 19,
+        "pred": 8,
+        "tp": 4,
+        "fp": 4,
+        "fn": 15,
+        "fp_background": 4,
+        "fp_misclassified": 0,
+        "precision": 0.5,
+        "recall": 0.2105,
+        "ap50": 0.2338
+      },
+      "laptop": {
+        "gt": 15,
+        "pred": 17,
+        "tp": 6,
+        "fp": 11,
+        "fn": 8,
+        "fp_background": 10,
+        "fp_misclassified": 1,
+        "precision": 0.3529,
+        "recall": 0.4286,
+        "ap50": 0.3369
+      },
+      "mouse": {
+        "gt": 9,
+        "pred": 10,
+        "tp": 5,
+        "fp": 5,
+        "fn": 4,
+        "fp_background": 5,
+        "fp_misclassified": 0,
+        "precision": 0.5,
+        "recall": 0.5556,
+        "ap50": 0.5152
+      },
+      "keyboard": {
+        "gt": 12,
+        "pred": 12,
+        "tp": 6,
+        "fp": 6,
+        "fn": 6,
+        "fp_background": 6,
+        "fp_misclassified": 0,
+        "precision": 0.5,
+        "recall": 0.5,
+        "ap50": 0.3515
+      },
+      "cell_phone": {
+        "gt": 15,
+        "pred": 13,
+        "tp": 2,
+        "fp": 11,
+        "fn": 12,
+        "fp_background": 11,
+        "fp_misclassified": 0,
+        "precision": 0.1538,
+        "recall": 0.1429,
+        "ap50": 0.0727
+      }
+    }
+  },
+  "v2_on_v1_test": {
+    "model_path": "web/public/models/visionx_v2.onnx",
+    "model_size_mb": 11.7,
+    "total_images": 51,
+    "total_gts": 219,
+    "total_preds": 142,
+    "mAP50": 0.3705,
+    "macro_precision": 0.5544,
+    "macro_recall": 0.384,
+    "mean_latency_ms": 47.66,
+    "scale_metrics": {
+      "small": {
+        "gt": 67,
+        "tp": 6,
+        "recall": 0.0896
+      },
+      "medium": {
+        "gt": 65,
+        "tp": 33,
+        "recall": 0.5077
+      },
+      "large": {
+        "gt": 87,
+        "tp": 57,
+        "recall": 0.6552
+      }
+    },
+    "per_class": {
+      "person": {
+        "gt": 132,
+        "pred": 88,
+        "tp": 67,
+        "fp": 21,
+        "fn": 65,
+        "fp_background": 21,
+        "fp_misclassified": 0,
+        "precision": 0.7614,
+        "recall": 0.5076,
+        "ap50": 0.5062
+      },
+      "bottle": {
+        "gt": 17,
+        "pred": 12,
+        "tp": 6,
+        "fp": 6,
+        "fn": 11,
+        "fp_background": 5,
+        "fp_misclassified": 1,
+        "precision": 0.5,
+        "recall": 0.3529,
+        "ap50": 0.3273
+      },
+      "cup": {
+        "gt": 19,
+        "pred": 11,
+        "tp": 4,
+        "fp": 7,
+        "fn": 14,
+        "fp_background": 7,
+        "fp_misclassified": 0,
+        "precision": 0.3636,
+        "recall": 0.2222,
+        "ap50": 0.2182
+      },
+      "laptop": {
+        "gt": 15,
+        "pred": 9,
+        "tp": 6,
+        "fp": 3,
+        "fn": 9,
+        "fp_background": 3,
+        "fp_misclassified": 0,
+        "precision": 0.6667,
+        "recall": 0.4,
+        "ap50": 0.3727
+      },
+      "mouse": {
+        "gt": 9,
+        "pred": 9,
+        "tp": 5,
+        "fp": 4,
+        "fn": 4,
+        "fp_background": 4,
+        "fp_misclassified": 0,
+        "precision": 0.5556,
+        "recall": 0.5556,
+        "ap50": 0.5455
+      },
+      "keyboard": {
+        "gt": 12,
+        "pred": 10,
+        "tp": 7,
+        "fp": 3,
+        "fn": 5,
+        "fp_background": 3,
+        "fp_misclassified": 0,
+        "precision": 0.7,
+        "recall": 0.5833,
+        "ap50": 0.5325
+      },
+      "cell_phone": {
+        "gt": 15,
+        "pred": 3,
+        "tp": 1,
+        "fp": 2,
+        "fn": 14,
+        "fp_background": 2,
+        "fp_misclassified": 0,
+        "precision": 0.3333,
+        "recall": 0.0667,
+        "ap50": 0.0909
+      }
+    }
+  },
+  "v1_on_holdout": {
+    "model_path": "web/public/models/visionx_v1.onnx",
+    "model_size_mb": 11.7,
+    "total_images": 40,
+    "total_gts": 63,
+    "total_preds": 14,
+    "mAP50": 0.0406,
+    "macro_precision": 0.1964,
+    "macro_recall": 0.0702,
+    "mean_latency_ms": 48.81,
+    "scale_metrics": {
+      "small": {
+        "gt": 0,
+        "tp": 0,
+        "recall": 0.0
+      },
+      "medium": {
+        "gt": 16,
+        "tp": 0,
+        "recall": 0.0
+      },
+      "large": {
+        "gt": 47,
+        "tp": 4,
+        "recall": 0.0851
+      }
+    },
+    "per_class": {
+      "person": {
+        "gt": 4,
+        "pred": 1,
+        "tp": 0,
+        "fp": 1,
+        "fn": 4,
+        "fp_background": 0,
+        "fp_misclassified": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "ap50": 0.0
+      },
+      "bottle": {
+        "gt": 10,
+        "pred": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 10,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "ap50": 0.0
+      },
+      "cup": {
+        "gt": 11,
+        "pred": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 8,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "ap50": 0.0
+      },
+      "laptop": {
+        "gt": 6,
+        "pred": 2,
+        "tp": 0,
+        "fp": 2,
+        "fn": 5,
+        "fp_background": 1,
+        "fp_misclassified": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "ap50": 0.0
+      },
+      "mouse": {
+        "gt": 7,
+        "pred": 8,
+        "tp": 3,
+        "fp": 5,
+        "fn": 4,
+        "fp_background": 2,
+        "fp_misclassified": 3,
+        "precision": 0.375,
+        "recall": 0.4286,
+        "ap50": 0.1932
+      },
+      "keyboard": {
+        "gt": 8,
+        "pred": 2,
+        "tp": 0,
+        "fp": 2,
+        "fn": 8,
+        "fp_background": 2,
+        "fp_misclassified": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "ap50": 0.0
+      },
+      "cell_phone": {
+        "gt": 17,
+        "pred": 1,
+        "tp": 1,
+        "fp": 0,
+        "fn": 15,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 1.0,
+        "recall": 0.0625,
+        "ap50": 0.0909
+      }
+    }
+  },
+  "v2_on_holdout": {
+    "model_path": "web/public/models/visionx_v2.onnx",
+    "model_size_mb": 11.7,
+    "total_images": 40,
+    "total_gts": 63,
+    "total_preds": 69,
+    "mAP50": 0.7742,
+    "macro_precision": 0.7929,
+    "macro_recall": 0.9296,
+    "mean_latency_ms": 46.51,
+    "scale_metrics": {
+      "small": {
+        "gt": 0,
+        "tp": 0,
+        "recall": 0.0
+      },
+      "medium": {
+        "gt": 16,
+        "tp": 14,
+        "recall": 0.875
+      },
+      "large": {
+        "gt": 47,
+        "tp": 38,
+        "recall": 0.8085
+      }
+    },
+    "per_class": {
+      "person": {
+        "gt": 4,
+        "pred": 3,
+        "tp": 3,
+        "fp": 0,
+        "fn": 1,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 1.0,
+        "recall": 0.75,
+        "ap50": 0.7273
+      },
+      "bottle": {
+        "gt": 10,
+        "pred": 9,
+        "tp": 9,
+        "fp": 0,
+        "fn": 1,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 1.0,
+        "recall": 0.9,
+        "ap50": 0.9091
+      },
+      "cup": {
+        "gt": 11,
+        "pred": 9,
+        "tp": 9,
+        "fp": 0,
+        "fn": 0,
+        "fp_background": 0,
+        "fp_misclassified": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "ap50": 0.8182
+      },
+      "laptop": {
+        "gt": 6,
+        "pred": 9,
+        "tp": 3,
+        "fp": 6,
+        "fn": 0,
+        "fp_background": 3,
+        "fp_misclassified": 3,
+        "precision": 0.3333,
+        "recall": 1.0,
+        "ap50": 0.4416
+      },
+      "mouse": {
+        "gt": 7,
+        "pred": 8,
+        "tp": 6,
+        "fp": 2,
+        "fn": 1,
+        "fp_background": 0,
+        "fp_misclassified": 2,
+        "precision": 0.75,
+        "recall": 0.8571,
+        "ap50": 0.8182
+      },
+      "keyboard": {
+        "gt": 8,
+        "pred": 10,
+        "tp": 8,
+        "fp": 2,
+        "fn": 0,
+        "fp_background": 2,
+        "fp_misclassified": 0,
+        "precision": 0.8,
+        "recall": 1.0,
+        "ap50": 0.9455
+      },
+      "cell_phone": {
+        "gt": 17,
+        "pred": 21,
+        "tp": 14,
+        "fp": 7,
+        "fn": 0,
+        "fp_background": 4,
+        "fp_misclassified": 3,
+        "precision": 0.6667,
+        "recall": 1.0,
+        "ap50": 0.7596
+      }
+    }
+  }
+}

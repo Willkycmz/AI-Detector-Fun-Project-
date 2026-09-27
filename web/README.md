@@ -1,6 +1,6 @@
-# VisionX Web Interface (V0.4.1) 🌐👁️
+# VisionX Web Interface (V1.5 Mobile-First Release) 🌐👁️
 
-> **Browser-Based Realtime YOLOv8 ONNX Inference & Dataset Management System**
+> **Browser-Based Realtime AI Vision Assistant & Mobile-First Interface**
 
 VisionX Web Interface (V0.4.1) memungkinkan pengguna untuk menjalankan inferensi deteksi objek YOLOv8 secara realtime dan mengelola siklus hidup dataset gambar mentah (*clean raw frames*) secara aman, terstruktur, dan praktis untuk dataset skala besar langsung dari browser.
 

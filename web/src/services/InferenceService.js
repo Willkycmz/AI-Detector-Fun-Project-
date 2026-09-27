@@ -11,6 +11,8 @@
  * - Safe error handling (never silently ignored)
  */
 
+import { CoordinateMapper } from './CoordinateMapper.js';
+
 // Dapatkan instance ort (utamakan window.ort dari ort.min.js lokal)
 const getOrt = () => window.ort || (typeof globalThis !== 'undefined' ? globalThis.ort : null);
 
@@ -37,6 +39,17 @@ export const COCO_CLASSES = [
 ];
 
 export const MODEL_PRESETS = {
+  visionx_v2: {
+    id: 'visionx_v2',
+    name: 'VisionX V2 (Real-World Improved 7 Classes)',
+    shortName: 'VisionX V2 Custom',
+    badge: 'Custom V2',
+    path: '/models/visionx_v2.onnx',
+    classes: VISIONX_V1_CLASSES,
+    numClasses: VISIONX_V1_CLASSES.length,
+    isCustom: true,
+    description: 'Model V2 ditingkatkan dengan real-world dataset & small object improvement'
+  },
   visionx_v1: {
     id: 'visionx_v1',
     name: 'VisionX V1 (Custom 7 Classes)',
@@ -135,6 +148,7 @@ export class YOLOInferenceService {
 
     // Tracking diagnostics lengkap
     this.diagnostics = {
+      status: 'idle',
       modelLoadingStarted: null,
       modelFetchStarted: null,
       modelFetchCompleted: null,
@@ -145,14 +159,28 @@ export class YOLOInferenceService {
       modelInputShape: '[1, 3, 640, 640]',
       modelOutputName: 'output0',
       modelOutputShape: `[1, ${4 + this.numClasses}, 8400]`,
+      tensorMin: null,
+      tensorMax: null,
       firstInferenceStarted: null,
       firstInferenceCompleted: null,
       firstInferenceLatencyMs: null,
       lastInferenceLatencyMs: 0,
       lastRawPredictionsCount: 0,
       lastAfterConfidenceCount: 0,
-      lastAfterNmsCount: 0
+      lastAfterNmsCount: 0,
+      finalDetectionsCount: 0,
+      droppedByPadding: 0,
+      droppedByMinSize: 0,
+      droppedByAspectRatio: 0,
+      droppedByMarginal: 0,
+      acceptedCount: 0,
+      filterRejectionLogs: []
     };
+
+    // Diagnostic flags
+    this.disableNms = false;
+    this.diagnosticThreshold = 0.10;
+    this.isDebugFilterLogging = false;
 
     // Frame sequence tracking
     this.currentFrameId = 0;
@@ -164,6 +192,43 @@ export class YOLOInferenceService {
     this.preprocessCanvas.width = 640;
     this.preprocessCanvas.height = 640;
     this.preprocessCtx = this.preprocessCanvas.getContext('2d', { willReadFrequently: true });
+  }
+
+  /**
+   * Log keputusan filtering deteksi untuk auditibilitas dan observabilitas penuh
+   */
+  _logFilterDecision(decision, className, confidence, reason) {
+    const logEntry = {
+      timestamp: Date.now(),
+      frameId: this.currentFrameId,
+      decision,
+      className,
+      confidence: parseFloat(confidence.toFixed(4)),
+      reason
+    };
+
+    if (!this.diagnostics.filterRejectionLogs) {
+      this.diagnostics.filterRejectionLogs = [];
+    }
+    this.diagnostics.filterRejectionLogs.push(logEntry);
+    if (this.diagnostics.filterRejectionLogs.length > 100) {
+      this.diagnostics.filterRejectionLogs.shift();
+    }
+
+    if (this.isDebugFilterLogging || (decision === 'DROPPED' && this.currentFrameId % 30 === 1)) {
+      console.log(`[VisionX Filter] ${decision}: class=${className}, conf=${confidence.toFixed(3)} — ${reason}`);
+    }
+  }
+
+  getFilterStats() {
+    return {
+      droppedByPadding: this.diagnostics.droppedByPadding || 0,
+      droppedByMinSize: this.diagnostics.droppedByMinSize || 0,
+      droppedByAspectRatio: this.diagnostics.droppedByAspectRatio || 0,
+      droppedByMarginal: this.diagnostics.droppedByMarginal || 0,
+      acceptedCount: this.diagnostics.acceptedCount || 0,
+      recentRejections: (this.diagnostics.filterRejectionLogs || []).slice(-20)
+    };
   }
 
   get isModelLoaded() {
@@ -192,6 +257,7 @@ export class YOLOInferenceService {
     }
 
     this.status = 'loading';
+    this.diagnostics.status = 'loading';
     this.errorMessage = null;
     this.diagnostics.modelLoadingStarted = new Date().toLocaleTimeString();
     const startLoadTime = performance.now();
@@ -260,13 +326,15 @@ export class YOLOInferenceService {
 
       this.loadTimeMs = Math.round(performance.now() - startLoadTime);
       this.status = 'ready';
+      this.diagnostics.status = 'ready';
       this.errorMessage = null;
 
-      console.log(`[VisionX Diagnostic] Model ready in ${this.loadTimeMs} ms!`);
+      console.log(`[VisionX Diagnostic] MODEL: READY (${this.loadTimeMs} ms) | INPUT: [1, 3, 640, 640] | OUTPUT: ${this.diagnostics.modelOutputShape}`);
       if (onProgress) onProgress(`Model Ready (${this.loadTimeMs}ms)`);
       return true;
     } catch (err) {
       this.status = 'error';
+      this.diagnostics.status = 'error';
       this.errorMessage = err.message || 'Gagal memuat model';
       this.session = null;
       console.error(`[VisionX Diagnostic Error] Gagal memuat model [${this.modelConfig.name}]:`, err);
@@ -308,23 +376,28 @@ export class YOLOInferenceService {
 
   /**
    * Letterbox Preprocessing
+   * Mendukung HTMLVideoElement, HTMLImageElement, atau HTMLCanvasElement
    */
-  _preprocess(video) {
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
+  _preprocess(source, isMirrored = false) {
+    const vw = source.videoWidth || source.naturalWidth || source.width || 640;
+    const vh = source.videoHeight || source.naturalHeight || source.height || 640;
     const targetDim = 640;
 
-    const scale = Math.min(targetDim / vw, targetDim / vh);
-    const nw = Math.round(vw * scale);
-    const nh = Math.round(vh * scale);
-    const padX = (targetDim - nw) / 2;
-    const padY = (targetDim - nh) / 2;
+    const letterboxParams = CoordinateMapper.computeLetterboxParams(vw, vh, targetDim);
+    const { scale, padX, padY, nw, nh } = letterboxParams;
 
     const ctx = this.preprocessCtx;
-    ctx.fillStyle = '#727272';
+    // YOLO standard letterbox padding 114 (#727272)
+    ctx.fillStyle = 'rgb(114, 114, 114)';
     ctx.fillRect(0, 0, targetDim, targetDim);
 
-    ctx.drawImage(video, padX, padY, nw, nh);
+    ctx.save();
+    if (isMirrored) {
+      ctx.translate(targetDim, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(source, padX, padY, nw, nh);
+    ctx.restore();
 
     const imgData = ctx.getImageData(0, 0, targetDim, targetDim);
     const pixels = imgData.data;
@@ -347,6 +420,7 @@ export class YOLOInferenceService {
 
     return {
       inputTensor,
+      letterboxParams,
       scale,
       padX,
       padY,
@@ -356,9 +430,9 @@ export class YOLOInferenceService {
   }
 
   /**
-   * Menjalankan inferensi realtime pada frame video
+   * Menjalankan inferensi realtime pada frame video atau citra
    */
-  async detect(video) {
+  async detect(source, isMirrored = false) {
     if (!this.isActive || !this.session || this.status !== 'ready') {
       return {
         detections: [],
@@ -385,7 +459,7 @@ export class YOLOInferenceService {
     this.isInferencing = true;
 
     try {
-      const { inputTensor, scale, padX, padY, vw, vh } = this._preprocess(video);
+      const { inputTensor, letterboxParams, scale, padX, padY, vw, vh } = this._preprocess(source, isMirrored);
 
       // Jalankan inferensi ONNX
       const feeds = {};
@@ -403,13 +477,50 @@ export class YOLOInferenceService {
       const outputData = outputTensor.data;
       
       const dims = outputTensor.dims || [1, 4 + this.numClasses, 8400];
-      const numChannels = dims[1];
-      const numAnchors = dims[2] || 8400;
+      let numChannels = 4 + this.numClasses;
+      let numAnchors = 8400;
+
+      if (dims && dims.length >= 3) {
+        if (dims[1] < dims[2]) {
+          numChannels = dims[1];
+          numAnchors = dims[2];
+        } else {
+          numChannels = dims[2];
+          numAnchors = dims[1];
+        }
+      }
+
       const numClasses = numChannels - 4;
       const activeClasses = this.classes;
 
+      // Verifikasi output custom model tetap [1, 11, 8400]
+      if (this.modelConfig.isCustom && numChannels !== 11) {
+        console.warn(`[VisionX Warning] Custom model V1 diharapkan 11 channel, terdeteksi: ${numChannels}`);
+      } else if (!this.modelConfig.isCustom && numChannels !== 84) {
+        console.warn(`[VisionX Warning] Pretrained COCO model diharapkan 84 channel, terdeteksi: ${numChannels}`);
+      }
+
+      // Hitung tensor output min / max untuk verifikasi diagnostik
+      let tensorMin = Infinity;
+      let tensorMax = -Infinity;
+      for (let k = 0; k < outputData.length; k++) {
+        const val = outputData[k];
+        if (val < tensorMin) tensorMin = val;
+        if (val > tensorMax) tensorMax = val;
+      }
+
       const rawCandidates = [];
       let totalRawCount = 0;
+      let droppedByPadding = 0;
+      let droppedByMinSize = 0;
+      let droppedByAspectRatio = 0;
+      let droppedByMarginal = 0;
+      let acceptedCount = 0;
+
+      const activePadX = padX;
+      const activePadY = padY;
+      const activeNw = nw;
+      const activeNh = nh;
 
       for (let i = 0; i < numAnchors; i++) {
         let maxScore = -1;
@@ -423,58 +534,138 @@ export class YOLOInferenceService {
           }
         }
 
-        if (maxScore > 0.1) {
+        // Hitung raw candidate dengan score > diagnosticThreshold (0.10)
+        if (maxScore > (this.diagnosticThreshold || 0.10)) {
           totalRawCount++;
         }
 
-        // Confidence Filtering
+        // Confidence Filtering menggunakan confThreshold yang aktif
         if (maxScore >= this.confThreshold && maxClassId >= 0 && maxClassId < activeClasses.length) {
           const cx = outputData[0 * numAnchors + i];
           const cy = outputData[1 * numAnchors + i];
           const w = outputData[2 * numAnchors + i];
           const h = outputData[3 * numAnchors + i];
+          const className = activeClasses[maxClassId] || `class_${maxClassId}`;
 
-          // Unpad & Scale back ke koordinat video asli
-          const cxOrig = (cx - padX) / scale;
-          const cyOrig = (cy - padY) / scale;
-          const wOrig = w / scale;
-          const hOrig = h / scale;
-
-          const x1 = Math.max(0, Math.min(vw, cxOrig - wOrig / 2));
-          const y1 = Math.max(0, Math.min(vh, cyOrig - hOrig / 2));
-          const x2 = Math.max(0, Math.min(vw, cxOrig + wOrig / 2));
-          const y2 = Math.max(0, Math.min(vh, cyOrig + hOrig / 2));
-
-          if (x2 > x1 && y2 > y1) {
-            rawCandidates.push({
-              class_id: maxClassId,
-              class_name: activeClasses[maxClassId] || `class_${maxClassId}`,
-              confidence: parseFloat(maxScore.toFixed(4)),
-              x1: Math.round(x1),
-              y1: Math.round(y1),
-              x2: Math.round(x2),
-              y2: Math.round(y2),
-              frameId,
-              timestamp: Date.now()
-            });
+          // 1. FILTER: Cek apakah anchor center berada di dalam area aktif video (bukan di letterbox padding)
+          if (
+            cx < activePadX + 2 ||
+            cx > (activePadX + activeNw - 2) ||
+            cy < activePadY + 2 ||
+            cy > (activePadY + activeNh - 2)
+          ) {
+            droppedByPadding++;
+            const reason = `anchor center (${cx.toFixed(1)}, ${cy.toFixed(1)}) in letterbox padding [padX=${activePadX}, padY=${activePadY}]`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
           }
+
+          // Unpad & Scale back ke ukuran citra/video asli menggunakan CoordinateMapper bersama
+          const mapped = CoordinateMapper.modelToVideo(
+            { x1: cx - w / 2, y1: cy - h / 2, x2: cx + w / 2, y2: cy + h / 2 },
+            letterboxParams,
+            false // Transformasi cermin sudah dihandle saat letterbox preprocess
+          );
+
+          const bw = mapped.x2 - mapped.x1;
+          const bh = mapped.y2 - mapped.y1;
+          const area = bw * bh;
+
+          // 2. FILTER: Cek dimensi minimum (mencegah degenerasi sub-16px noise)
+          if (bw < 16 || bh < 16 || area < 256) {
+            droppedByMinSize++;
+            const reason = `box too small (${bw}x${bh}, area ${area} < 256px)`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
+          }
+
+          // 3. FILTER: Cek rasio aspek (menghilangkan garis pinggir meja, kabel, artefak tepi)
+          const aspect = bw / bh;
+          if (aspect < 0.15 || aspect > 6.5) {
+            droppedByAspectRatio++;
+            const reason = `extreme aspect ratio ${aspect.toFixed(2)} (allowed 0.15-6.5)`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
+          }
+
+          // 4. FILTER: Sanitasi khusus untuk kelas yang rentan false-positive di stationary real-device (person & bottle)
+          const videoArea = (vw || 640) * (vh || 480);
+          if (className === 'person' && maxScore < 0.52 && (area < 2500 || area / videoArea < 0.003)) {
+            droppedByMarginal++;
+            const reason = `marginal score (${maxScore.toFixed(3)} < 0.52) with small area (${area}px < 2500px) for person`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
+          }
+          if (className === 'bottle' && maxScore < 0.50 && (area < 1200 || area / videoArea < 0.0015)) {
+            droppedByMarginal++;
+            const reason = `marginal score (${maxScore.toFixed(3)} < 0.50) with small area (${area}px < 1200px) for bottle`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
+          }
+          if (maxScore < 0.50 && (area < 400 || area / videoArea < 0.0005)) {
+            droppedByMarginal++;
+            const reason = `marginal score (${maxScore.toFixed(3)} < 0.50) with tiny area (${area}px < 400px)`;
+            this._logFilterDecision('DROPPED', className, maxScore, reason);
+            continue;
+          }
+
+          acceptedCount++;
+          this._logFilterDecision('ACCEPTED', className, maxScore, `valid detection bbox=[${mapped.x1},${mapped.y1},${mapped.x2},${mapped.y2}] size=${bw}x${bh}`);
+
+          rawCandidates.push({
+            class_id: maxClassId,
+            class_name: className,
+            confidence: parseFloat(maxScore.toFixed(4)),
+            bbox: { x1: mapped.x1, y1: mapped.y1, x2: mapped.x2, y2: mapped.y2 },
+            x1: mapped.x1,
+            y1: mapped.y1,
+            x2: mapped.x2,
+            y2: mapped.y2,
+            frameId,
+            timestamp: Date.now()
+          });
         }
       }
 
       // Non-Maximum Suppression (NMS)
-      const finalDetections = applyNMS(rawCandidates, this.iouThreshold);
+      const finalDetections = this.disableNms ? rawCandidates : applyNMS(rawCandidates, this.iouThreshold);
       const inferenceTimeMs = Math.round(performance.now() - startTime);
 
-      if (isFirstInference) {
-        this.diagnostics.firstInferenceCompleted = new Date().toLocaleTimeString();
-        this.diagnostics.firstInferenceLatencyMs = inferenceTimeMs;
-        console.log(`[VisionX Diagnostic] First inference completed successfully! Latency: ${inferenceTimeMs} ms, Detected: ${finalDetections.length}`);
-      }
-
+      // Update diagnostics tracking
+      this.diagnostics.modelInputShape = '[1, 3, 640, 640]';
+      this.diagnostics.modelOutputShape = `[1, ${numChannels}, ${numAnchors}]`;
+      this.diagnostics.tensorMin = tensorMin;
+      this.diagnostics.tensorMax = tensorMax;
       this.diagnostics.lastInferenceLatencyMs = inferenceTimeMs;
       this.diagnostics.lastRawPredictionsCount = totalRawCount;
       this.diagnostics.lastAfterConfidenceCount = rawCandidates.length;
       this.diagnostics.lastAfterNmsCount = finalDetections.length;
+      this.diagnostics.finalDetectionsCount = finalDetections.length;
+      this.diagnostics.droppedByPadding = droppedByPadding;
+      this.diagnostics.droppedByMinSize = droppedByMinSize;
+      this.diagnostics.droppedByAspectRatio = droppedByAspectRatio;
+      this.diagnostics.droppedByMarginal = droppedByMarginal;
+      this.diagnostics.acceptedCount = acceptedCount;
+
+      // Diagnostic Logging per requirements
+      if (isFirstInference || frameId % 30 === 1) {
+        console.log(
+          `[VisionX Diagnostic Log] MODEL: ${this.status.toUpperCase()} | ` +
+          `INPUT: 640x640 | ` +
+          `OUTPUT: [1,${numChannels},${numAnchors}] | ` +
+          `TENSOR MIN/MAX: [${tensorMin.toFixed(4)}, ${tensorMax.toFixed(4)}] | ` +
+          `RAW CANDIDATES: ${totalRawCount} | ` +
+          `CONF PASS: ${rawCandidates.length} | ` +
+          `DROPPED: [pad:${droppedByPadding}, size:${droppedByMinSize}, aspect:${droppedByAspectRatio}, marginal:${droppedByMarginal}] | ` +
+          `NMS RESULT: ${finalDetections.length} | ` +
+          `FINAL DETECTIONS: ${finalDetections.length}`
+        );
+      }
+
+      if (isFirstInference) {
+        this.diagnostics.firstInferenceCompleted = new Date().toLocaleTimeString();
+        this.diagnostics.firstInferenceLatencyMs = inferenceTimeMs;
+      }
 
       return {
         detections: finalDetections,
@@ -501,3 +692,6 @@ export class YOLOInferenceService {
     }
   }
 }
+
+export { YOLOInferenceService as ObjectDetector };
+

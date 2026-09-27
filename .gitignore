@@ -1,64 +1,28 @@
-# Python bytecode and cache
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Node & Build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Python Cache & Testing
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
 .pytest_cache/
 
-# Virtual Environment
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Machine Learning Models and Checkpoints
-*.pt
-*.pth
-*.onnx
-*.engine
-*.tflite
-*.mlmodel
-models/*.pt
-models/*.onnx
-models/*.engine
-models/*.bin
-
-# Datasets and Large Media Files
-datasets/**
-!datasets/
-!datasets/**/
-!datasets/**/README.md
-!datasets/metadata/*.yaml
-data/
-*.mp4
-*.avi
-*.mkv
-*.mov
-*.jpg
-*.jpeg
-*.png
-!app/assets/*.png
-!app/assets/*.jpg
-
-# IDE and Editor configurations
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-
-# Logs and temporary files
-*.log
+# Large Datasets & Model Binaries
+datasets/
+models/
 runs/
-wandb/
-.system_generated/
 scratch/
+*.pt
+*.onnx
+*.parquet
 
-# Node & Frontend
-node_modules/
-dist/
-.vite/
+# Environment Variables
+.env
+.env.*
