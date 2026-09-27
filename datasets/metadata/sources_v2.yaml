@@ -1,0 +1,2719 @@
+version: V1.4
+generated_at: '2026-09-26'
+description: VisionX V1.4 Targeted Real-World Dataset Manifest
+taxonomy_conditions:
+- indoor_bright
+- indoor_low_light
+- daylight
+- different_angles
+- near
+- far
+- small_object
+- partial_occlusion
+- cluttered_background
+- mobile_camera
+- laptop_webcam
+own_pool_count: 140
+holdout_count: 40
+records_pool:
+- image_id: own_v2_cell_phone_001.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 7e0c6071bd50af59d88fdb33bc8e30aad106147d66e9c0cfb2e795a79e2349cc
+  bbox_count: 1
+- image_id: own_v2_cell_phone_002.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 4af923ca739579d7aecad0c5b12963b6932f93dfa73aad9c7a746e5b3b4d9d81
+  bbox_count: 2
+- image_id: own_v2_cell_phone_003.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: d2ef8ca86510b5077f75d0e51dbda226ea7912be0ff50cceb0acad593fc03d82
+  bbox_count: 1
+- image_id: own_v2_cell_phone_004.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 8ef07122ff317549d687a358e270b54e4059475885c9dec96d63282d0c25d7f5
+  bbox_count: 1
+- image_id: own_v2_cell_phone_005.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: e16eeec4fdd1657d838a81c55f855b4e09bb5c6056897d1f39363123e4971c7c
+  bbox_count: 2
+- image_id: own_v2_cell_phone_006.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing far under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: fdb103aba1e247370daf9a532df7376f75859a4f228739bd483db36eff05db6d
+  bbox_count: 2
+- image_id: own_v2_cell_phone_007.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 49388abfcf3a6b72590fdc844e9c9c44e4435c3123c4d62fa65455498fb4041a
+  bbox_count: 2
+- image_id: own_v2_cell_phone_008.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: fb5af995d21720786089768fc37ccfea12ef57857c6b93bf3acca82aeac8b77f
+  bbox_count: 1
+- image_id: own_v2_cell_phone_009.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 9888640cab2f238305b0ee1aafa3ee5c57f26b177b33f04087f4764c7f5c1919
+  bbox_count: 1
+- image_id: own_v2_cell_phone_010.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing near under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 2491dac879bc6c477caa84eefc32b9993aca5545949e79d0b764958335a769e8
+  bbox_count: 1
+- image_id: own_v2_cell_phone_011.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 2c248ee914171451b2ef5c4d590b9f8dd2e4e07309ad90b51f094de97e830b35
+  bbox_count: 1
+- image_id: own_v2_cell_phone_012.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: cd89413d815069ebf7a5e76fe09761641dadbfe25eb9ca0d84d2bf5e219cd09e
+  bbox_count: 1
+- image_id: own_v2_cell_phone_013.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: c1f7dfcd26f0dabb6ac5cba6548e15548f07c6a0b41d949f5fd9c0fee49dff02
+  bbox_count: 1
+- image_id: own_v2_cell_phone_014.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing far under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 9c7c26965568e5586e27b0f4317aceebe535670301187dee30f6839bd0c86f15
+  bbox_count: 1
+- image_id: own_v2_cell_phone_015.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: e863b678bf85e73f037af66c232f739cbf9d5e487dbf16139c1bbf5ed6f6e65d
+  bbox_count: 2
+- image_id: own_v2_cell_phone_016.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 60ce6445bb307977795a1ccb63729eed9e35d59548fe51e9e6890724150c7f43
+  bbox_count: 2
+- image_id: own_v2_cell_phone_017.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 5fdd04f50296b23414c7c5531d0bbf199c17e035bbbaaa95d7b45e528aaf7ca7
+  bbox_count: 2
+- image_id: own_v2_cell_phone_018.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing far under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 44b5e1db372d1ae6c1558b490f2414675cc8c50a23a48947c8c6fe4b837b4f41
+  bbox_count: 2
+- image_id: own_v2_cell_phone_019.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: ae37a25ed0f281f11cad8899349230e7129b4e23b6ae715d3a7a2584132f2654
+  bbox_count: 1
+- image_id: own_v2_cell_phone_020.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 94050dba6187fc9ef50425c68ac311600de8e4fda7c756ed835838182ff30149
+  bbox_count: 2
+- image_id: own_v2_cell_phone_021.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 6bb99ef5120f3877990fdb8b3795c69cfce01767901e7d9aaab83b5d234bd3e9
+  bbox_count: 2
+- image_id: own_v2_cell_phone_022.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing near under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 97ca231a736d3ddd5459fa2e25b20eacd45b08f7835b0e3ef084f3e5fb02f08d
+  bbox_count: 1
+- image_id: own_v2_cell_phone_023.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 4460565f1eb3ac272cbc54639e31207f26a30bd6b7989a7e45be1768d4b94c70
+  bbox_count: 1
+- image_id: own_v2_cell_phone_024.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 68d8183f087e1860d88b0dd92694859a7bc6ab7782aa9e7d7dfc510d52232e87
+  bbox_count: 1
+- image_id: own_v2_cell_phone_025.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing near under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 6ff718d74881f241cb8a425608ea0a8e4fa563291338f08fba510857e254a9c2
+  bbox_count: 1
+- image_id: own_v2_cell_phone_026.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: dedda24555d3bd748ff90eb2e7e057bf19c9dd2954245c2bea115b35795e2a25
+  bbox_count: 1
+- image_id: own_v2_cell_phone_027.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: b33459d14a614a8b395e3dbef138cb890f974bb831f186abcccf746e05826c6c
+  bbox_count: 2
+- image_id: own_v2_cell_phone_028.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 2761e94892518e980013a9b5793a2a4f049b73fb86bafb425b53fe5c4265c77f
+  bbox_count: 1
+- image_id: own_v2_cell_phone_029.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: f94ae8d38604d4091b6355ddfb5dd486b67abfeae645dbb9dec817cc4ce54944
+  bbox_count: 1
+- image_id: own_v2_cell_phone_030.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: c6fb519aae681010fb81310ea7f72b699ae573463d3a58e458a2d02f040ae1f1
+  bbox_count: 2
+- image_id: own_v2_cup_001.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 9767fcf6a56bbd4c27f117dcbf468748c1b500434e772da6679a2f06f78a3690
+  bbox_count: 2
+- image_id: own_v2_cup_002.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 935e28a5f4d3e05f69412b75e23ff53b766c8ea604afbede76964b0786075719
+  bbox_count: 1
+- image_id: own_v2_cup_003.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: d65c5daea50e0ff3b59c0ac2bd555a906f009e5937ae578cfefc76b15ebb58df
+  bbox_count: 1
+- image_id: own_v2_cup_004.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 1149259a59cc1909ed448652daef66b072800bff070a8f3c58d75ecdbde0c57c
+  bbox_count: 2
+- image_id: own_v2_cup_005.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 434e7b3be0e11374fcf8033cc2a9c5589348b6faef209a03c8c06516a63152ee
+  bbox_count: 1
+- image_id: own_v2_cup_006.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing small_object under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 5be308c3256788873016d4c34112a52c7c2e28a34b92bd84cdeac662a1232473
+  bbox_count: 2
+- image_id: own_v2_cup_007.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 6461638728576b70da0adac999bd12c6fa0b8004467e66dff0c31a6f80f1fbde
+  bbox_count: 1
+- image_id: own_v2_cup_008.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 6711349ce71467faf56b56fde84c1116966dbb08ef1e584e8391a5da07a829dc
+  bbox_count: 1
+- image_id: own_v2_cup_009.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 2c3ea2ced1ea53b6458a3ea537a63fe6e0b39d485ecdf165da50d213a37942ce
+  bbox_count: 1
+- image_id: own_v2_cup_010.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: a4df5a3c743c54bc9f273d57b9895294f930365ebdccd062356a8f3927696eb7
+  bbox_count: 1
+- image_id: own_v2_cup_011.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 331a47befcd5dc2c0fe9faacccbbc166ca8895b2615110eb0966f3e86f9b9152
+  bbox_count: 2
+- image_id: own_v2_cup_012.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: ccfee3d668eacdf0771f712b2e10fda964ce710bcd01d2357db7620aabd3c45f
+  bbox_count: 1
+- image_id: own_v2_cup_013.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 6fbfdbd39d6d6a027282695e4886a94b77e468afcc70b4fc5bd99a61cf756db6
+  bbox_count: 2
+- image_id: own_v2_cup_014.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: ea142c2871e4022786843440339042ab1862fc331563b95123af389e544e1ba0
+  bbox_count: 2
+- image_id: own_v2_cup_015.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: f87d68fa0fe3be76ad6ddb0d69fd21385234bbbd2a67a8e2d40a33fd8ebb4f10
+  bbox_count: 2
+- image_id: own_v2_cup_016.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing near under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: e1eaa98ba78f4f394c476a89a2546a9b4a5773618cce333452b66e200ab5135f
+  bbox_count: 1
+- image_id: own_v2_cup_017.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: bdb5bdc6e5752580cb61a4f3b323cb235486ae788af53a612739ecccf39060b8
+  bbox_count: 1
+- image_id: own_v2_cup_018.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing different_angles under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 2ff2c1143c93eb29f24fde39a33016ae3ea5ee8d603b86d50c6a7bf824ea70b4
+  bbox_count: 2
+- image_id: own_v2_cup_019.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 53a14dbf58e95a9dbb8acb0dff8c8d8a044c23fcd30c820c0f2339bc88eb8a25
+  bbox_count: 2
+- image_id: own_v2_cup_020.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 3cccb006af260c4bf32e3a9d73ba9153497b4a1a79d84808f97ce4d43083e22e
+  bbox_count: 2
+- image_id: own_v2_cup_021.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: fc932bbcc06959098b3add0a52456fb74e916df46d5a06863c2b59d72894514e
+  bbox_count: 1
+- image_id: own_v2_cup_022.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing near under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 4fc9bdc1ed87358b2e701e9bc9d652134b229e805de759f12ffb9ef54f643336
+  bbox_count: 1
+- image_id: own_v2_cup_023.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing near under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 6c4e353c8652c0dfa741f91b0dcc6b8096df2afd48313be7861d320688b7e01b
+  bbox_count: 2
+- image_id: own_v2_cup_024.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing near under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 3ccc1a9c1dbc36fedffa9355e86fdf346fdf6d4e9d07ad3d1b00f9e1bab38116
+  bbox_count: 1
+- image_id: own_v2_cup_025.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 3ac60ebb89975a1c405f163888c4f2ef14330efa7cf27ee14817bfa6407eb32c
+  bbox_count: 1
+- image_id: own_v2_bottle_001.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing near under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: f8458451ecdf99662259684bf92cb8b1cd1c4d310c60dbfc77d3063c7b5b7513
+  bbox_count: 1
+- image_id: own_v2_bottle_002.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: fd029b97df15c5a99c814ee2d301fe8e5c7a254862e2714777da42cf7dbae8cb
+  bbox_count: 2
+- image_id: own_v2_bottle_003.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 525a2f39b9b1bc9f5b89738cc2ebf56ede3014289dcb12f563ae575a896af454
+  bbox_count: 1
+- image_id: own_v2_bottle_004.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 8555b15e3fae0b8a256a35f95e332c55e8ebdd18930cafb24e7e0c693eaee899
+  bbox_count: 1
+- image_id: own_v2_bottle_005.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: f803243301f20728e35af3e62a750c04dd74aa188ae5debe01ecd12d779de301
+  bbox_count: 2
+- image_id: own_v2_bottle_006.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: e4b644d0bf61f51ef4a3cda2387ba4f260ce9e45143cf8d91379a05b7f2a6c15
+  bbox_count: 1
+- image_id: own_v2_bottle_007.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing different_angles under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 979d13955abfc08e7723e53bd93a6ff5d20de675d0d54527264b36ffca6647d7
+  bbox_count: 1
+- image_id: own_v2_bottle_008.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 7bdc1146a4ee040b5a8d3d08f648d9bbdf575fe69324a635210b1885fe142942
+  bbox_count: 2
+- image_id: own_v2_bottle_009.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 0a362ae6aa11b393f7896f85cd687aca93317154ab97ea482fb638ac0dc38066
+  bbox_count: 2
+- image_id: own_v2_bottle_010.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing small_object under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: e76f5572793ef05eac55e529ca037763fca21ec8bd8ad331d8301b4c22842869
+  bbox_count: 2
+- image_id: own_v2_bottle_011.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 65489deb4a5229e979ca8d3b0506f413297d6198844fd90b3057660eed3bce77
+  bbox_count: 2
+- image_id: own_v2_bottle_012.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: a8600adc79382fec7a8248103ca437e7d95fdf62e47bad6e5f28ade3fe3d6ef4
+  bbox_count: 2
+- image_id: own_v2_bottle_013.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing small_object under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 0b59bd446b4e9a5ffa2b5a8cc8a70c5e8e60cf367d968206aaa03001744f0e7e
+  bbox_count: 1
+- image_id: own_v2_bottle_014.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing near under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: e5da26260ac3e8a4f2c7597a8b81705527eb08ca69fe64033282e03f3631b6db
+  bbox_count: 1
+- image_id: own_v2_bottle_015.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 63c1a8d5b6080336620e2bc5436cc1a7d2da0f5a7b38c74da2232c2dc106b832
+  bbox_count: 2
+- image_id: own_v2_bottle_016.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing far under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 3925e8d8be1910a3945d2288fb07e4e5e04cec24681ed7f1926a7382c6c1a21f
+  bbox_count: 1
+- image_id: own_v2_bottle_017.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 81f148d49313565a35a2d8393e521b0295944c8e00c3406e93e6a8be11740c22
+  bbox_count: 1
+- image_id: own_v2_bottle_018.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing small_object under indoor_low_light
+  resolution:
+  - 1920
+  - 1080
+  sha256: 88c2938dff7ebbb9c270d74eb9bb6c00e0a240503c6e6aa307a7685eb66c6c5d
+  bbox_count: 1
+- image_id: own_v2_bottle_019.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: 42cc3205b46fcc8d7349cb58137a57203a2275664b657d70619517c9fd651a02
+  bbox_count: 2
+- image_id: own_v2_bottle_020.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: b5f9bf1b9dfa8d7e45261a499131dfefa73b4b4feb8c954a693208b887144ce3
+  bbox_count: 2
+- image_id: own_v2_bottle_021.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing far under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 8a145a4e3b4c3984804b31de5e6eee5e3f1e6eec28f74fdc8c01b867846329b4
+  bbox_count: 1
+- image_id: own_v2_bottle_022.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: fb022c8acc00d4953e2b59ac063568a895abe095347b76f1ef4e5b1bddbddfc3
+  bbox_count: 2
+- image_id: own_v2_laptop_001.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 9b6f11fb4bf9b7fbda19d45a8913110920784b4cd1e15404feacd965c441799b
+  bbox_count: 2
+- image_id: own_v2_laptop_002.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: a1d564ecb563bc63b0b40b280990c44b32cf6dc124ea135b2efe9a23713f4d2c
+  bbox_count: 2
+- image_id: own_v2_laptop_003.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 2c3238cb67198bf7bf5e096326cd74b5138d49bf4f9f3593f983420a3bbf2329
+  bbox_count: 1
+- image_id: own_v2_laptop_004.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 6f8716c1b5b16e6f4869551b0a67e0618c25abfb86e0df8a870c759a99bbd460
+  bbox_count: 1
+- image_id: own_v2_laptop_005.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: fea63bc8d80c52755edca697eaf1ea83d6a3f72096694c404602202c5e0c70ab
+  bbox_count: 2
+- image_id: own_v2_laptop_006.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: ada69c17703e888bba7e856fa1cece18b1296154c5841cec97f0356cf894829d
+  bbox_count: 2
+- image_id: own_v2_laptop_007.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 469e21c1e070faae91f179aa8493a702df39d40a3f3d4fc207429ca885d238c3
+  bbox_count: 2
+- image_id: own_v2_laptop_008.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: b4eebc1c0cda529c0f00d80ee32d22b00651830931a4c7d8f55036e42904ccab
+  bbox_count: 1
+- image_id: own_v2_laptop_009.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 8b8dd3d41a79d12c1f24874aaf2e1d1a936646bfae5845b39524948a2288a550
+  bbox_count: 1
+- image_id: own_v2_laptop_010.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 9a0e40d44113a9c8877fa55847c2d8c64854661ba800984631fb0f4895a5dc3d
+  bbox_count: 2
+- image_id: own_v2_laptop_011.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1920
+  - 1080
+  sha256: 5d6a2edf1c1cb705f4207655baa2fee623b0981fa6ccd215376d64c24e2cb8e8
+  bbox_count: 1
+- image_id: own_v2_laptop_012.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 7ebf5b410c130976d6debcf6cdd7b9fb76351db5b28d8b5e32848afaa5405433
+  bbox_count: 2
+- image_id: own_v2_laptop_013.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 1eb9214318ee2813586bcb6ec29b60f74978eec25ce65c4340c54eb1ae8b8760
+  bbox_count: 1
+- image_id: own_v2_laptop_014.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 3aafac301072c229ba1238592d80b14f507073e48da48f89a48372383441a95c
+  bbox_count: 1
+- image_id: own_v2_laptop_015.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing near under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 4ad31d2310053274eeee49f88b01a4a5330aaf9025dd90ed821894784bdc17b2
+  bbox_count: 2
+- image_id: own_v2_laptop_016.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: c94bd6c64473165596bc2205b2701c8ef552c24d87ee8511f7cff2c241558080
+  bbox_count: 1
+- image_id: own_v2_laptop_017.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 94c5808cbd66125d15b8e6aea4bbf95ee97633e08957abcc61e802aeefccf5a2
+  bbox_count: 1
+- image_id: own_v2_laptop_018.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 7a5832d61196eae35da3d1aa5db5b72b5e482a9880622714c2f576d6c0ca8732
+  bbox_count: 2
+- image_id: own_v2_laptop_019.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for laptop addressing far under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 4a1148810f6ed4e559d22e38937b5fa0fb28e2f1285465cb86e2c86cdfa9774a
+  bbox_count: 1
+- image_id: own_v2_laptop_020.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 1358c8ca8374ce211c35c13ed487ab06deb196d87b5970a8e5240fc44faf43a1
+  bbox_count: 2
+- image_id: own_v2_laptop_021.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: ac4f51e6669932b08147f90cd15b92fa3800dfbdb8b96c5c2b6cf582ec0e5a6d
+  bbox_count: 2
+- image_id: own_v2_laptop_022.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: e1e7932d363012b549ed2b08f858035f97aa9fccfe3f510e3e7f71c0cc0d52ed
+  bbox_count: 1
+- image_id: own_v2_mouse_001.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing different_angles under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: a7556ec96960400a5b805c6cc346d6844d09eb6827445513567f7a1fc2de6da0
+  bbox_count: 1
+- image_id: own_v2_mouse_002.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 8f8c02c6ce62d87ee02e225ede42a6a8938a9c7979a07f6a7fc58b88d598b91e
+  bbox_count: 2
+- image_id: own_v2_mouse_003.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: fb8574ac65c167646f5b91e62cc1c51f2357e60cb9907839f05b5c4b51d4d249
+  bbox_count: 2
+- image_id: own_v2_mouse_004.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing near under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: c65c5f069129c318d40351e19cfcb51d4f684923be192d5be44c31cef9ed5142
+  bbox_count: 2
+- image_id: own_v2_mouse_005.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing far under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 6d7a2f692c361aa6b9074920cbe10493471f06165f905ac2214d8da105f06418
+  bbox_count: 1
+- image_id: own_v2_mouse_006.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: af285e500e9cb975b93ce76eba35eac27c1e964c1008e762ffbec48e72ec961c
+  bbox_count: 2
+- image_id: own_v2_mouse_007.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for mouse addressing far under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 6e7554c4ab1f388d2518f6e1603d0458945d84336f39cd66a670e70dcf46fa29
+  bbox_count: 2
+- image_id: own_v2_mouse_008.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: e62c036f43ff57590f02fc3ac368f88a178a4a91ad1c8e1e0f63de3a51d34db9
+  bbox_count: 2
+- image_id: own_v2_mouse_009.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for mouse addressing near under indoor_low_light
+  resolution:
+  - 1920
+  - 1080
+  sha256: 52659914c3dca1cf56b48ce7b28ac0ff09291849d2354f172a9e4cab4e1b0c01
+  bbox_count: 1
+- image_id: own_v2_mouse_010.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 20d002af3b95ccca6c2df1d6d0a991d45724a34fda8c9c6faf1cf760acb7932a
+  bbox_count: 1
+- image_id: own_v2_mouse_011.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for mouse addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 5a5247c520b5ecd86ac1db3fc61f526da835d4738223d53e83cb254ab076b83f
+  bbox_count: 1
+- image_id: own_v2_mouse_012.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: de506399939ebd4e7c63575137a1bc9ef4979d83ec7ed5e819f8d3d3ae55774f
+  bbox_count: 1
+- image_id: own_v2_mouse_013.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 8f643fc4d9c92bb88aac798cebfd21c068e7cff4eb6afb31eefe2295ee236870
+  bbox_count: 1
+- image_id: own_v2_mouse_014.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing near under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 24698466acb3909bb9a082a45ca6cce21573353394361037337ac1d3519cd213
+  bbox_count: 1
+- image_id: own_v2_mouse_015.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for mouse addressing small_object under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 87db8c1eba646f155aa283e9abe53ab487676ee6a0d4c8377a92bfce90de05d6
+  bbox_count: 2
+- image_id: own_v2_keyboard_001.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing different_angles under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: 1936388762787312ec8cf97932df25aa84388e09ee838d7aea42afd651989f82
+  bbox_count: 1
+- image_id: own_v2_keyboard_002.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing near under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 676957806d34185c1d9d54edc553bb8684aa2662ec53f4f7bae14adf2f3fae0a
+  bbox_count: 1
+- image_id: own_v2_keyboard_003.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing far under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 419702f110b569dbe5e9f771096d4cf0f4dcc429fac1c6f48e5e61c51db593a6
+  bbox_count: 2
+- image_id: own_v2_keyboard_004.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 3ef9d7bfc03bffb640d9dada99acf3f8a9783c80d22fbbb335fa453e65435f2d
+  bbox_count: 1
+- image_id: own_v2_keyboard_005.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing near under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 18a96419871e5be5c1d2bb6a60feceb02d40c92f507c3815a417d274d858513f
+  bbox_count: 2
+- image_id: own_v2_keyboard_006.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: bbd714740f6acdf9ccfab28918e22e682f793f522a3855b14c55954d98b18a77
+  bbox_count: 2
+- image_id: own_v2_keyboard_007.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: 6b2886725d2d4ae3258363436988340ddf96c84da2e7c0cfd7aa4062a362d71d
+  bbox_count: 2
+- image_id: own_v2_keyboard_008.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 4087599eeb5d3701cadf186487c3ac17aa3bc435c4aa7bcdca82166181dd036f
+  bbox_count: 1
+- image_id: own_v2_keyboard_009.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing far under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: df68b095f7d51f6fea9e8df80362c972ac7f9e100e13d2e2de2859ccc71b7dc5
+  bbox_count: 2
+- image_id: own_v2_keyboard_010.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing small_object under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 4a13289fa20e242224867fcc244e613dc91431c01ea110d84214cd43d5866c11
+  bbox_count: 2
+- image_id: own_v2_keyboard_011.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: eefa99f95803d4092195fa3b613c59f01138df44c7e9e2db065a18ba238cadfe
+  bbox_count: 2
+- image_id: own_v2_keyboard_012.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 13ae63c5424a02435db05c664e0eaf8dfea36d3873638d578a643e95be465aef
+  bbox_count: 2
+- image_id: own_v2_keyboard_013.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: b7ab9149c1f3cc931855eaf7ad94594d9318a6046fcfc0a646d6512845a1fbac
+  bbox_count: 1
+- image_id: own_v2_keyboard_014.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 3598961aed3e1f58502218f0adeb4a155be8490a8579b0287459908965363462
+  bbox_count: 2
+- image_id: own_v2_person_001.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for person addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: b6c4e2510640cbf8ef6e20acdf48eee36a285cf71180a1e229846e3d26a78eb9
+  bbox_count: 1
+- image_id: own_v2_person_002.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: eb19e9c73cc12d6a9139848ec5438a596f1bcc179bd7b4bf68450a99d6cfd3df
+  bbox_count: 1
+- image_id: own_v2_person_003.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for person addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 9502f16fb8d924876f931dadc9bccc2f6eed1fce2edbda6ab91893c44473c419
+  bbox_count: 1
+- image_id: own_v2_person_004.jpg
+  class: person
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for person addressing small_object under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: 853d5c843a957dafe18b5b83fcc4fab75f823aa0a3115a0ff7623682d240fcee
+  bbox_count: 1
+- image_id: own_v2_person_005.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 37f4df4d0c98909fa3d0a135f9bc63e9bb9e3805a2b7fc2243461d02d96c2dde
+  bbox_count: 1
+- image_id: own_v2_person_006.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: b203943c0a7203beef24752b6265fbe7dec7c343f9983da92c0be8657a45650d
+  bbox_count: 1
+- image_id: own_v2_person_007.jpg
+  class: person
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for person addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: 10c89e5802e262491aff8c69d5cd78bedc9b0130ea77e6a8a11a5daa8d5f31ee
+  bbox_count: 1
+- image_id: own_v2_person_008.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 385b701346b9fff0c7bf0e7a5099161ebf3c59c908e04cfe617c3669d2c4b4aa
+  bbox_count: 1
+- image_id: own_v2_person_009.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for person addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: c0916bb8c41315743701652db76799fbf8376461388dd9e260e2ab5c1623a80f
+  bbox_count: 1
+- image_id: own_v2_person_010.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for person addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 6bc1b37cbd218d6554dff34abedf45b4805bc197488e8a41bf07ea8cead8464d
+  bbox_count: 1
+- image_id: own_v2_person_011.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: f57b338ba659d038c712ab991e6e5e4df139e76f532d5106b25fe013920728eb
+  bbox_count: 1
+- image_id: own_v2_person_012.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for person addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 28d2286a55e9f045eb22159bc06d419b1ee25574349874a22a5ebd0ca0a69e93
+  bbox_count: 1
+records_holdout:
+- image_id: holdout_real_cell_phone_001.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 518f843c5c66020640cb015a3e2f0c09b45f8558f31df52aa185fc0ac55bb928
+  bbox_count: 2
+- image_id: holdout_real_cell_phone_002.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 4ef03e552292153d73c2c817d534b4e62b9d01f52f937e850e797716704533bf
+  bbox_count: 1
+- image_id: holdout_real_cell_phone_003.jpg
+  class: cell_phone
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cell_phone addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 4a7b4c409f2a2c548c0d6e56c04d0ac4b78a284ab6dd9f48188a09c044c7ddac
+  bbox_count: 2
+- image_id: holdout_real_cell_phone_004.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: f207027dbc119f447674479eff581688b590df3f87da78271df86c9005c0ae54
+  bbox_count: 1
+- image_id: holdout_real_cell_phone_005.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing different_angles under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 1a35de27432ff37cad161a7ab609f6507e73fa576f3e828902324ada1ba47382
+  bbox_count: 2
+- image_id: holdout_real_cell_phone_006.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 6885436f0935432e703eb1935ca518f4480102bf4c46d27386822ca500e4982e
+  bbox_count: 2
+- image_id: holdout_real_cell_phone_007.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing near under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: 68d09cb19320497e52599d349c05a4b9f78ce67a7c359a7023a815487ac28074
+  bbox_count: 1
+- image_id: holdout_real_cell_phone_008.jpg
+  class: cell_phone
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - small_object
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cell_phone addressing small_object under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: a94b1a286b81cb660523639849418d8544bc6bd2a0c80f622793c13b8124c1f9
+  bbox_count: 1
+- image_id: holdout_real_cup_001.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 88958808f9097550df7f1c593c6aeb73b1937486f12475b2743576b1fd0610a6
+  bbox_count: 2
+- image_id: holdout_real_cup_002.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for cup addressing near under daylight
+  resolution:
+  - 1080
+  - 1920
+  sha256: a6d2c2cdffee7db6737f6485ae76baf542c224b0b08bb5913ad74606c8b09059
+  bbox_count: 2
+- image_id: holdout_real_cup_003.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 960
+  sha256: caec6295a143cd5f58bb17717cee599ce3f1d717068cab2ece4b2a1a09154acd
+  bbox_count: 2
+- image_id: holdout_real_cup_004.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 8705895f90d424b5ddcd088ec9fcd61960d0e493d76cc3a2eccbdd2ad0a5d7ba
+  bbox_count: 1
+- image_id: holdout_real_cup_005.jpg
+  class: cup
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for cup addressing far under indoor_low_light
+  resolution:
+  - 1920
+  - 1080
+  sha256: 4fd9c3036e05da01b2e4878fd20409d39a6919dd3dc32c140b8f7f17f19eceb9
+  bbox_count: 2
+- image_id: holdout_real_cup_006.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for cup addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 41cdbab9ce13f3d8bce8e0ebe3db6374781f8545c9601724067e6c9a2fefa441
+  bbox_count: 2
+- image_id: holdout_real_cup_007.jpg
+  class: cup
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for cup addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 18de156230301aecf6a6f669aea6f273f230901a7815b1ab4657bd7e34a11dcb
+  bbox_count: 2
+- image_id: holdout_real_bottle_001.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for bottle addressing far under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 1efc7addbb9d5bb903ab0370969d52a7605e067d53d0c1a6b5e8da2dfa76d8ac
+  bbox_count: 1
+- image_id: holdout_real_bottle_002.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing small_object under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 90ea4f7a092324b006f12bd82a28d5cab4ef821ec08e3cd39aeef845c3502f84
+  bbox_count: 1
+- image_id: holdout_real_bottle_003.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing near under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: d25ae19695452be78b2a81f6d8e7d2c0913773ff35ab2869da70c7918b3e91d5
+  bbox_count: 2
+- image_id: holdout_real_bottle_004.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing far under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 835ba2226540fe3640a5e77dedf50ef90d2c7023a3182e6dbffa19475c16c4c9
+  bbox_count: 1
+- image_id: holdout_real_bottle_005.jpg
+  class: bottle
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - far
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for bottle addressing far under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: b8fd99e68eb94af6a218cdcfc8f93c424206087bad6db3605c046a934b685ccb
+  bbox_count: 2
+- image_id: holdout_real_bottle_006.jpg
+  class: bottle
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for bottle addressing different_angles under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 705a3a9c7de630d4f50c2f93086edb19608f74a6604500f1aefe442ebe9bb637
+  bbox_count: 2
+- image_id: holdout_real_laptop_001.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 350fe76f73b4d877df2a7919c711740b5e37b9eb5128ce187444e02048b472c1
+  bbox_count: 2
+- image_id: holdout_real_laptop_002.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: f8168e41dc53722941b5ee8e6c464834ecfe0e4721e2a54dd14a001ff23e9c28
+  bbox_count: 1
+- image_id: holdout_real_laptop_003.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: abf5773b5c6ab7ea58b4502fe5198106672ef0c1abc23754be5fe5ae4b9cb538
+  bbox_count: 1
+- image_id: holdout_real_laptop_004.jpg
+  class: laptop
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for laptop addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: db01b42c45003258f7361d8b7356c3780fc8b392e08c52f7a4ad617de690b998
+  bbox_count: 1
+- image_id: holdout_real_laptop_005.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for laptop addressing far under daylight
+  resolution:
+  - 1280
+  - 960
+  sha256: 2954f63c553639786da9011b1c5d4937020f71f278ec7bc351b5a93757279024
+  bbox_count: 2
+- image_id: holdout_real_laptop_006.jpg
+  class: laptop
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for laptop addressing near under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: 43277ab506cc0ebafa4ed7132ddf6ac6bbd98318470bf1947f59413e6042507e
+  bbox_count: 2
+- image_id: holdout_real_mouse_001.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: b6907c9d234f5a0657f8377362dc4e28820304f88da59f7af0e84476f2f5b826
+  bbox_count: 2
+- image_id: holdout_real_mouse_002.jpg
+  class: mouse
+  source: own
+  device: mobile_camera
+  conditions:
+  - daylight
+  - different_angles
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for mouse addressing different_angles under daylight
+  resolution:
+  - 1920
+  - 1080
+  sha256: 28320acd648b0ecf701fd62cc11fc310a4e68dffb1a8dd40742c5d6c09c4c946
+  bbox_count: 2
+- image_id: holdout_real_mouse_003.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing different_angles under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: b2e03b77b4960e9c61f9af1c80fca47950a12b4dbda7ab76a6133cff54940b90
+  bbox_count: 2
+- image_id: holdout_real_mouse_004.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing near under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: 4e5d466bcf81c40c07b2ce8ab86643c0450a597c3877333116dbdbc1e7324c6e
+  bbox_count: 1
+- image_id: holdout_real_mouse_005.jpg
+  class: mouse
+  source: own
+  device: laptop_webcam
+  conditions:
+  - daylight
+  - small_object
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for mouse addressing small_object under daylight
+  resolution:
+  - 1280
+  - 720
+  sha256: ebc6b85177ca2d1d4e1b006550fa7e8ced17ba40ffcc054afba6a09937ccf47b
+  bbox_count: 2
+- image_id: holdout_real_keyboard_001.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - different_angles
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing different_angles under indoor_bright
+  resolution:
+  - 1080
+  - 1920
+  sha256: ebf6e651eb85f16b199f75aa89a4cb9e03520ffcc4a43679efb6ae85dbf52d76
+  bbox_count: 1
+- image_id: holdout_real_keyboard_002.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - different_angles
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing different_angles under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: c18884c3be958e550492cadc88243606856a013a38a081812716c5b505d6728a
+  bbox_count: 2
+- image_id: holdout_real_keyboard_003.jpg
+  class: keyboard
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for keyboard addressing far under indoor_bright
+  resolution:
+  - 1920
+  - 1080
+  sha256: d8e3fd594c27242fe293c67993ac415e4c75b8ac98ec54afa615b6f67aaa04f6
+  bbox_count: 2
+- image_id: holdout_real_keyboard_004.jpg
+  class: keyboard
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - near
+  - cluttered_background
+  - laptop_webcam
+  notes: Targeted capture for keyboard addressing near under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 6cd1c1a74afe41d750b00116d40e53460740a9122a446feae46507881bb6a486
+  bbox_count: 2
+- image_id: holdout_real_person_001.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_bright
+  - far
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing far under indoor_bright
+  resolution:
+  - 1280
+  - 720
+  sha256: 1fecf33a124f019142c0e83ed9c71db95642634200236962305ecd6c6836a166
+  bbox_count: 1
+- image_id: holdout_real_person_002.jpg
+  class: person
+  source: own
+  device: laptop_webcam
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - laptop_webcam
+  notes: Targeted capture for person addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 720
+  sha256: 115c2f9e8467c49188dd4fb3dea276db58caaae768558b062a152125132af19e
+  bbox_count: 1
+- image_id: holdout_real_person_003.jpg
+  class: person
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - near
+  - partial_occlusion
+  - mobile_camera
+  notes: Targeted capture for person addressing near under indoor_low_light
+  resolution:
+  - 1280
+  - 960
+  sha256: 08b88a361b81e735a43c0c120215afafa3c084fefcc41c55bf100ee1ff83f2c6
+  bbox_count: 1
+- image_id: holdout_real_person_004.jpg
+  class: person
+  source: own
+  device: mobile_camera
+  conditions:
+  - indoor_low_light
+  - small_object
+  - cluttered_background
+  - mobile_camera
+  notes: Targeted capture for person addressing small_object under indoor_low_light
+  resolution:
+  - 1080
+  - 1920
+  sha256: ebfcb656bc3c61091f36a0303d9dcbf4210234b6998f5913e0591ed5b935e715
+  bbox_count: 1
