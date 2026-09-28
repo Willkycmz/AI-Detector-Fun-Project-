@@ -10,8 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DIwwV6mg.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-sqVrCRLk.css">
+  <script type="module" crossorigin src="./assets/index-C7U1GLtc.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BALxx6Fo.css">
 </head>
 <body>
   <div class="app-container">
@@ -304,7 +304,7 @@
         </div>
         <div class="status-item">
           <span class="status-dot cyan"></span>
-          <span>Privacy: 100% Local-First Edge Inference</span>
+          <span>Edge Vision: Local Browser YOLO • Multimodal Gateway</span>
         </div>
       </div>
     </section>
@@ -486,6 +486,25 @@
                 </span>
                 <button type="button" class="btn-close-contextual-panel" data-close-tool="ask" aria-label="Close Ask AI panel" title="Tutup panel Ask AI">✕</button>
               </div>
+            </div>
+
+            <!-- Chat Privacy & Architecture Notice -->
+            <div class="chat-privacy-notice" role="note" aria-label="Informasi Privasi & Gateway">
+              <span class="privacy-notice-badge">🛡️ Privasi &amp; Gateway</span>
+              <p class="privacy-notice-text">
+                Deteksi YOLOv8 berjalan <strong>100% lokal di browser</strong>. Saat Anda bertanya di Chat, snapshot frame dikirim ke <strong>VisionX Backend Gateway (https://visionx.my.id)</strong> untuk dianalisis oleh AI multimodal yang terkonfigurasi.
+              </p>
+            </div>
+
+            <!-- Gateway Authentication Bar -->
+            <div id="gatewayAuthBar" class="gateway-auth-bar" aria-live="polite">
+              <div class="auth-status-indicator">
+                <span id="authStatusDot" class="status-dot"></span>
+                <span id="authStatusLabel" class="auth-status-label">Memeriksa sesi gateway...</span>
+              </div>
+              <button type="button" id="btnAuthToggle" class="btn btn-sm btn-outline auth-action-btn">
+                🔑 Login PIN
+              </button>
             </div>
 
             <!-- Quick Prompts Chips -->
@@ -1949,6 +1968,41 @@
 
   <!-- Sheet Backdrop for Mobile Drawers -->
   <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+
+  <!-- VisionX Gateway Authentication Modal -->
+  <div id="visionxAuthModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="modal-card auth-modal-card">
+      <div class="modal-header">
+        <h3 id="authModalTitle" class="modal-title">🔐 Autentikasi Gateway VisionX</h3>
+        <button type="button" id="btnCloseAuthModal" class="btn-close-modal" aria-label="Tutup dialog autentikasi">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-description">
+          Fitur AI Vision Assistant dilindungi gateway server VisionX (<code>https://visionx.my.id</code>). Masukkan PIN otorisasi server Anda.
+        </p>
+        <div class="form-group">
+          <label for="authModalPinInput" class="form-label">PIN Akses VisionX:</label>
+          <input
+            type="password"
+            id="authModalPinInput"
+            class="form-input auth-pin-input"
+            placeholder="Masukkan PIN (cth: visionx2026)"
+            autocomplete="current-password"
+            maxlength="32"
+          />
+        </div>
+        <div id="authModalError" class="auth-modal-error hidden" role="alert">
+          <span id="authModalErrorMessage">PIN salah atau server menolak permintaan.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="btnCancelAuthModal" class="btn btn-outline">Batal</button>
+        <button type="button" id="btnSubmitAuthModal" class="btn btn-primary">
+          <span class="btn-text">Masuk &amp; Dapatkan Token</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
