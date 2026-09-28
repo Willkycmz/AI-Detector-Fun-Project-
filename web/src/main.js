@@ -51,6 +51,7 @@ class VisionXWebApp {
     this.currentMode = 'home'; // 'home' | 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
     this.isStartingCamera = false;
     this.hasLoadedCameraDevices = false;
+    this._cameraSessionId = 0;
     this.animationFrameId = null;
     this.prevTime = performance.now();
     this.fpsSmooth = 0;
@@ -239,6 +240,9 @@ class VisionXWebApp {
       brandLogo: document.getElementById('brandLogo'),
       btnNavHome: document.getElementById('btnNavHome'),
       heroCameraButtons: document.querySelector('.hero-camera-buttons'),
+      primaryHeroBar: document.querySelector('.primary-hero-bar'),
+      currentResultSummaryBar: document.querySelector('.current-result-summary-bar'),
+      secondaryControlsBar: document.querySelector('.secondary-controls-bar'),
 
       // Stage & Video
       video: document.getElementById('videoElement'),
@@ -637,7 +641,7 @@ class VisionXWebApp {
     if (this.elements.brandLogo) {
       this.elements.brandLogo.addEventListener('click', () => this.setMode('home'));
       this.elements.brandLogo.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target === this.elements.brandLogo && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           this.setMode('home');
         }
@@ -659,7 +663,7 @@ class VisionXWebApp {
         };
         card.addEventListener('click', handleNav);
         card.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target === card && (e.key === 'Enter' || e.key === ' ')) {
             handleNav(e);
           }
         });
@@ -1294,6 +1298,31 @@ class VisionXWebApp {
   }
 
   /**
+   * Mengatur visibilitas bilah kontrol kamera global sesuai mode aktif (V1.7 Phase B).
+   * Pada mode 'manager' dan 'home', seluruh bilah kamera (.primary-hero-bar, .hero-camera-buttons,
+   * .current-result-summary-bar, .secondary-controls-bar) disembunyikan.
+   * Pada mode kamera ('detection', 'collection', 'identity', 'read_text'), bilah kamera dipulihkan.
+   */
+  syncModeUIBars(mode) {
+    const isManager = (mode === 'manager');
+    const isHome = (mode === 'home');
+    const hideCameraBars = isManager || isHome;
+
+    if (this.elements.primaryHeroBar) {
+      this.elements.primaryHeroBar.classList.toggle('hidden', hideCameraBars);
+    }
+    if (this.elements.heroCameraButtons) {
+      this.elements.heroCameraButtons.classList.toggle('hidden', hideCameraBars);
+    }
+    if (this.elements.currentResultSummaryBar) {
+      this.elements.currentResultSummaryBar.classList.toggle('hidden', hideCameraBars);
+    }
+    if (this.elements.secondaryControlsBar) {
+      this.elements.secondaryControlsBar.classList.toggle('hidden', hideCameraBars);
+    }
+  }
+
+  /**
    * Mengganti Mode aplikasi: 'home' | 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
    */
   setMode(mode, options = {}) {
@@ -1323,9 +1352,13 @@ class VisionXWebApp {
     if (this.elements.debugPanel) this.elements.debugPanel.classList.add('hidden');
     if (this.elements.ocrBadge) this.elements.ocrBadge.classList.add('hidden');
 
+    // Sinkronkan bilah kamera global (sembunyikan di Manager dan Home, pulihkan di mode kamera)
+    this.syncModeUIBars(mode);
+
     if (mode === 'home') {
+      this._cameraSessionId++;
       // Pastikan kamera dihentikan saat di Home
-      if (this.cameraService && this.cameraService.state.status === 'connected') {
+      if (this.cameraService && (this.cameraService.state.status === 'connected' || this.cameraService.state.status === 'connecting' || this.isStartingCamera)) {
         this.handleStopCamera();
       }
 
@@ -1362,7 +1395,7 @@ class VisionXWebApp {
         this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
       }
       if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+      this.syncModeUIBars('detection');
 
       this.elements.modeBadge.className = 'badge badge-mode-detect';
       this.elements.modeStatusText.textContent = 'Detection Mode';
@@ -1392,7 +1425,7 @@ class VisionXWebApp {
         this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
       }
       if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+      this.syncModeUIBars('collection');
 
       this.elements.modeBadge.className = 'badge badge-mode-collect';
       this.elements.modeStatusText.textContent = 'Collection Mode';
@@ -1416,14 +1449,17 @@ class VisionXWebApp {
         this.handleStartCamera();
       }
     } else if (mode === 'manager') {
-      // Hentikan kamera jika sedang aktif
-      if (this.cameraService && this.cameraService.state.status === 'connected') {
+      // Invalidate any in-flight camera start session
+      this._cameraSessionId++;
+
+      // Hentikan kamera jika sedang aktif atau connecting
+      if (this.cameraService && (this.cameraService.state.status === 'connected' || this.cameraService.state.status === 'connecting' || this.isStartingCamera)) {
         this.handleStopCamera();
       }
 
-      // Sembunyikan panggung kamera dan kontrol hero kamera di Dataset Manager
+      // Sembunyikan panggung kamera dan kontrol hero/secondary kamera di Dataset Manager
       if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
-      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.add('hidden');
+      this.syncModeUIBars('manager');
 
       this.elements.btnModeManager.classList.add('active');
       this.elements.btnModeManager.setAttribute('aria-selected', 'true');
@@ -1447,7 +1483,7 @@ class VisionXWebApp {
       this.elements.modeStatusText.textContent = 'Identity Lab';
 
       if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+      this.syncModeUIBars('identity');
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1469,7 +1505,7 @@ class VisionXWebApp {
         this.elements.btnModeReadText.setAttribute('aria-selected', 'true');
       }
       if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+      this.syncModeUIBars('read_text');
 
       this.elements.modeBadge.className = 'badge badge-mode-readtext';
       this.elements.modeStatusText.textContent = 'Read Text Mode';
@@ -2506,6 +2542,13 @@ class VisionXWebApp {
   handleGlobalKeydown(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
 
+    // Sub-phase B.2: Abaikan shortcut kamera saat mode aktif adalah Dataset Manager
+    if (this.currentMode === 'manager') {
+      if (e.code === 'Space' || e.key === 'c' || e.key === 'C' || e.key === 'm' || e.key === 'M') {
+        return;
+      }
+    }
+
     if (e.code === 'Space' || e.key === 'c' || e.key === 'C') {
       e.preventDefault();
       if (this.currentMode === 'collection') this.handleCapture();
@@ -2554,15 +2597,32 @@ class VisionXWebApp {
 
   async handleStartCamera(deviceId = null) {
     if (this.isStartingCamera) return;
+    if (this.currentMode === 'manager' || this.currentMode === 'home') return;
     if (this.cameraService && this.cameraService.state.status === 'connected') return;
 
     this.isStartingCamera = true;
+    const sessionId = ++this._cameraSessionId;
+
     try {
       if (!this.hasLoadedCameraDevices) {
         await this.loadCameraDevices();
       }
+      if (sessionId !== this._cameraSessionId || this.currentMode === 'manager' || this.currentMode === 'home') {
+        return;
+      }
+
       const targetDevice = deviceId || (this.elements.deviceSelect && this.elements.deviceSelect.value) || null;
       await this.cameraService.start(targetDevice);
+
+      // Guard against race condition: check if session changed or user moved to manager/home while start was in-flight
+      if (sessionId !== this._cameraSessionId || this.currentMode === 'manager' || this.currentMode === 'home') {
+        console.warn('[VisionX] Camera start resolved after mode changed; stopping newly opened stream immediately.');
+        if (this.cameraService) {
+          this.cameraService.stop();
+        }
+        return;
+      }
+
       this.startRenderLoop();
     } catch (err) {
       console.error('[VisionX] Gagal memulai kamera:', err);
@@ -2572,6 +2632,7 @@ class VisionXWebApp {
   }
 
   handleStopCamera() {
+    this._cameraSessionId++; // Invalidate any in-flight camera start session
     this.stopRenderLoop();
     if (this.cameraService) {
       this.cameraService.stop();

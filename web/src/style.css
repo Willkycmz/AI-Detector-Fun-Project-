@@ -2026,8 +2026,7 @@ input:checked + .slider {
   flex-direction: column;
   gap: 18px;
   animation: fadeIn 0.25s ease;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 18px;
+  width: 100%;
 }
 
 .panel-section-header {
