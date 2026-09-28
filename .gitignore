@@ -1,0 +1,40 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Node & Build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Python Cache & Testing
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Large Dataset Binaries & Images (Allow metadata & docs)
+datasets/raw/
+datasets/processed/
+datasets/processed_v2/
+datasets/preview/
+datasets/faces/
+datasets/real_world_holdout/
+datasets/.trash/
+datasets/imported/
+datasets/annotations/*.jpg
+datasets/annotations/*.png
+
+# Model Binaries & Checkpoints
+models/
+runs/
+scratch/
+*.pt
+*.onnx
+*.parquet
+web/public/models/
+
+# Environment Variables
+.env
+.env.*

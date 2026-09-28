@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>VisionX V1.5 - Realtime AI Vision Assistant</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
+  <script src="./ort.min.js"></script>
+  <script type="module" crossorigin src="./assets/index-C6n7iSnV.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-sqVrCRLk.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Navbar Header -->
+    <header class="app-header">
+      <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Beranda">
+        <svg class="brand-icon" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
+          <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+          <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+        </svg>
+        <div>
+          <h1 class="brand-title">VisionX Web <span class="version-tag">V1.7</span></h1>
+          <span class="brand-subtitle">AI Vision Platform &bull; Realtime Detection &bull; Chat Assistant &bull; Edge Perception</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="mode-switcher-container">
+        <div class="mode-toggle-group" role="tablist">
+          <button id="btnNavHome" class="mode-tab active" role="tab" aria-selected="true" title="VisionX Home / Beranda">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Home
+          </button>
+          <button id="btnModeDetect" class="mode-tab" role="tab" aria-selected="false" title="Realtime Object Detection & Face Layer">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="2" x2="12" y2="5"></line>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="5" y2="12"></line>
+              <line x1="19" y1="12" x2="22" y2="12"></line>
+            </svg>
+            Vision
+          </button>
+          <button id="btnModeReadText" class="mode-tab" role="tab" aria-selected="false" title="Read Text Mode: OCR Teks dari Kamera & Pembaca Suara (Shortcut: R)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              <line x1="9" y1="7" x2="15" y2="7"></line>
+              <line x1="9" y1="11" x2="13" y2="11"></line>
+            </svg>
+            Read Text
+          </button>
+          <button id="btnModeCollect" class="mode-tab" role="tab" aria-selected="false" title="Pengambilan Dataset Kamera Bersih">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            Dataset Collection
+          </button>
+          <button id="btnModeManager" class="mode-tab" role="tab" aria-selected="false" title="Manajemen Dataset Disk, Recycle Bin & Multi-Select">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              <line x1="12" y1="11" x2="12" y2="17"></line>
+              <line x1="9" y1="14" x2="15" y2="14"></line>
+            </svg>
+            Dataset Manager
+          </button>
+          <button id="btnModeIdentity" class="mode-tab" role="tab" aria-selected="false" title="Identity Lab: Profil Pengembang & Pengenalan Wajah">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Identity Lab
+          </button>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <!-- Badge Mode Aktif -->
+        <div id="modeBadge" class="badge badge-mode-home">
+          <span class="badge-dot"></span>
+          <span id="modeStatusText">Home</span>
+        </div>
+
+        <!-- Badge Status Kamera -->
+        <div id="cameraBadge" class="badge badge-disconnected">
+          <span class="badge-dot"></span>
+          <span id="cameraStatusText">Camera Disconnected</span>
+        </div>
+
+        <!-- Badge Model Aktif (V0.5.1) -->
+        <div id="activeModelBadge" class="badge badge-model-custom">
+          <span class="badge-dot"></span>
+          <span id="activeModelBadgeText">VisionX V1 Custom</span>
+        </div>
+
+        <!-- Badge Voice Assistant (V0.8) -->
+        <div id="voiceBadge" class="badge badge-ready" title="Status Voice Assistant Engine (Shortcut: V)">
+          <span class="badge-dot"></span>
+          <span id="voiceBadgeText">Voice: Ready</span>
+        </div>
+
+        <!-- Badge Status OCR (V0.9) -->
+        <div id="ocrBadge" class="badge badge-ready hidden" title="Status OCR Engine (Tesseract.js)">
+          <span class="badge-dot"></span>
+          <span id="ocrBadgeText">OCR: Ready</span>
+        </div>
+
+        <!-- Badge Status Inferensi AI (Hanya di Detection Mode) -->
+        <div id="inferenceBadge" class="badge badge-disconnected">
+          <span class="badge-dot"></span>
+          <span id="inferenceStatusText">Loading Model...</span>
+        </div>
+
+        <!-- Badge Object Count (Hanya di Detection Mode) -->
+        <div id="detectionCountBadge" class="badge badge-count">
+          <span>Objects:</span>
+          <strong id="detectionCountValue">0</strong>
+        </div>
+
+        <!-- Badge Tracked Objects (V0.7) -->
+        <div id="trackedCountBadge" class="badge badge-count">
+          <span>Tracks:</span>
+          <strong id="trackedCountValue">0</strong>
+        </div>
+
+        <!-- Badge Active Class (Hanya di Collection Mode) -->
+        <div id="classBadge" class="badge badge-class hidden">
+          <span>Class:</span>
+          <strong id="badgeClassName">object</strong>
+        </div>
+
+        <!-- Badge Image Count (Hanya di Collection Mode) -->
+        <div id="countBadge" class="badge badge-count hidden">
+          <span>Images:</span>
+          <strong id="badgeImageCount">0</strong>
+        </div>
+
+        <!-- Badge FPS -->
+        <div id="fpsBadge" class="badge badge-fps">
+          <span>FPS:</span>
+          <strong id="fpsValue">0.0</strong>
+        </div>
+
+        <!-- Theme Toggle Button (V1.5) -->
+        <button id="btnThemeToggle" class="btn btn-icon theme-toggle-btn" title="Toggle Light/Dark Theme">
+          <span id="themeToggleIcon">🌙</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Error / Warning Banner Toast -->
+    <div id="errorBanner" class="error-banner hidden">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span id="errorMessage">Pesan notifikasi.</span>
+    </div>
+
+    <!-- Success Toast Notification -->
+    <div id="successBanner" class="success-banner hidden">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span id="successMessage">Operasi berhasil.</span>
+    </div>
+
+    <!-- Home / Landing Page View (V1.7 Entry State) -->
+    <section id="homeView" class="home-view" aria-label="VisionX Home and Feature Directory">
+      <div class="home-hero">
+        <div class="home-badge">VisionX AI Platform &bull; V1.7</div>
+        <h2 class="home-title">Edge AI Vision &amp; Spatial Perception</h2>
+        <p class="home-description">
+          Platform visi komputer cerdas lokal dengan deteksi objek real-time, pembaca teks OCR,
+          asisten percakapan multimodal, pengenalan identitas, dan manajemen dataset.
+        </p>
+      </div>
+
+      <div class="home-grid" role="list">
+        <!-- Card 1: Detection Mode -->
+        <div class="home-card card-detection" data-nav-target="detection" role="button" tabindex="0" aria-label="Buka Detection Mode">
+          <div class="home-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="2" x2="12" y2="5"></line>
+              <line x1="12" y1="19" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="5" y2="12"></line>
+              <line x1="19" y1="12" x2="22" y2="12"></line>
+            </svg>
+          </div>
+          <div class="home-card-content">
+            <div class="home-card-header">
+              <h3 class="home-card-title">Detection Mode</h3>
+              <span class="home-card-tag camera-tag">Kamera Live</span>
+            </div>
+            <p class="home-card-desc">Deteksi objek realtime YOLOv8, pelacakan spasial presisi, dan sistem peringatan keselamatan lingkungan.</p>
+            <div class="home-card-action">
+              <span class="action-btn-text">Buka Deteksi &rarr;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Chat Assistant -->
+        <div class="home-card card-chat" data-nav-target="chat" role="button" tabindex="0" aria-label="Buka Chat Assistant">
+          <div class="home-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <div class="home-card-content">
+            <div class="home-card-header">
+              <h3 class="home-card-title">Chat Assistant</h3>
+              <span class="home-card-tag ai-tag">AI Multimodal</span>
+            </div>
+            <p class="home-card-desc">Tanyakan objek di sekitar, riwayat kejadian, atau analisis visual secara interaktif tanpa meminta izin kamera otomatis.</p>
+            <div class="home-card-action">
+              <span class="action-btn-text">Buka Chat Assistant &rarr;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Identity Lab -->
+        <div class="home-card card-identity" data-nav-target="identity" role="button" tabindex="0" aria-label="Buka Identity Lab">
+          <div class="home-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <div class="home-card-content">
+            <div class="home-card-header">
+              <h3 class="home-card-title">Identity Lab</h3>
+              <span class="home-card-tag biometrics-tag">Biometrik Wajah</span>
+            </div>
+            <p class="home-card-desc">Kelola profil pengembang dan foto referensi wajah SFace. Mendukung impor foto lokal tanpa kamera atau snapshot webcam.</p>
+            <div class="home-card-action">
+              <span class="action-btn-text">Buka Identity Lab &rarr;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Dataset Manager -->
+        <div class="home-card card-manager" data-nav-target="manager" role="button" tabindex="0" aria-label="Buka Dataset Manager">
+          <div class="home-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              <line x1="12" y1="11" x2="12" y2="17"></line>
+              <line x1="9" y1="14" x2="15" y2="14"></line>
+            </svg>
+          </div>
+          <div class="home-card-content">
+            <div class="home-card-header">
+              <h3 class="home-card-title">Dataset Manager</h3>
+              <span class="home-card-tag offline-tag">Zero Camera &bull; File Murni</span>
+            </div>
+            <p class="home-card-desc">Jelajahi dataset citra disk lokal, filter kelas gambar, pencarian, dan sistem pemulihan Recycle Bin yang aman.</p>
+            <div class="home-card-action">
+              <span class="action-btn-text">Buka Dataset Manager &rarr;</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Read Text -->
+        <div class="home-card card-readtext" data-nav-target="read_text" role="button" tabindex="0" aria-label="Buka Read Text Mode">
+          <div class="home-card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              <line x1="9" y1="7" x2="15" y2="7"></line>
+              <line x1="9" y1="11" x2="13" y2="11"></line>
+            </svg>
+          </div>
+          <div class="home-card-content">
+            <div class="home-card-header">
+              <h3 class="home-card-title">Read Text Mode</h3>
+              <span class="home-card-tag ocr-tag">OCR &amp; Suara</span>
+            </div>
+            <p class="home-card-desc">Pindai teks dokumen, kemasan, atau layar dari tangkapan kamera lalu bacakan dengan sintesis suara Bahasa Indonesia.</p>
+            <div class="home-card-action">
+              <span class="action-btn-text">Buka Read Text &rarr;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Platform Status Footer in Home -->
+      <div class="home-footer-status">
+        <div class="status-item">
+          <span class="status-dot green"></span>
+          <span>Vision Core: Local ONNX Runtime Web Ready</span>
+        </div>
+        <div class="status-item">
+          <span class="status-dot cyan"></span>
+          <span>Privacy: 100% Local-First Edge Inference</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Stage: Video, Shutter Flash, & Canvas Overlay -->
+    <main id="stageCard" class="stage-card hidden">
+      <video id="videoElement" class="video-view" autoplay playsinline muted></video>
+      <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
+      
+      <!-- Visual Shutter Flash Effect saat Capture -->
+      <div id="shutterFlash" class="shutter-flash"></div>
+
+      <!-- Live Mode Indicator Overlay Watermark -->
+      <div id="stageWatermark" class="stage-watermark">
+        <span id="watermarkMode">DETECTION</span>
+        <span id="watermarkExtra"></span>
+      </div>
+
+      <!-- Placeholder bila kamera mati -->
+      <div id="cameraPlaceholder" class="camera-placeholder">
+        <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <div class="placeholder-title">Kamera Belum Aktif</div>
+        <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video, deteksi YOLOv8, atau pengumpulan dataset.</div>
+      </div>
+    </main>
+
+    <!-- Global Camera & Vision Controls Card -->
+    <section id="controlsCard" class="controls-card hidden">
+      <!-- 1. PRIMARY HERO ACTIONS (Always Visible, Min 48x48px Touch Targets) -->
+      <div class="primary-hero-bar" aria-label="Primary Camera and Vision Actions">
+        <div class="hero-camera-buttons">
+          <button id="btnStart" class="btn btn-start btn-hero" title="Start Live Camera Stream">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span>Start Camera</span>
+          </button>
+          <button id="btnStop" class="btn btn-stop btn-hero" disabled title="Stop Camera Stream">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="6" y="6" width="12" height="12"></rect>
+            </svg>
+            <span>Stop Camera</span>
+          </button>
+        </div>
+
+        <!-- Quick Ask Vision Action -->
+        <button id="btnQuickAskVision" class="btn btn-quick-ask" type="button" title="Tanyakan ke Vision Assistant (Fokus input AI)"
+          onclick="const el = document.getElementById('askVisionInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+          </svg>
+          <span>Ask Vision</span>
+        </button>
+      </div>
+
+      <!-- 2. CURRENT RESULT SUMMARY STRIP -->
+      <div class="current-result-summary-bar" aria-label="Detection Realtime Summary">
+        <div class="summary-pill summary-objects">
+          <span class="summary-dot cyan"></span>
+          <span>Objects:</span>
+          <strong id="summaryDetectionCount">0</strong>
+        </div>
+        <div class="summary-pill summary-tracks">
+          <span class="summary-dot purple"></span>
+          <span>Tracks:</span>
+          <strong id="summaryTrackedCount">0</strong>
+        </div>
+        <div class="summary-pill summary-fps">
+          <span class="summary-dot emerald"></span>
+          <span>Speed:</span>
+          <strong id="summaryFpsDisplay">Ready</strong>
+        </div>
+      </div>
+
+      <!-- 3. SECONDARY CONTROLS (Model, Tracking, Mirror, Device) -->
+      <div class="secondary-controls-bar">
+        <!-- Model Selection -->
+        <div class="model-select-group">
+          <label for="modelSelect" class="field-label-sm">Model:</label>
+          <select id="modelSelect" class="select-control model-select-sm">
+            <option value="visionx_v2" selected>🚀 VisionX V2 (Real-World Improved)</option>
+            <option value="visionx_v1">🎯 VisionX V1 (Custom 7 Classes)</option>
+            <option value="pretrained">🌐 Pretrained YOLOv8n (COCO 80 Classes)</option>
+          </select>
+        </div>
+
+        <!-- Tracking Toggle -->
+        <label class="toggle-control-compact" title="Aktifkan persistent Object Tracking ID & Velocity (V0.7)">
+          <span class="toggle-label-sm">Tracking:</span>
+          <span class="switch switch-sm">
+            <input type="checkbox" id="toggleTracking" checked />
+            <span class="slider"></span>
+          </span>
+        </label>
+
+        <!-- Mirror Toggle Button -->
+        <button id="btnToggleMirror" class="btn btn-sm btn-secondary btn-mirror" title="Cerminkan kamera horizontal (Mirrored front camera)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"></polyline>
+            <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+            <polyline points="7 23 3 19 7 15"></polyline>
+            <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+          <span id="mirrorBtnText">Mirror</span>
+        </button>
+
+        <!-- Camera Device Dropdown -->
+        <div class="device-select-compact">
+          <label for="deviceSelect" class="field-label-sm">Kamera:</label>
+          <select id="deviceSelect" class="select-control select-sm">
+            <option value="">Default / Auto Camera</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- DETECTION MODE ADVANCED CONTROLS & CONTEXTUAL TOOLS (V1.5 Phase E) -->
+      <div id="detectionControls" class="detection-controls-panel">
+        <!-- Vision Contextual Tools Navigation Bar -->
+        <div class="contextual-tools-nav-wrapper" aria-label="Vision Contextual Tools Navigation">
+          <div class="contextual-nav-header">
+            <span class="contextual-nav-label">Contextual Tools</span>
+            <span id="activeToolIndicator" class="active-tool-indicator" aria-live="polite">None active (Tap to open)</span>
+          </div>
+          <div class="contextual-tools-nav" role="tablist" aria-label="Vision Contextual Tools">
+            <button type="button" class="btn-contextual-tool" id="toolBtnAsk" data-tool="ask" role="tab" aria-selected="false" aria-controls="askVisionPanel" title="Buka AI Vision Assistant">
+              <span class="tool-icon">🤖</span>
+              <span class="tool-name">Ask AI</span>
+            </button>
+            <button type="button" class="btn-contextual-tool" id="toolBtnVoice" data-tool="voice" role="tab" aria-selected="false" aria-controls="voicePanel" title="Buka Voice Assistant Controls">
+              <span class="tool-icon">🔊</span>
+              <span class="tool-name">Voice</span>
+            </button>
+            <button type="button" class="btn-contextual-tool" id="toolBtnMemory" data-tool="memory" role="tab" aria-selected="false" aria-controls="objectMemoryPanel" title="Buka Object Memory Tracker">
+              <span class="tool-icon">🧠</span>
+              <span class="tool-name">Memory</span>
+            </button>
+            <button type="button" class="btn-contextual-tool" id="toolBtnPersonal" data-tool="personal" role="tab" aria-selected="false" aria-controls="personalObjectsPanel" title="Buka Personal Objects Registry">
+              <span class="tool-icon">🏷️</span>
+              <span class="tool-name">Personal</span>
+            </button>
+            <button type="button" class="btn-contextual-tool" id="toolBtnSafety" data-tool="safety" role="tab" aria-selected="false" aria-controls="safetyAlertsPanel" title="Buka Safety Alerts System">
+              <span class="tool-icon">⚠️</span>
+              <span class="tool-name">Safety</span>
+            </button>
+            <button type="button" class="btn-contextual-tool" id="toolBtnSettings" data-tool="settings" role="tab" aria-selected="false" aria-controls="settingsPanel" title="Buka Settings &amp; Diagnostics">
+              <span class="tool-icon">⚙️</span>
+              <span class="tool-name">Settings</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Contextual Panels Container (Phase E: Maximum 1 Active on Mobile) -->
+        <div class="contextual-panels-container">
+          <!-- ================================================================
+               1. V1.0 AI VISION ASSISTANT PANEL ("ASK VISIONX")
+               ================================================================ -->
+          <div id="askVisionPanel" class="contextual-panel ask-vision-panel" role="tabpanel" aria-labelledby="toolBtnAsk" aria-hidden="true" aria-label="AI Vision Assistant Controls">
+            <div class="ask-vision-header-row">
+              <div class="ask-vision-title-group">
+                <div class="assistant-sparkle-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                  </svg>
+                </div>
+                <div class="ask-vision-title-texts">
+                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="badge-v1-tag">V1.0 AI</span></h3>
+                  <span class="ask-vision-subtitle">Asisten multimodal cerdas &bull; Menjawab pertanyaan dari snapshot kamera &amp; konteks visual</span>
+                </div>
+              </div>
+
+              <!-- Assistant Status Badge & Close Button -->
+              <div class="ask-vision-status-group">
+                <span id="aiAssistantStatusBadge" class="badge badge-ready">
+                  <span class="badge-dot"></span>
+                  <span id="aiAssistantStatusText">AI Ready</span>
+                </span>
+                <button type="button" class="btn-close-contextual-panel" data-close-tool="ask" aria-label="Close Ask AI panel" title="Tutup panel Ask AI">✕</button>
+              </div>
+            </div>
+
+            <!-- Quick Prompts Chips -->
+            <div class="quick-prompts-row" aria-label="Pertanyaan Cepat">
+              <span class="quick-prompt-label">Contoh:</span>
+              <button type="button" class="quick-prompt-chip" data-prompt="Apa yang ada di depan saya saat ini?">
+                🔍 Apa yang ada di depan?
+              </button>
+              <button type="button" class="quick-prompt-chip" data-prompt="Bacakan teks yang terbaca di kamera">
+                🔤 Bacakan teks
+              </button>
+              <button type="button" class="quick-prompt-chip" data-prompt="Siapa yang terlihat di depan kamera?">
+                👤 Siapa di depan?
+              </button>
+              <button type="button" class="quick-prompt-chip" data-prompt="Berapa banyak objek yang terdeteksi?">
+                🔢 Hitung objek
+              </button>
+            </div>
+
+            <!-- Conversation Thread Container (Phase D Multi-Turn) -->
+            <div id="visionConversationThread" class="vision-conversation-thread hidden" aria-live="polite" aria-label="Riwayat Percakapan AI"></div>
+
+            <!-- Input Form -->
+            <form id="askVisionForm" class="ask-vision-form">
+              <div class="ask-vision-input-wrapper">
+                <input
+                  type="text"
+                  id="askVisionInput"
+                  class="ask-vision-input"
+                  placeholder="Tanyakan apa pun tentang objek, teks, atau orang di kamera (cth: 'Apa benda di sebelah kiri?')..."
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button type="submit" id="btnAskVisionSubmit" class="btn btn-ask-vision" title="Kirim pertanyaan ke VisionX Assistant">
+                  <span class="btn-ask-text">Tanya</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="send-icon">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </form>
+
+            <!-- Loading State Indicator -->
+            <div id="askVisionLoading" class="ask-vision-loading hidden" aria-live="polite">
+              <div class="thinking-spinner"></div>
+              <span class="loading-text">VisionX sedang menganalisis snapshot citra dan konteks visual...</span>
+            </div>
+
+            <!-- Error State Alert -->
+            <div id="askVisionError" class="ask-vision-error hidden" role="alert">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span id="askVisionErrorMessage">Terjadi kesalahan pada AI Assistant.</span>
+            </div>
+
+            <!-- Response Display Area -->
+            <div id="askVisionResponseArea" class="ask-vision-response-area hidden" aria-live="polite">
+              <div class="response-header">
+                <div class="response-title-wrapper">
+                  <span class="response-icon">💬</span>
+                  <span class="response-title">Jawaban VisionX AI:</span>
+                </div>
+                <div class="response-actions">
+                  <button type="button" id="btnResetConversation" class="btn btn-sm btn-outline btn-reset-conversation" title="Reset sesi percakapan">
+                    🗑️ Reset
+                  </button>
+                  <button type="button" id="btnReadAloudResponse" class="btn btn-sm btn-secondary btn-read-aloud" title="Bacakan jawaban ini dengan suara">
+                    🔊 Bacakan
+                  </button>
+                  <button type="button" id="btnStopSpeechResponse" class="btn btn-sm btn-danger btn-stop-speech hidden" title="Hentikan suara pembacaan">
+                    ⏹ Stop
+                  </button>
+                  <button type="button" id="btnClearResponse" class="btn btn-sm btn-outline btn-clear-response" title="Tutup jawaban">
+                    ✕ Tutup
+                  </button>
+                </div>
+              </div>
+              <div id="askVisionResponseText" class="response-content"></div>
+              <div class="response-footer">
+                <span id="askVisionMeta" class="response-meta">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               2. VOICE ASSISTANT ACCESSIBILITY PANEL (V0.8)
+               ================================================================ -->
+          <div id="voicePanel" class="contextual-panel voice-assistant-panel" role="tabpanel" aria-labelledby="toolBtnVoice" aria-hidden="true" aria-label="Voice Assistant Accessibility Controls">
+            <div class="voice-header-row">
+              <div class="voice-title-group">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="voice-icon" aria-hidden="true">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <div class="voice-title-texts">
+                  <h3 class="voice-title">🔊 Voice Assistant</h3>
+                  <span class="voice-subtitle">Aksesibilitas Umpan Balik Visual Realtime &bull; Shortcut: <kbd class="kbd-badge">V</kbd></span>
+                </div>
+              </div>
+
+              <!-- Status Indicator & Close Button -->
+              <div class="voice-status-group">
+                <span id="voiceStatusBadge" class="badge badge-ready">
+                  <span class="badge-dot"></span>
+                  <span id="voiceStatusText">Ready</span>
+                </span>
+                <button type="button" class="btn-close-contextual-panel" data-close-tool="voice" aria-label="Close Voice panel" title="Tutup panel Voice">✕</button>
+              </div>
+            </div>
+
+            <!-- Controls Grid -->
+            <div class="voice-controls-grid">
+              <!-- Row 1: Enable Toggle & Mode Selector -->
+              <div class="voice-row-top">
+                <label class="toggle-group voice-toggle-label" for="toggleVoice" title="Aktifkan / nonaktifkan feedback suara (Shortcut: V)">
+                  <span class="field-label-lg">Voice Assistant:</span>
+                  <span class="switch">
+                    <input type="checkbox" id="toggleVoice" checked />
+                    <span class="slider"></span>
+                  </span>
+                  <span id="toggleVoiceStateLabel" class="toggle-state-text">● Enabled</span>
+                </label>
+
+                <div class="voice-mode-group">
+                  <label for="voiceModeSelect" class="field-label">Mode Suara:</label>
+                  <select id="voiceModeSelect" class="select-control voice-mode-select" aria-label="Pilih Mode Suara">
+                    <option value="OBJECT_ALERTS" selected>🔊 Object Alerts (Active)</option>
+                    <option value="OFF">🔇 Off (Bisu)</option>
+                    <option value="FULL_ASSISTANT" disabled>🤖 Full Assistant (Placeholder V0.9+)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Row 2: Sliders (Volume & Speed) -->
+              <div class="voice-sliders-row">
+                <div class="field-group slider-group voice-slider-item">
+                  <div class="slider-header-flex">
+                    <label for="voiceVolumeSlider" class="field-label">
+                      Volume Suara:
+                    </label>
+                    <strong id="voiceVolumeVal">100%</strong>
+                  </div>
+                  <input type="range" id="voiceVolumeSlider" min="0" max="1" step="0.05" value="1.0" class="range-slider" aria-label="Volume Suara Voice Assistant" />
+                </div>
+
+                <div class="field-group slider-group voice-slider-item">
+                  <div class="slider-header-flex">
+                    <label for="voiceSpeedSlider" class="field-label">
+                      Speed / Kecepatan:
+                    </label>
+                    <strong id="voiceSpeedVal">1.0x</strong>
+                  </div>
+                  <input type="range" id="voiceSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="range-slider" aria-label="Kecepatan Bicara Voice Assistant" />
+                </div>
+              </div>
+
+              <!-- Row 3: Action Buttons & Last Message -->
+              <div class="voice-actions-row">
+                <div class="voice-buttons-group">
+                  <button id="btnVoiceReplay" class="btn btn-sm btn-secondary" title="Ulangi ucapan pesan terakhir">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Replay
+                  </button>
+                  <button id="btnVoiceStop" class="btn btn-sm btn-danger btn-voice-stop" title="Hentikan ucapan yang sedang bersuara">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="6" y="6" width="12" height="12"></rect>
+                    </svg>
+                    Stop
+                  </button>
+                  <button id="btnVoiceClearQueue" class="btn btn-sm btn-outline" title="Kosongkan antrean ucapan yang tertunda">
+                    Clear Queue
+                  </button>
+                </div>
+
+                <div class="voice-last-msg-box" title="Kalimat terakhir yang diucapkan">
+                  <span class="last-msg-label">Last Message:</span>
+                  <span id="voiceLastMsgText" class="last-msg-content text-truncate">Belum ada pengumuman suara.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               3. V1.1 OBJECT MEMORY PANEL
+               ================================================================ -->
+          <div id="objectMemoryPanel" class="contextual-panel object-memory-panel" role="tabpanel" aria-labelledby="toolBtnMemory" aria-hidden="true" aria-label="Object Memory Controls">
+            <div class="memory-header-row">
+              <div class="memory-title-group">
+                <div class="memory-brain-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04"></path>
+                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04"></path>
+                  </svg>
+                </div>
+                <div class="memory-title-texts">
+                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="badge-v1-tag">V1.1</span></h3>
+                  <span class="memory-subtitle">Memori temporal &amp; spasial objek lokal &bull; Melacak riwayat kemunculan &amp; posisi</span>
+                </div>
+              </div>
+
+              <!-- Memory Stats Badges & Actions -->
+              <div class="memory-header-actions">
+                <span class="badge badge-ready">
+                  <span id="memoryRecordsCount">0</span> records
+                </span>
+                <button type="button" id="btnClearObjectMemory" class="btn btn-sm btn-outline btn-clear-memory" title="Kosongkan seluruh memori sesi objek">
+                  🗑 Clear Memory
+                </button>
+                <button type="button" class="btn-close-contextual-panel" data-close-tool="memory" aria-label="Close Memory panel" title="Tutup panel Memory">✕</button>
+              </div>
+            </div>
+
+            <div class="memory-grid">
+              <!-- Kolom 1: Current Objects -->
+              <div class="memory-col">
+                <div class="memory-subhead">
+                  <span class="memory-subhead-title">👁 Current Objects (Aktif Terlihat):</span>
+                  <span id="memoryActiveBadge" class="badge-tag">0 aktif</span>
+                </div>
+                <div id="memoryCurrentObjectsList" class="memory-objects-container">
+                  <span class="memory-empty-text">Tidak ada objek yang sedang terlihat aktif.</span>
+                </div>
+              </div>
+
+              <!-- Kolom 2: Recent Events -->
+              <div class="memory-col">
+                <div class="memory-subhead">
+                  <span class="memory-subhead-title">⏱ Recent Events (Log Histori):</span>
+                  <span id="memoryEventsCount" class="badge-tag">0 event</span>
+                </div>
+                <div id="memoryRecentEventsList" class="memory-events-container">
+                  <span class="memory-empty-text">Belum ada rekaman aktivitas event objek.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Memory Footer Metrics -->
+            <div class="memory-footer-row">
+              <span class="memory-metric-item">Total Dikenal: <strong id="memoryTotalObjectsVal">0</strong></span>
+              <span class="memory-metric-item">Event Terakhir: <strong id="memoryLastEventTimeVal">--:--:--</strong></span>
+              <span class="memory-metric-item">Penyimpanan: <strong class="text-neon-cyan">Local-First (Session)</strong></span>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               4. V1.2 PERSONAL OBJECTS PANEL (PERSONALIZED RECOGNITION)
+               ================================================================ -->
+          <div id="personalObjectsPanel" class="contextual-panel personal-objects-panel" role="tabpanel" aria-labelledby="toolBtnPersonal" aria-hidden="true" aria-label="Personal Objects Controls">
+            <div class="personal-header-row">
+              <div class="personal-title-group">
+                <div class="personal-badge-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                  </svg>
+                </div>
+                <div class="personal-title-texts">
+                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="badge-v1-tag">V1.2</span></h3>
+                  <span class="personal-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
+                </div>
+              </div>
+
+              <!-- Header Actions -->
+              <div class="personal-header-actions">
+                <span class="badge badge-ready">
+                  <span id="personalObjectsCount">0</span> terdaftar
+                </span>
+                <button type="button" id="btnToggleEnrollForm" class="btn btn-sm btn-primary">
+                  + Register Object
+                </button>
+                <button type="button" class="btn-close-contextual-panel" data-close-tool="personal" aria-label="Close Personal panel" title="Tutup panel Personal">✕</button>
+              </div>
+            </div>
+
+            <!-- Enrollment Form (Collapsible) -->
+            <div id="enrollmentFormSection" class="enrollment-form-section hidden">
+              <div class="enrollment-card">
+                <h4 class="enrollment-title">Daftarkan Objek Personal Baru</h4>
+                <div class="enrollment-form-grid">
+                  <div class="form-group">
+                    <label for="enrollObjectNameInput" class="form-label">Nama Personal:</label>
+                    <input type="text" id="enrollObjectNameInput" class="text-input" placeholder="Misal: My Laptop, Mouse Merah, Botol Biru" />
+                  </div>
+                  <div class="form-group">
+                    <label for="enrollBaseClassSelect" class="form-label">Base Class YOLO:</label>
+                    <select id="enrollBaseClassSelect" class="select-control">
+                      <option value="laptop">laptop</option>
+                      <option value="mouse">mouse</option>
+                      <option value="bottle">bottle</option>
+                      <option value="cup">cup</option>
+                      <option value="keyboard">keyboard</option>
+                      <option value="cell_phone">cell_phone</option>
+                      <option value="book">book</option>
+                      <option value="person">person</option>
+                      <option value="chair">chair</option>
+                      <option value="backpack">backpack</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- References Capture/Upload Row -->
+                <div class="enrollment-ref-row">
+                  <div class="enrollment-ref-actions">
+                    <button type="button" id="btnCaptureRefCam" class="btn btn-sm btn-secondary" title="Ambil foto referensi dari video webcam saat ini">
+                      📸 Ambil Snapshot Kamera
+                    </button>
+                    <label class="btn btn-sm btn-outline file-upload-label">
+                      📁 Upload Foto
+                      <input type="file" id="inputRefFile" accept="image/*" class="hidden-file-input" />
+                    </label>
+                    <select id="refAngleSelect" class="select-control select-sm">
+                      <option value="front">Sudut: Depan (Front)</option>
+                      <option value="top">Sudut: Atas (Top)</option>
+                      <option value="side">Sudut: Samping (Side)</option>
+                      <option value="custom">Sudut: Lainnya</option>
+                    </select>
+                  </div>
+
+                  <!-- References Preview Strip -->
+                  <div id="enrollRefPreviewGallery" class="enroll-ref-gallery">
+                    <span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut).</span>
+                  </div>
+                </div>
+
+                <div class="enrollment-btn-group">
+                  <button type="button" id="btnSaveEnrolledObject" class="btn btn-primary">
+                    Simpan Objek Personal
+                  </button>
+                  <button type="button" id="btnCancelEnroll" class="btn btn-outline">
+                    Batal
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Global Threshold Slider & Controls -->
+            <div class="personal-controls-row">
+              <div class="slider-control-group">
+                <label for="personalMatchThresholdSlider" class="control-label">
+                  Similarity Threshold: <strong id="personalThresholdVal">0.75</strong>
+                </label>
+                <input type="range" id="personalMatchThresholdSlider" min="0.50" max="0.95" step="0.05" value="0.75" class="range-slider" />
+              </div>
+              <span class="threshold-hint">Skor kemiripan minimal untuk mengonfirmasi identitas personal.</span>
+            </div>
+
+            <!-- Registered Objects List Cards -->
+            <div id="personalObjectsList" class="personal-objects-grid">
+              <div class="personal-empty-state">
+                <span>Belum ada objek personal terdaftar. Klik "+ Register Object" untuk mendaftarkan barang Anda.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               5. V1.3.1 SAFETY ALERTS PANEL (SAFETY ALERT MANAGER)
+               ================================================================ -->
+          <div id="safetyAlertsPanel" class="contextual-panel safety-alerts-panel" role="tabpanel" aria-labelledby="toolBtnSafety" aria-hidden="true" aria-label="Safety Alerts System">
+            <div class="safety-alerts-header-row">
+              <div class="safety-alerts-title-group">
+                <div class="safety-alert-icon" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </div>
+                <div class="safety-alerts-title-texts">
+                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="badge-v1-tag">V1.3.1</span></h3>
+                  <span class="safety-alerts-subtitle">Sistem peringatan keselamatan objek &amp; anomali pelacakan &bull; Terintegrasi VoiceEngine</span>
+                </div>
+              </div>
+
+              <!-- Header Actions -->
+              <div class="safety-alerts-header-actions">
+                <span class="badge badge-ready">
+                  <span id="safetyAlertsCount">0</span> alert aktif
+                </span>
+                <button type="button" id="btnClearSafetyAlerts" class="btn btn-sm btn-outline btn-clear-alerts" title="Hapus semua riwayat alert keselamatan">
+                  🗑 Clear Alerts
+                </button>
+                <button type="button" class="btn-close-contextual-panel" data-close-tool="safety" aria-label="Close Safety panel" title="Tutup panel Safety">✕</button>
+              </div>
+            </div>
+
+            <!-- User Configuration Controls Grid -->
+            <div class="safety-config-controls-grid">
+              <label class="toggle-group" title="Aktifkan / nonaktifkan seluruh sistem alert keselamatan">
+                <span class="field-label">Safety Alerts:</span>
+                <span class="switch">
+                  <input type="checkbox" id="toggleSafetyAlerts" checked />
+                  <span class="slider"></span>
+                </span>
+              </label>
+
+              <label class="toggle-group" title="Aktifkan notifikasi suara (TTS) untuk alert berkepentingan tinggi">
+                <span class="field-label">Voice Alerts:</span>
+                <span class="switch">
+                  <input type="checkbox" id="toggleVoiceSafetyAlerts" checked />
+                  <span class="slider"></span>
+                </span>
+              </label>
+
+              <label class="toggle-group" title="Aktifkan alert untuk objek stasioner / tertinggal lama">
+                <span class="field-label">Persistent Alerts:</span>
+                <span class="switch">
+                  <input type="checkbox" id="togglePersistentAlerts" />
+                  <span class="slider"></span>
+                </span>
+              </label>
+
+              <div class="slider-group cooldown-slider-group">
+                <label for="sliderAlertCooldown" class="field-label">
+                  Alert Cooldown: <strong id="alertCooldownVal">10s</strong>
+                </label>
+                <input type="range" id="sliderAlertCooldown" min="3" max="30" step="1" value="10" class="range-slider" />
+              </div>
+            </div>
+
+            <!-- Alerts List Container -->
+            <div id="safetyAlertsList" class="safety-alerts-container" aria-live="polite">
+              <div class="safety-alerts-empty">
+                <span>Belum ada peringatan keselamatan aktif. Objek Anda dalam kondisi aman.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================================================================
+               6. SETTINGS & ADVANCED DIAGNOSTICS PANEL (V1.5 PHASE E)
+               ================================================================ -->
+          <div id="settingsPanel" class="contextual-panel settings-panel" role="tabpanel" aria-labelledby="toolBtnSettings" aria-hidden="true" aria-label="Detection Settings and Advanced Controls">
+            <div class="panel-header-row">
+              <div class="panel-title-group">
+                <span class="panel-icon">⚙️</span>
+                <div class="panel-title-texts">
+                  <h3 class="panel-title">Settings &amp; Diagnostics</h3>
+                  <span class="panel-subtitle">Konfigurasi inferensi, model, threshold deteksi, &amp; diagnostik kamera</span>
+                </div>
+              </div>
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="settings" aria-label="Close Settings panel" title="Tutup panel Settings">✕</button>
+            </div>
+
+            <details class="advanced-controls-details">
+              <summary class="advanced-controls-summary">
+                <span class="summary-left">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                  <span>Advanced Controls &amp; Diagnostics</span>
+                </span>
+                <span class="chevron-tag">Detail ▼</span>
+              </summary>
+
+              <div class="advanced-dropdown-content">
+                <!-- Model Meta Tags -->
+                <div class="model-meta-info">
+                  <span id="modelArchTag" class="model-pill-tag">Arch: YOLOv8n</span>
+                  <span id="modelClassesTag" class="model-pill-tag">Classes: 7</span>
+                  <span id="modelLoadTimeTag" class="model-pill-tag">Load: -- ms</span>
+                </div>
+
+                <!-- Target Classes Chips -->
+                <div class="model-target-chips" id="targetChipsContainer">
+                  <span class="chips-label">Target Classes:</span>
+                  <span class="class-chip" data-chip-class="person">person</span>
+                  <span class="class-chip" data-chip-class="bottle">bottle</span>
+                  <span class="class-chip" data-chip-class="cup">cup</span>
+                  <span class="class-chip" data-chip-class="laptop">laptop</span>
+                  <span class="class-chip" data-chip-class="mouse">mouse</span>
+                  <span class="class-chip" data-chip-class="keyboard">keyboard</span>
+                  <span class="class-chip" data-chip-class="cell_phone">cell_phone</span>
+                </div>
+
+                <div class="controls-row threshold-row">
+                  <!-- Toggle Inferensi AI -->
+                  <label class="toggle-group">
+                    <span class="field-label">AI Inference:</span>
+                    <span class="switch">
+                      <input type="checkbox" id="toggleInference" checked />
+                      <span class="slider"></span>
+                    </span>
+                  </label>
+
+                  <!-- Confidence Slider -->
+                  <div class="field-group slider-group">
+                    <label for="confSlider" class="field-label">
+                      Confidence Threshold: <strong id="confVal">0.45</strong>
+                    </label>
+                    <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.45" class="range-slider" />
+                  </div>
+
+                  <!-- IoU Slider -->
+                  <div class="field-group slider-group">
+                    <label for="iouSlider" class="field-label">
+                      IoU NMS Threshold: <strong id="iouVal">0.45</strong>
+                    </label>
+                    <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" />
+                  </div>
+
+                  <!-- Toggle Face Recognition Layer -->
+                  <label class="toggle-group face-toggle" title="Aktifkan layer identitas wajah VisionX Developer / Unknown">
+                    <span class="field-label">Face Layer:</span>
+                    <span class="switch">
+                      <input type="checkbox" id="toggleFaceRecognition" checked />
+                      <span class="slider"></span>
+                    </span>
+                  </label>
+
+                  <!-- Toggle Debug Mode -->
+                  <label class="toggle-group debug-toggle">
+                    <span class="field-label">Debug Mode:</span>
+                    <span class="switch">
+                      <input type="checkbox" id="toggleDebug" checked />
+                      <span class="slider"></span>
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Camera Quality Diagnostics Strip -->
+                <div class="camera-quality-strip" id="cameraQualityStrip" aria-label="Camera Quality Diagnostics">
+                  <div class="cam-quality-item">
+                    <span class="cam-quality-label">CAMERA</span>
+                    <strong id="camDiagResolution" class="cam-quality-val">--</strong>
+                  </div>
+                  <div class="cam-quality-item">
+                    <span class="cam-quality-label">FPS</span>
+                    <strong id="camDiagFps" class="cam-quality-val">0.0</strong>
+                  </div>
+                  <div class="cam-quality-item">
+                    <span class="cam-quality-label">BRIGHTNESS</span>
+                    <strong id="camDiagBrightness" class="cam-quality-val status-ready">GOOD</strong>
+                  </div>
+                  <div class="cam-quality-item">
+                    <span class="cam-quality-label">SHARPNESS</span>
+                    <strong id="camDiagSharpness" class="cam-quality-val status-ready">FAIR</strong>
+                  </div>
+                  <div class="cam-quality-item">
+                    <span class="cam-quality-label">OCR INPUT</span>
+                    <strong id="camDiagOcrInput" class="cam-quality-val">--</strong>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLLECTION & MANAGEMENT CONTROLS (V0.4.1) -->
+      <div id="collectionControls" class="collection-controls-panel hidden">
+        <div class="collection-grid">
+          <!-- Kolom 1: Capture Trigger & Live Active Class Counter Card (Primary Hero Action) -->
+          <div class="collection-col capture-action-col">
+            <!-- Active Class Counter Card -->
+            <div class="active-counter-card">
+              <div class="counter-header">
+                <span class="counter-label">Kelas Aktif</span>
+                <span id="activeClassDisplay" class="active-class-title">object</span>
+              </div>
+              <div class="counter-body">
+                <span id="activeCountDisplay" class="counter-number">0</span>
+                <span class="counter-unit">gambar tersimpan</span>
+              </div>
+            </div>
+
+            <!-- Big Prominent Capture Button (Min 52px height) -->
+            <button id="btnCapture" class="btn btn-capture btn-hero" title="Ambil frame bersih (Shortcut: SPACE atau C)">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span>Capture Image</span>
+              <span class="hotkey-badge">SPACE / C</span>
+            </button>
+          </div>
+
+          <!-- Kolom 2: Class Name Management & Hotkeys -->
+          <div class="collection-col class-management-col">
+            <div class="class-input-wrapper">
+              <label for="inputClassName" class="field-label-sm">Nama Kelas Dataset:</label>
+              <div class="input-with-button">
+                <input 
+                  type="text" 
+                  id="inputClassName" 
+                  class="text-input" 
+                  placeholder="Contoh: earphone, bottle, charger" 
+                  value="earphone" 
+                  autocomplete="off"
+                  spellcheck="false"
+                />
+                <button id="btnSetClass" class="btn btn-secondary" title="Ganti kelas aktif">
+                  Terapkan Kelas
+                </button>
+              </div>
+              <div id="classValidationHint" class="validation-hint">
+                Format: huruf kecil, angka, underscore (_), atau tanda hubung (-).
+              </div>
+            </div>
+
+            <!-- Quick Class Suggestions / Presets -->
+            <div class="quick-classes">
+              <span class="quick-label">Kelas Cepat:</span>
+              <div class="pills-container">
+                <button type="button" class="class-pill" data-class="earphone">earphone</button>
+                <button type="button" class="class-pill" data-class="bottle">bottle</button>
+                <button type="button" class="class-pill" data-class="glass">glass</button>
+                <button type="button" class="class-pill" data-class="cup">cup</button>
+                <button type="button" class="class-pill" data-class="charger">charger</button>
+                <button type="button" class="class-pill" data-class="person">person</button>
+              </div>
+            </div>
+
+            <!-- Source Metadata Selector -->
+            <div class="source-select-group">
+              <label for="sourceSelect" class="field-label-sm">Kategori Sumber Data:</label>
+              <select id="sourceSelect" class="select-control select-sm">
+                <option value="own_capture" selected>📸 Own Capture (Live Camera)</option>
+                <option value="own_import">💾 Own Import (Local PC Files)</option>
+                <option value="huggingface">🤗 HuggingFace Dataset</option>
+                <option value="kaggle">📊 Kaggle Dataset</option>
+                <option value="other_external">🌐 Other External Source</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATASET IMPORT TOOLBAR (V0.4.1) -->
+        <div class="dataset-management-toolbar">
+          <div class="toolbar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span>Impor Dataset dari PC:</span>
+          </div>
+
+          <div class="import-buttons-group">
+            <!-- Tombol Import Image -->
+            <input type="file" id="inputImportImages" multiple accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="hidden" />
+            <button id="btnTriggerImportImages" class="btn btn-sm btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              <span>Impor File Gambar</span>
+            </button>
+
+            <!-- Tombol Import Folder -->
+            <input type="file" id="inputImportFolder" webkitdirectory directory multiple class="hidden" />
+            <button id="btnTriggerImportFolder" class="btn btn-sm btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Impor Folder Gambar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Storage & Info Row -->
+        <div class="collection-storage-row">
+          <div class="storage-info">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Target Struktur: <code id="storagePathDisplay">datasets/raw/own/&lt;class_name&gt;/</code></span>
+          </div>
+
+          <div class="storage-actions">
+            <button id="btnSelectDir" class="btn btn-sm btn-outline">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span>Hubungkan Folder datasets/raw</span>
+            </button>
+            <span id="dirStatusText" class="dir-status-text">Mode Unduhan Browser Langsung</span>
+          </div>
+        </div>
+
+        <!-- Recent Captures & Dataset Gallery (V0.4.1 with Single & Multi Delete) -->
+        <div class="recent-captures-section">
+          <div class="recent-header">
+            <div class="gallery-title-group">
+              <h4>📸 Galeri Dataset Sesi Ini</h4>
+              <span id="recentCapturesCount" class="text-muted">0 item</span>
+            </div>
+
+            <!-- Multi-Select & Delete Actions -->
+            <div class="gallery-action-tools">
+              <button id="btnToggleSelectMode" class="btn btn-xs btn-outline">
+                Pilih Banyak
+              </button>
+              <div id="selectionControls" class="selection-controls hidden">
+                <button id="btnSelectAll" class="btn btn-xs btn-secondary">Pilih Semua</button>
+                <button id="btnClearSelection" class="btn btn-xs btn-secondary">Batal</button>
+                <button id="btnDeleteSelected" class="btn btn-xs btn-danger" disabled>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <span id="deleteSelectedText">Hapus Terpilih (0)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="recentCapturesList" class="recent-captures-list">
+            <div class="empty-gallery-text">Belum ada gambar yang diambil/diimpor pada sesi ini. Tekan tombol Capture, SPACE, atau Impor.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODULE 1 — DATASET MANAGER (V0.6) -->
+      <div id="managerControls" class="manager-controls-panel hidden" role="region" aria-label="Dataset Manager Workspace">
+        <div class="panel-section-header">
+          <div class="title-with-badge">
+            <h3 class="panel-title">🗂️ Dataset Manager (Disk Filesystem)</h3>
+            <span class="badge badge-manager">Real Disk Sync</span>
+          </div>
+          <p class="panel-desc">Kelola seluruh dataset pada disk: browse, search, filter, soft-delete ke Recycle Bin, restore, dan permanent delete.</p>
+        </div>
+
+        <!-- Statistics Cards Bar -->
+        <div class="manager-stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Total Images</span>
+            <span id="mgrStatTotalImages" class="stat-value">0</span>
+            <span class="stat-sub">Semua dataset aktif</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total Size</span>
+            <span id="mgrStatTotalSize" class="stat-value">0 MB</span>
+            <span class="stat-sub">Penggunaan disk</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Classes</span>
+            <span id="mgrStatTotalClasses" class="stat-value">0</span>
+            <span class="stat-sub">Kategori terdaftar</span>
+          </div>
+          <div class="stat-card stat-trash">
+            <span class="stat-label">Recycle Bin</span>
+            <span id="mgrStatTrashCount" class="stat-value">0</span>
+            <span class="stat-sub">File dapat di-restore</span>
+          </div>
+        </div>
+
+        <!-- Filter & Actions Bar -->
+        <div class="manager-toolbar" aria-label="Dataset Manager Toolbar">
+          <div class="toolbar-filters">
+            <!-- View Selector: Active vs Trash -->
+            <div class="view-switch-group">
+              <button id="btnMgrViewActive" class="btn btn-sm btn-view active">Active Dataset</button>
+              <button id="btnMgrViewTrash" class="btn btn-sm btn-view">Recycle Bin (<span id="mgrTrashBadgeCount">0</span>)</button>
+            </div>
+
+            <!-- Class Filter -->
+            <select id="mgrSelectClass" class="select-control select-sm">
+              <option value="all">Semua Kelas</option>
+            </select>
+
+            <!-- Source Filter -->
+            <select id="mgrSelectSource" class="select-control select-sm">
+              <option value="all">Semua Sumber</option>
+              <option value="own_capture">📸 Own Capture</option>
+              <option value="own_import">💾 Own Import</option>
+              <option value="external">🌐 External</option>
+            </select>
+
+            <!-- Search Input -->
+            <div class="search-input-wrapper">
+              <input type="text" id="mgrSearchInput" class="text-input text-input-sm" placeholder="Cari nama file / kelas..." />
+            </div>
+          </div>
+
+          <div class="toolbar-actions">
+            <!-- Hidden Import Inputs -->
+            <input type="file" id="inputMgrImportFiles" multiple accept=".jpg,.jpeg,.png,.webp" class="hidden" />
+            <input type="file" id="inputMgrImportFolder" webkitdirectory directory multiple class="hidden" />
+
+            <button id="btnMgrImportFiles" class="btn btn-sm btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Import File
+            </button>
+            <button id="btnMgrImportFolder" class="btn btn-sm btn-secondary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              Import Folder
+            </button>
+            <button id="btnMgrSelectAll" class="btn btn-sm btn-outline">Pilih Semua</button>
+            <button id="btnMgrClearSelect" class="btn btn-sm btn-outline">Batal</button>
+
+            <!-- Active View Action: Move to Trash -->
+            <button id="btnMgrTrashSelected" class="btn btn-sm btn-danger" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Pindah ke Trash (<span id="mgrSelectedCountTrash">0</span>)
+            </button>
+
+            <!-- Trash View Actions: Restore & Permanent Delete -->
+            <button id="btnMgrRestoreSelected" class="btn btn-sm btn-success hidden" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+              </svg>
+              Restore (<span id="mgrSelectedCountRestore">0</span>)
+            </button>
+            <button id="btnMgrPermanentDeleteSelected" class="btn btn-sm btn-danger hidden" disabled>
+              Hapus Permanen (<span id="mgrSelectedCountPerm">0</span>)
+            </button>
+
+            <button id="btnMgrRefresh" class="btn btn-sm btn-outline" title="Refresh Disk">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid Container -->
+        <div id="mgrGridContainer" class="manager-grid-container">
+          <div class="empty-gallery-text">Memuat dataset dari disk...</div>
+        </div>
+      </div>
+
+      <!-- MODULE 2 — IDENTITY LAB (V0.6) -->
+      <div id="identityControls" class="identity-controls-panel hidden">
+        <div class="panel-section-header">
+          <div class="title-with-badge">
+            <h3 class="panel-title">👤 Identity Lab — Face Recognition Studio</h3>
+            <span class="badge badge-identity">Local SFace 128-d</span>
+          </div>
+          <p class="panel-desc">Sistem pengenalan wajah untuk satu profil terdaftar ("VisionX Developer"). Wajah tak dikenal otomatis ditandai PERSON • UNKNOWN.</p>
+        </div>
+
+        <!-- Privacy & Safety Banner -->
+        <div class="privacy-safety-banner">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <div>
+            <strong>100% Local Privacy Protection</strong>: Seluruh foto wajah dan feature embedding disimpan secara lokal pada <code>datasets/faces/developer/</code>. Tidak ada citra yang diunggah ke cloud. Tidak melakukan automatic enrollment.
+          </div>
+        </div>
+
+        <div class="identity-layout-grid">
+          <!-- Kolom 1: Profil Pengembang & Foto Referensi -->
+          <div class="identity-col">
+            <div class="profile-card">
+              <div class="profile-header">
+                <div>
+                  <span class="profile-tag">Registered Profile</span>
+                  <h4 id="idLabProfileName" class="profile-name">VisionX Developer</h4>
+                </div>
+                <span class="badge badge-ready">Enrolled</span>
+              </div>
+
+              <div class="profile-meta-row">
+                <div class="meta-item">
+                  <span class="meta-label">Foto Referensi:</span>
+                  <strong id="idLabRefCount">0 foto</strong>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Embedding:</span>
+                  <span>SFace 128-d</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Status:</span>
+                  <span class="text-success">Active Matching</span>
+                </div>
+              </div>
+
+              <!-- Matching Threshold Slider -->
+              <div class="threshold-slider-group">
+                <div class="slider-header">
+                  <label for="idLabThresholdSlider">Matching Threshold:</label>
+                  <strong id="idLabThresholdVal">0.60</strong>
+                </div>
+                <input type="range" id="idLabThresholdSlider" min="0.30" max="0.90" step="0.02" value="0.60" class="range-slider" />
+                <span class="slider-hint">Skor similarity di atas threshold akan dikenali sebagai <strong>VISIONX DEVELOPER</strong>.</span>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="profile-actions">
+                <input type="file" id="inputIdLabImport" multiple accept=".jpg,.jpeg,.png,.webp" class="hidden" />
+                <button id="btnIdLabImport" class="btn btn-sm btn-secondary">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  Import Foto Wajah
+                </button>
+                <button id="btnIdLabCaptureCam" class="btn btn-sm btn-capture-sub">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  Ambil dari Kamera
+                </button>
+              </div>
+            </div>
+
+            <!-- Galeri Foto Referensi Wajah Terdaftar -->
+            <div class="reference-gallery-section">
+              <div class="section-title-sm">
+                <h5>📸 Foto Referensi Terdaftar (<span id="idLabGalleryCount">0</span>)</h5>
+              </div>
+              <div id="idLabRefGallery" class="id-ref-gallery">
+                <div class="empty-gallery-text">Belum ada foto referensi wajah. Klik 'Import Foto Wajah' atau 'Ambil dari Kamera'.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kolom 2: Realtime Live Identity Test -->
+          <div class="identity-col">
+            <div class="live-test-card">
+              <div class="live-test-header">
+                <h5>🎯 Realtime Identity Test</h5>
+                <span class="live-test-hint">Pencocokan langsung dari stream kamera aktif</span>
+              </div>
+
+              <!-- Live Meter & Decision Display -->
+              <div class="identity-decision-box">
+                <div class="decision-badge-container">
+                  <span id="idLabDecisionBadge" class="identity-badge badge-neutral">STANDBY / NO FACE</span>
+                </div>
+
+                <div class="score-meter-wrapper">
+                  <div class="score-meter-header">
+                    <span>Similarity Score:</span>
+                    <strong id="idLabSimilarityScore">0.0%</strong>
+                  </div>
+                  <div class="meter-bar-track">
+                    <div id="idLabSimilarityBar" class="meter-bar-fill" style="width: 0%;"></div>
+                    <div class="meter-threshold-marker" id="idLabThresholdMarker" style="left: 60%;" title="Threshold"></div>
+                  </div>
+                </div>
+
+                <div id="idLabMatchDetail" class="match-detail-text">
+                  Arahkan wajah ke kamera untuk menguji pencocokan identitas secara realtime.
+                </div>
+              </div>
+
+              <div class="safety-criteria-box">
+                <h6>Kriteria Keputusan (Identity Safety Protocol):</h6>
+                <ul>
+                  <li><span class="tag-dev">VISIONX DEVELOPER</span>: Wajah terdeteksi dengan skor kemiripan &ge; threshold.</li>
+                  <li><span class="tag-unknown">PERSON • UNKNOWN</span>: Wajah manusia terdeteksi namun tidak cocok dengan foto referensi pengembang.</li>
+                  <li><strong>Objek Lain</strong>: Tetap dideteksi secara simultan oleh model YOLO.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- READ TEXT MODE CONTROLS (V0.9 OCR) -->
+      <div id="readTextControls" class="read-text-controls-panel hidden" aria-label="Read Text Mode OCR Controls">
+        <div class="read-text-header-row">
+          <div class="read-text-title-group">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="read-text-icon" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              <line x1="9" y1="7" x2="15" y2="7"></line>
+              <line x1="9" y1="11" x2="13" y2="11"></line>
+            </svg>
+            <div class="read-text-title-texts">
+              <h3 class="read-text-title">🔤 OCR & Read Text Engine</h3>
+              <span class="read-text-subtitle">Pindai Teks Kamera On-Demand &bull; Pembaca Suara TTS</span>
+            </div>
+          </div>
+
+          <!-- Status Indicator -->
+          <div class="read-text-status-group">
+            <span id="ocrStatusBadge" class="badge badge-ready">
+              <span class="badge-dot"></span>
+              <span id="ocrStatusText">READY</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 1. Primary Action Row (Min 48px touch target for primary scan) -->
+        <div class="read-text-actions-bar">
+          <button id="btnTriggerOcr" class="btn btn-ocr-scan btn-hero" title="Pindai teks dari frame kamera aktif (Shortcut: R)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M4 7V4h3"></path>
+              <path d="M20 7V4h-3"></path>
+              <path d="M4 17v3h3"></path>
+              <path d="M20 17v3h-3"></path>
+              <line x1="9" y1="12" x2="15" y2="12"></line>
+              <line x1="12" y1="9" x2="12" y2="15"></line>
+            </svg>
+            <span>Read Text</span>
+            <span class="hotkey-badge">R</span>
+          </button>
+
+          <button id="btnSpeakOcr" class="btn btn-secondary btn-ocr-speak" title="Bacakan teks hasil OCR bersuara">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>Read Text Aloud</span>
+          </button>
+
+          <button id="btnReScanOcr" class="btn btn-secondary btn-ocr-rescan" title="Pindai ulang frame kamera aktif (Scan Ulang)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span>Scan Ulang</span>
+          </button>
+
+          <button id="btnStopOcr" class="btn btn-secondary btn-ocr-stop" title="Hentikan pembacaan teks & bersihkan overlay">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="6" y="6" width="12" height="12"></rect>
+            </svg>
+            <span>Stop Reading</span>
+          </button>
+        </div>
+
+        <div class="read-text-grid">
+          <!-- Kolom 1: Hasil Baca Teks (Display Text & Actions) -->
+          <div class="read-text-col result-col">
+            <div class="ocr-result-card">
+              <div class="ocr-result-header">
+                <div class="result-title-group">
+                  <span class="result-card-label">Hasil OCR:</span>
+                  <span id="ocrCharWordCount" class="ocr-meta-counts">0 kata &bull; 0 karakter</span>
+                </div>
+                <div class="result-header-actions">
+                  <button id="btnCopyOcrText" class="btn btn-sm btn-outline" title="Salin teks ke clipboard">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Salin
+                  </button>
+                  <button id="btnClearOcrText" class="btn btn-sm btn-outline" title="Kosongkan tampilan teks">
+                    Bersihkan
+                  </button>
+                </div>
+              </div>
+
+              <!-- Low-Confidence Warning Alert Banner -->
+              <div id="ocrWarningBanner" class="ocr-warning-banner hidden" role="status">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span id="ocrWarningText">Confidence rendah — coba dekatkan kamera / gunakan pencahayaan lebih baik.</span>
+              </div>
+
+              <div id="ocrResultBox" class="ocr-result-display ocr-scroll-container empty" tabindex="0" role="region" aria-label="Hasil Baca Teks OCR">
+                <p id="ocrResultPlaceholder" class="ocr-placeholder-text">Belum ada teks dipindai. Arahkan kamera ke teks lalu tekan tombol "Read Text" atau tombol keyboard <kbd>R</kbd>.</p>
+                <div id="ocrResultContent" class="ocr-content-text hidden"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kolom 2: Konfigurasi Sekunder & Telemetri -->
+          <div class="read-text-col config-col">
+            <!-- Configuration Row: Language, Profile, ROI, & Auto Read -->
+            <div class="read-text-config-row">
+              <div class="field-group ocr-lang-group">
+                <label for="ocrLangSelect" class="field-label-sm">Bahasa:</label>
+                <select id="ocrLangSelect" class="select-control select-sm" aria-label="Pilih Bahasa OCR">
+                  <option value="ind" selected>🇮🇩 Indonesian</option>
+                  <option value="eng">🇬🇧 English</option>
+                </select>
+              </div>
+
+              <div class="field-group ocr-profile-group">
+                <label for="ocrProfileSelect" class="field-label-sm">Profile:</label>
+                <select id="ocrProfileSelect" class="select-control select-sm" aria-label="Pilih Profil OCR">
+                  <option value="AUTO" selected>Mode: Auto</option>
+                  <option value="PRINTED">Printed Text</option>
+                  <option value="HANDWRITING">Handwriting</option>
+                </select>
+              </div>
+
+              <div class="field-group ocr-roi-group">
+                <label for="ocrRoiSelect" class="field-label-sm">ROI Area:</label>
+                <select id="ocrRoiSelect" class="select-control select-sm" aria-label="Pilih Region of Interest">
+                  <option value="AUTO" selected>ROI: Auto</option>
+                  <option value="CENTER_REGION">ROI: Center</option>
+                  <option value="FULL_FRAME">ROI: Full Frame</option>
+                </select>
+              </div>
+
+              <!-- Auto Read Toggle -->
+              <label class="toggle-group auto-read-toggle" for="toggleAutoReadOcr" title="Otomatis membacakan teks dengan debounce & pencegahan duplikasi teks">
+                <span class="field-label-sm">AUTO:</span>
+                <span class="switch switch-sm">
+                  <input type="checkbox" id="toggleAutoReadOcr" />
+                  <span class="slider"></span>
+                </span>
+                <span id="autoReadStateLabel" class="toggle-state-text disabled">OFF</span>
+              </label>
+            </div>
+
+            <!-- Collapsible OCR Telemetry & Diagnostics Accordion -->
+            <details class="ocr-telemetry-details">
+              <summary class="ocr-telemetry-summary">
+                <span>📊 Telemetri & Kualitas Citra OCR</span>
+                <span class="summary-chevron">▼</span>
+              </summary>
+              <div class="ocr-telemetry-bar">
+                <div class="telemetry-item">
+                  <span class="telemetry-label">OCR QUALITY:</span>
+                  <strong id="ocrTelemetryQuality" class="telemetry-value status-ready">GOOD</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">RESOLUTION:</span>
+                  <strong id="ocrTelemetryResolution" class="telemetry-value">--</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">METHOD:</span>
+                  <strong id="ocrTelemetryMethod" class="telemetry-value">STANDARD</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">CONFIDENCE:</span>
+                  <strong id="ocrTelemetryConfidence" class="telemetry-value">--</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">PROCESSING:</span>
+                  <strong id="ocrTelemetryLatency" class="telemetry-value">0 ms</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">TEXT REGIONS:</span>
+                  <strong id="ocrTelemetryRegions" class="telemetry-value">0 boxes</strong>
+                </div>
+                <div class="telemetry-item">
+                  <span class="telemetry-label">LAST OCR TIME:</span>
+                  <strong id="ocrTelemetryTime" class="telemetry-value">--:--:--</strong>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Debug Mode Raw Output Panel (Hanya di Detection Mode) -->
+    <section id="debugPanel" class="debug-card">
+      <div class="debug-header">
+        <h3>🔍 Raw Detection Debug Inspector</h3>
+        <div class="debug-meta">
+          <span>Active Model: <strong id="debugModelName">VisionX V1 Custom (7 Classes)</strong></span>
+          <span>Load Time: <strong id="debugLoadTime">-- ms</strong></span>
+          <span>Latency: <strong id="debugLatency">0 ms</strong></span>
+          <span>Objects: <strong id="debugObjectCount">0</strong></span>
+          <span>Frame ID: <strong id="debugFrameId">#0</strong></span>
+        </div>
+      </div>
+      
+      <div class="debug-table-wrapper">
+        <table class="debug-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Track ID</th>
+              <th>Class</th>
+              <th>Confidence</th>
+              <th>Bounding Box [x1, y1, x2, y2]</th>
+              <th>Velocity (px/f)</th>
+              <th>Hits / Missed</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody id="debugTableBody">
+            <tr>
+              <td colspan="8" class="text-center text-muted">Belum ada deteksi aktif (kamera mati atau background kosong).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Live Pipeline Diagnostics Panel (V0.5.1 Audit & V0.7 Tracking) -->
+      <div class="diagnostics-panel" id="diagnosticsPanel">
+        <div class="diagnostics-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          <span>Live Inference Pipeline Diagnostics (Diagnostic Mode):</span>
+          <button id="btnRunGoldenTest" class="btn btn-xs btn-outline" style="margin-left: auto; font-size: 11px; padding: 3px 10px;">🧪 Run Golden Test</button>
+        </div>
+        <div class="diagnostics-grid">
+          <div class="diag-item">
+            <span class="diag-label">YOLO STATUS:</span>
+            <span id="diagModelState" class="diag-val loading">Loading</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">TRACKING:</span>
+            <span id="diagTrackingStatus" class="diag-val ready">ACTIVE</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">VISIBLE TRACKS:</span>
+            <span id="diagVisibleTracks" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">TOTAL ACTIVE TRACKS:</span>
+            <span id="diagTotalActiveTracks" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">NEW TRACKS:</span>
+            <span id="diagNewTracks" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">LOST TRACKS:</span>
+            <span id="diagLostTracks" class="diag-val">0</span>
+          </div>
+          <div class="diag-item" style="grid-column: span 2;">
+            <span class="diag-label">TRACK STATS:</span>
+            <span id="diagTrackSummary" class="diag-val">Unique: 0 | None</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">FACE DETECT:</span>
+            <span id="diagFaceDetectStatus" class="diag-val ready">Standby</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">FACE RECOG:</span>
+            <span id="diagFaceRecogStatus" class="diag-val ready">Standby</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">FACE DETECTIONS:</span>
+            <span id="diagFaceDetectionsCount" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">IDENTITY MATCHES:</span>
+            <span id="diagIdentityMatchesCount" class="diag-val">0</span>
+          </div>
+          <div class="diag-item" style="grid-column: span 2;">
+            <span class="diag-label">COORD TRANSFORM:</span>
+            <span id="diagCoordTransform" class="diag-val">Standby</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">INPUT:</span>
+            <span id="diagInputShape" class="diag-val">[1, 3, 640, 640]</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">OUTPUT:</span>
+            <span id="diagOutputShape" class="diag-val">[1, 11, 8400]</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">TENSOR MIN/MAX:</span>
+            <span id="diagTensorMinMax" class="diag-val">-- / --</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">RAW CANDIDATES:</span>
+            <span id="diagRawPreds" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">CONF PASS:</span>
+            <span id="diagAfterConf" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">NMS RESULT:</span>
+            <span id="diagAfterNms" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">FINAL DETECTIONS:</span>
+            <span id="diagFinalDetections" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Model Size:</span>
+            <span id="diagModelSize" class="diag-val">-- MB</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">Inference Latency:</span>
+            <span id="diagFirstInferLatency" class="diag-val">-- ms</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">VOICE:</span>
+            <span id="diagVoiceEnabled" class="diag-val ready">ENABLED</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">VOICE STATE:</span>
+            <span id="diagVoiceState" class="diag-val ready">READY</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">QUEUE:</span>
+            <span id="diagVoiceQueue" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">ANNOUNCEMENTS:</span>
+            <span id="diagVoiceAnnouncements" class="diag-val">0</span>
+          </div>
+          <div class="diag-item" style="grid-column: span 2;">
+            <span class="diag-label">LAST MESSAGE:</span>
+            <span id="diagVoiceLastMessage" class="diag-val">-</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">OCR STATUS:</span>
+            <span id="diagOcrStatus" class="diag-val ready">READY</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">OCR LATENCY:</span>
+            <span id="diagOcrLatency" class="diag-val">0 ms</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">TEXT REGIONS:</span>
+            <span id="diagOcrRegions" class="diag-val">0</span>
+          </div>
+          <div class="diag-item">
+            <span class="diag-label">LAST OCR TIME:</span>
+            <span id="diagOcrTime" class="diag-val">--:--:--</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modal Konfirmasi Hapus (Single / Multi Delete) -->
+    <div id="confirmModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modalTitle">Konfirmasi Penghapusan</h3>
+          <button id="modalCloseBtn" class="modal-close-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="modalDescription">Apakah Anda yakin ingin menghapus gambar ini dari dataset?</p>
+          <div id="modalItemPreview" class="modal-item-preview hidden"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="modalCancelBtn" class="btn btn-secondary">Batal</button>
+          <button id="modalConfirmBtn" class="btn btn-danger">Hapus Sekarang</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Preview Impor Folder -->
+    <div id="folderImportModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>📂 Konfirmasi Impor Folder</h3>
+          <button id="folderModalCloseBtn" class="modal-close-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="folderModalSummary">Memindai folder...</p>
+          
+          <div class="modal-form-group">
+            <label for="folderTargetClass" class="field-label">Target Kelas Dataset:</label>
+            <input type="text" id="folderTargetClass" class="text-input" value="object" />
+          </div>
+
+          <div class="modal-form-group">
+            <label for="folderTargetSource" class="field-label">Sumber Metadata:</label>
+            <select id="folderTargetSource" class="select-control">
+              <option value="own_import" selected>💾 Own Import</option>
+              <option value="huggingface">🤗 HuggingFace</option>
+              <option value="kaggle">📊 Kaggle</option>
+              <option value="other_external">🌐 Other External</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="folderModalCancelBtn" class="btn btn-secondary">Batal</button>
+          <button id="folderModalConfirmBtn" class="btn btn-start">Mulai Impor</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Preview Image & Metadata (Dataset Manager) -->
+    <div id="mgrPreviewModal" class="modal-backdrop hidden">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <h3 id="mgrPreviewTitle">🖼️ Detail Citra Dataset</h3>
+          <button id="mgrPreviewCloseBtn" class="modal-close-icon">&times;</button>
+        </div>
+        <div class="modal-body modal-preview-layout">
+          <div class="modal-preview-image-container">
+            <img id="mgrPreviewImg" src="" alt="Preview Citra" class="modal-preview-img" />
+          </div>
+          <div class="modal-preview-meta-table">
+            <table class="meta-detail-table">
+              <tbody>
+                <tr><td>Filename</td><td id="mgrMetaFilename">-</td></tr>
+                <tr><td>Class</td><td><span id="mgrMetaClass" class="badge-class-sm">-</span></td></tr>
+                <tr><td>Source</td><td id="mgrMetaSource">-</td></tr>
+                <tr><td>Dimensions</td><td id="mgrMetaDimensions">-</td></tr>
+                <tr><td>File Size</td><td id="mgrMetaSize">-</td></tr>
+                <tr><td>Timestamp</td><td id="mgrMetaDate">-</td></tr>
+                <tr><td>Status</td><td id="mgrMetaStatus">-</td></tr>
+                <tr><td>File Path</td><td><code id="mgrMetaPath" class="path-code">-</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="mgrPreviewCloseFooterBtn" class="btn btn-secondary">Tutup</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      VisionX V1.5 Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX V2 Model
+    </footer>
+  </div>
+
+  <!-- Mobile Bottom Navigation Bar (V1.5 Mobile-First UX) -->
+  <nav class="bottom-nav-bar" role="navigation" aria-label="Mobile Navigation">
+    <button class="bottom-nav-item active" data-mode="home" aria-label="Home" aria-selected="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <span>Home</span>
+    </button>
+    <button class="bottom-nav-item" data-mode="detection" aria-label="Detection Mode" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <span>Vision</span>
+    </button>
+    <button class="bottom-nav-item" data-mode="read_text" aria-label="Read Text Mode" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <span>Read</span>
+    </button>
+    <button class="bottom-nav-item" data-mode="collection" aria-label="Dataset Collection Mode" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <circle cx="12" cy="13" r="4"></circle>
+      </svg>
+      <span>Collect</span>
+    </button>
+    <button class="bottom-nav-item" data-mode="manager" aria-label="Dataset Manager Mode" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>Manager</span>
+    </button>
+    <button class="bottom-nav-item" data-mode="identity" aria-label="Identity Lab Mode" aria-selected="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span>Identity</span>
+    </button>
+  </nav>
+
+  <!-- Sheet Backdrop for Mobile Drawers -->
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+
+</body>
+</html>
