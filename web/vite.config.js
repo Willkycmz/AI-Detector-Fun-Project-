@@ -776,6 +776,7 @@ function visionxCorePlugin() {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [visionxCorePlugin()],
   server: {
     host: true,

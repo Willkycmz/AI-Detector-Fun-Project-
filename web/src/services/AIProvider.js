@@ -33,73 +33,279 @@ export class AIProvider {
 }
 
 /**
- * BackendAIProvider - Menghubungi backend proxy lokal VisionX (/api/ai/ask-vision)
- * Menjamin API key aman di sisi server/backend proxy dan tidak terekspos ke frontend browser.
+ * BackendAIProvider - Menghubungi backend gateway produksi VisionX (https://visionx.my.id/api/chat)
+ * Fitur:
+ * - Autentikasi server-side berbasis signed expiring Bearer token (sessionStorage)
+ * - Server-Sent Events (SSE) streaming respons progresif
+ * - Penanganan error komprehensif: 401 (auth), 403, 413 (size), 429 (rate limit/lockout), 500
  */
 export class BackendAIProvider extends AIProvider {
   /**
    * @param {Object} [config={}]
-   * @param {string} [config.endpoint='/api/ai/ask-vision']
-   * @param {number} [config.timeoutMs=20000]
+   * @param {string} [config.baseUrl] URL backend (default: https://visionx.my.id)
+   * @param {string} [config.endpoint] Endpoint chat (default: {baseUrl}/api/chat)
+   * @param {string} [config.loginEndpoint] Endpoint login (default: {baseUrl}/api/login)
+   * @param {number} [config.timeoutMs=35000] Timeout permintaan (ms)
+   * @param {Function} [config.onAuthRequired] Callback saat token kosong / 401
    */
   constructor(config = {}) {
     super();
-    this.endpoint = config.endpoint || '/api/ai/ask-vision';
-    this.timeoutMs = config.timeoutMs || 20000;
+    const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
+      ? import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '')
+      : null;
+
+    this.baseUrl = config.baseUrl || envUrl || 'https://visionx.my.id';
+    this.endpoint = config.endpoint || `${this.baseUrl}/api/chat`;
+    this.loginEndpoint = config.loginEndpoint || `${this.baseUrl}/api/login`;
+    this.timeoutMs = config.timeoutMs || 35000;
+    this.onAuthRequired = config.onAuthRequired || null;
+    this.sessionStorageKey = 'visionx_session_token';
   }
 
   get name() {
     return 'BackendAIProvider';
   }
 
-  async askVision({ image, context, question, conversationHistory = [] }) {
+  /**
+   * Mendapatkan token sesi dari sessionStorage
+   * @returns {string|null}
+   */
+  getToken() {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        return sessionStorage.getItem(this.sessionStorageKey);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /**
+   * Menyimpan token sesi ke sessionStorage
+   * @param {string} token
+   */
+  setToken(token) {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(this.sessionStorageKey, token);
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Menghapus token sesi dari sessionStorage
+   */
+  clearToken() {
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(this.sessionStorageKey);
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Memeriksa apakah sesi telah terautentikasi
+   * @returns {boolean}
+   */
+  isAuthenticated() {
+    return Boolean(this.getToken());
+  }
+
+  /**
+   * Melakukan login server-side menggunakan PIN
+   * @param {string} pin
+   * @returns {Promise<{ success: boolean, token: string }>}
+   */
+  async login(pin) {
+    if (!pin || typeof pin !== 'string' || pin.trim().length === 0) {
+      throw new Error('PIN tidak boleh kosong.');
+    }
+
+    try {
+      const response = await fetch(this.loginEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ pin: pin.trim() })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error(data.error || 'Terlalu banyak percobaan gagal. Akun terkunci sementara (15 menit).');
+        }
+        if (response.status === 401) {
+          throw new Error('PIN akses VisionX salah. Silakan coba lagi.');
+        }
+        throw new Error(data.error || `Gagal login (HTTP ${response.status}).`);
+      }
+
+      if (!data.token) {
+        throw new Error('Server tidak mengembalikan token autentikasi.');
+      }
+
+      this.setToken(data.token);
+      return { success: true, token: data.token };
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message && err.message.includes('fetch')) {
+        throw new Error(`Tidak dapat terhubung ke server autentikasi (${this.loginEndpoint}). Pastikan backend Termux online.`);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Mengirim query vision ke /api/chat dengan dukungan SSE streaming
+   */
+  async askVision({ image, context, question, conversationHistory = [], onChunk = null }) {
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       throw new Error('Pertanyaan tidak boleh kosong.');
     }
 
     const startTime = performance.now();
+    const token = this.getToken();
+
+    if (!token && typeof this.onAuthRequired === 'function') {
+      await this.onAuthRequired();
+    }
+
+    const activeToken = this.getToken();
+    if (!activeToken) {
+      throw new Error('Autentikasi diperlukan. Masukkan PIN akses VisionX untuk menggunakan AI Assistant.');
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    // Format riwayat percakapan yang bersih
+    const formattedHistory = Array.isArray(conversationHistory)
+      ? conversationHistory.map(turn => ({
+          role: turn.role || (turn.isUser ? 'user' : 'assistant'),
+          text: turn.text || turn.content || turn.message || ''
+        })).filter(t => Boolean(t.text))
+      : [];
+
+    // Format payload sesuai spesifikasi backend gateway
+    const payload = {
+      message: question.trim(),
+      image: image || null,
+      vision_context: context || null,
+      detections: context?.detections || null,
+      history: formattedHistory
+    };
 
     try {
       const response = await fetch(this.endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'text/event-stream, application/json',
+          'Authorization': `Bearer ${activeToken}`
         },
-        body: JSON.stringify({
-          image: image || null,
-          context: context || null,
-          question: question.trim(),
-          conversation_history: Array.isArray(conversationHistory) ? conversationHistory : []
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
+      // Handle HTTP errors
       if (!response.ok) {
         let errorMsg = `Server error (${response.status})`;
+        let errData = null;
         try {
-          const errData = await response.json();
+          errData = await response.json();
           if (errData && errData.error) errorMsg = errData.error;
         } catch (_) {}
+
+        if (response.status === 401) {
+          this.clearToken();
+          throw new Error('Sesi autentikasi telah kedaluwarsa atau tidak valid. Silakan masukkan PIN kembali.');
+        }
+        if (response.status === 403) {
+          throw new Error('Akses ditolak (403).');
+        }
+        if (response.status === 413) {
+          throw new Error('Ukuran snapshot citra terlalu besar (maksimal 2MB).');
+        }
+        if (response.status === 429) {
+          throw new Error(errorMsg || 'Terlalu banyak permintaan ke AI Assistant (Rate limit). Harap tunggu beberapa detik.');
+        }
+        if (response.status >= 500) {
+          throw new Error('Server VisionX sedang mengalami kendala internal. Silakan coba kembali sesaat lagi.');
+        }
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
-      const latencyMs = Math.round(performance.now() - startTime);
+      // Check Content-Type untuk menentukan SSE streaming vs JSON response
+      const contentType = response.headers.get('content-type') || '';
+      let fullAnswer = '';
 
-      return {
-        answer: data.answer || 'Tidak ada jawaban dari AI Assistant.',
-        provider: data.provider || 'visionx-backend',
-        latencyMs: typeof data.latencyMs === 'number' ? data.latencyMs : latencyMs
-      };
+      if (contentType.includes('text/event-stream') && response.body) {
+        // SSE Stream Reader
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Pertahankan baris terakhir yang belum lengkap
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data: ')) {
+              const dataPayload = trimmed.slice(6).trim();
+              if (dataPayload === '[DONE]') {
+                continue;
+              }
+              try {
+                const parsed = JSON.parse(dataPayload);
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+                if (parsed.text) {
+                  fullAnswer += parsed.text;
+                  if (typeof onChunk === 'function') {
+                    onChunk(parsed.text, fullAnswer);
+                  }
+                }
+              } catch (jsonErr) {
+                if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+                  throw jsonErr;
+                }
+              }
+            }
+          }
+        }
+
+        const latencyMs = Math.round(performance.now() - startTime);
+        return {
+          answer: fullAnswer.trim() || 'Tidak ada teks jawaban yang diterima dari server.',
+          provider: 'visionx-gateway',
+          latencyMs
+        };
+      } else {
+        // Fallback JSON parser jika server mengembalikan application/json
+        const data = await response.json();
+        const latencyMs = Math.round(performance.now() - startTime);
+        return {
+          answer: data.answer || data.message || 'Tidak ada respons dari AI Assistant.',
+          provider: data.provider || 'visionx-gateway',
+          latencyMs: typeof data.latencyMs === 'number' ? data.latencyMs : latencyMs
+        };
+      }
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
         throw new Error(`Permintaan ke AI Assistant timeout setelah ${this.timeoutMs / 1000} detik.`);
+      }
+      if (err.name === 'TypeError' && err.message && err.message.includes('fetch')) {
+        throw new Error(`Gagal menghubungi gateway VisionX (${this.endpoint}). Pastikan server Termux aktif.`);
       }
       throw err;
     }

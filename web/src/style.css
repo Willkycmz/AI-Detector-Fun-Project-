@@ -5873,3 +5873,118 @@ button, input, select, .mode-tab, .bottom-nav-item {
   border-radius: 6px;
 }
 
+/* =========================================================================
+   VisionX Milestone 1: Privacy Notice & Gateway Auth Styling
+   ========================================================================= */
+.chat-privacy-notice {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 8px 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  backdrop-filter: blur(8px);
+}
+
+.privacy-notice-badge {
+  color: #38bdf8;
+  font-weight: 600;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.privacy-notice-text {
+  margin: 0;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
+.privacy-notice-text strong {
+  color: #f8fafc;
+}
+
+/* Gateway Auth Bar */
+.gateway-auth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.auth-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #64748b;
+}
+
+.status-dot.active {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.status-dot.unauthed {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.auth-action-btn {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+}
+
+/* Auth Modal Card */
+.auth-modal-card {
+  max-width: 440px;
+  width: 90%;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  color: #f8fafc;
+}
+
+.auth-pin-input {
+  width: 100%;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+
+.auth-pin-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3);
+}
+
+.auth-modal-error {
+  color: #f87171;
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+

@@ -19,11 +19,13 @@ try:
     from app.camera import CameraStream, CameraNotFoundError, FrameReadError
     from app.detector import YOLOObjectDetector, Visualizer, ModelLoadError
     from app.collector import DatasetCollector, InvalidClassNameError, DatasetSaveError
+    from app.network import upload_image_to_tunnel
 except ImportError:
     from config import parse_arguments, AppConfig
     from camera import CameraStream, CameraNotFoundError, FrameReadError
     from detector import YOLOObjectDetector, Visualizer, ModelLoadError
     from collector import DatasetCollector, InvalidClassNameError, DatasetSaveError
+    from network import upload_image_to_tunnel
 
 # Konfigurasi logging
 logging.basicConfig(
@@ -46,7 +48,9 @@ def run_pipeline(config: AppConfig) -> int:
         logger.info(f"Model: {config.model_path} | Conf={config.confidence_threshold}")
     else:
         logger.info(f"Koleksi Kelas: {config.class_name} | Simpan ke: {config.save_dir}")
-    logger.info("Kontrol: [SPACE/C] Foto  [N] Ganti Kelas  [M] Ganti Mode  [Q] Keluar")
+    logger.info("Kontrol: [SPACE/C] Foto  [U] Upload Tunnel  [N] Ganti Kelas  [M] Ganti Mode  [Q] Keluar")
+    if config.auto_upload:
+        logger.info(f"Auto Upload Aktif -> Target: {config.endpoint_url}")
     logger.info("=" * 60)
 
     # 1. Inisialisasi Detektor YOLO (opsional jika hanya menjalankan mode koleksi)
@@ -229,10 +233,41 @@ def run_pipeline(config: AppConfig) -> int:
                     saved_path = collector.save_image(raw_frame)
                     flash_message = f"Tersimpan: {saved_path.name}"
                     flash_expire_time = time.time() + 2.5
+
+                    # Auto upload jika opsi diaktifkan
+                    if config.auto_upload:
+                        info_text = f"Class: {collector.current_class} | File: {saved_path.name}"
+                        up_res = upload_image_to_tunnel(
+                            image=raw_frame,
+                            info=info_text,
+                            endpoint_url=config.endpoint_url
+                        )
+                        if up_res["success"]:
+                            logger.info(f"Auto-upload berhasil: {saved_path.name}")
+                        else:
+                            logger.warning(f"Auto-upload gagal: {up_res['error']}")
                 except DatasetSaveError as err:
                     logger.error(f"Gagal menyimpan gambar: {err}")
                     flash_message = f"Gagal: {err}"
                     flash_expire_time = time.time() + 3.0
+
+            # Kirim frame saat ini ke Cloudflare Tunnel: 'u' atau 'U'
+            if key in (ord('u'), ord('U')):
+                info_text = f"Mode: {current_mode.upper()} | Class: {collector.current_class}"
+                logger.info(f"Mengirim frame ke Cloudflare Tunnel ({config.endpoint_url})...")
+                up_res = upload_image_to_tunnel(
+                    image=raw_frame,
+                    info=info_text,
+                    endpoint_url=config.endpoint_url,
+                    timeout=8.0
+                )
+                if up_res["success"]:
+                    logger.info("Upload tunnel berhasil!")
+                    flash_message = "Tunnel: Upload Berhasil!"
+                else:
+                    logger.warning(f"Upload tunnel gagal: {up_res['error']}")
+                    flash_message = f"Tunnel Err: {up_res['status_code'] or 'Gagal'}"
+                flash_expire_time = time.time() + 3.0
 
             # Buka dialog ganti kelas: 'n' atau 'N'
             if key in (ord('n'), ord('N')):

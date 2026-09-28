@@ -44,7 +44,7 @@ export const MODEL_PRESETS = {
     name: 'VisionX V2 (Real-World Improved 7 Classes)',
     shortName: 'VisionX V2 Custom',
     badge: 'Custom V2',
-    path: '/models/visionx_v2.onnx',
+    path: './models/visionx_v2.onnx',
     classes: VISIONX_V1_CLASSES,
     numClasses: VISIONX_V1_CLASSES.length,
     isCustom: true,
@@ -55,7 +55,7 @@ export const MODEL_PRESETS = {
     name: 'VisionX V1 (Custom 7 Classes)',
     shortName: 'VisionX V1 Custom',
     badge: 'Custom V1',
-    path: '/models/visionx_v1.onnx',
+    path: './models/visionx_v1.onnx',
     classes: VISIONX_V1_CLASSES,
     numClasses: VISIONX_V1_CLASSES.length,
     isCustom: true,
@@ -66,7 +66,7 @@ export const MODEL_PRESETS = {
     name: 'Pretrained YOLOv8n (COCO 80 Classes)',
     shortName: 'YOLOv8n Pretrained',
     badge: 'Pretrained COCO',
-    path: '/models/yolov8n.onnx',
+    path: './models/yolov8n.onnx',
     classes: COCO_CLASSES,
     numClasses: COCO_CLASSES.length,
     isCustom: false,
@@ -127,9 +127,9 @@ function applyNMS(candidates, iouThreshold = 0.45) {
 }
 
 export class YOLOInferenceService {
-  constructor(defaultModelId = 'visionx_v1') {
+  constructor(defaultModelId = 'visionx_v2') {
     this.activeModelId = defaultModelId;
-    this.modelConfig = MODEL_PRESETS[defaultModelId] || MODEL_PRESETS.visionx_v1;
+    this.modelConfig = MODEL_PRESETS[defaultModelId] || MODEL_PRESETS.visionx_v2 || MODEL_PRESETS.visionx_v1;
     this.modelPath = this.modelConfig.path;
     this.classes = this.modelConfig.classes;
     this.numClasses = this.modelConfig.numClasses;
@@ -143,7 +143,8 @@ export class YOLOInferenceService {
     this.errorMessage = null;
     this.loadTimeMs = 0;
 
-    this.confThreshold = 0.45;
+    // Default confidence threshold 0.25 dan IoU NMS 0.45
+    this.confThreshold = 0.25;
     this.iouThreshold = 0.45;
 
     // Tracking diagnostics lengkap
@@ -287,12 +288,16 @@ export class YOLOInferenceService {
 
       // 3. Fetch model binary secara eksplisit untuk validasi HTTP network status & file size
       this.diagnostics.modelFetchStarted = new Date().toLocaleTimeString();
-      console.log(`[VisionX Diagnostic] Model fetch started: ${this.modelPath}`);
+      let fetchUrl = this.modelPath;
+      if (fetchUrl.startsWith('/models/')) {
+        fetchUrl = '.' + fetchUrl;
+      }
+      console.log(`[VisionX Diagnostic] Model fetch started: ${fetchUrl}`);
       if (onProgress) onProgress(`Mengunduh file model ${this.modelConfig.shortName}...`);
 
-      const response = await fetch(this.modelPath, { cache: 'no-cache' });
+      const response = await fetch(fetchUrl, { cache: 'no-cache' });
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ${response.statusText} saat mengunduh file model dari '${this.modelPath}'. Pastikan file ada di web/public/models/.`);
+        throw new Error(`HTTP ${response.status} ${response.statusText} saat mengunduh file model dari '${fetchUrl}'. Pastikan file ada di web/public/models/.`);
       }
 
       const arrayBuffer = await response.arrayBuffer();
@@ -379,8 +384,8 @@ export class YOLOInferenceService {
    * Mendukung HTMLVideoElement, HTMLImageElement, atau HTMLCanvasElement
    */
   _preprocess(source, isMirrored = false) {
-    const vw = source.videoWidth || source.naturalWidth || source.width || 640;
-    const vh = source.videoHeight || source.naturalHeight || source.height || 640;
+    const vw = Math.max(1, Number(source.videoWidth || source.naturalWidth || source.width) || 640);
+    const vh = Math.max(1, Number(source.videoHeight || source.naturalHeight || source.height) || 640);
     const targetDim = 640;
 
     const letterboxParams = CoordinateMapper.computeLetterboxParams(vw, vh, targetDim);
@@ -395,13 +400,16 @@ export class YOLOInferenceService {
     if (isMirrored) {
       ctx.translate(targetDim, 0);
       ctx.scale(-1, 1);
+      ctx.drawImage(source, padX, padY, nw, nh);
+    } else {
+      ctx.drawImage(source, padX, padY, nw, nh);
     }
-    ctx.drawImage(source, padX, padY, nw, nh);
     ctx.restore();
 
     const imgData = ctx.getImageData(0, 0, targetDim, targetDim);
     const pixels = imgData.data;
 
+    // Normalisasi piksel ke Float32Array (nilai piksel / 255.0) dengan layout NCHW [1, 3, 640, 640]
     const floatArray = new Float32Array(1 * 3 * targetDim * targetDim);
     const planeSize = targetDim * targetDim;
 
@@ -410,9 +418,9 @@ export class YOLOInferenceService {
       const g = pixels[i * 4 + 1];
       const b = pixels[i * 4 + 2];
 
-      floatArray[i] = r / 255.0;                   // R plane
-      floatArray[planeSize + i] = g / 255.0;       // G plane
-      floatArray[2 * planeSize + i] = b / 255.0;   // B plane
+      floatArray[i] = r / 255.0;                   // Channel R [0..409599]
+      floatArray[planeSize + i] = g / 255.0;       // Channel G [409600..819199]
+      floatArray[2 * planeSize + i] = b / 255.0;   // Channel B [819200..1228799]
     }
 
     const ortInstance = getOrt();
@@ -424,6 +432,8 @@ export class YOLOInferenceService {
       scale,
       padX,
       padY,
+      nw,
+      nh,
       vw,
       vh
     };
@@ -459,11 +469,11 @@ export class YOLOInferenceService {
     this.isInferencing = true;
 
     try {
-      const { inputTensor, letterboxParams, scale, padX, padY, vw, vh } = this._preprocess(source, isMirrored);
+      const { inputTensor, letterboxParams, scale, padX, padY, nw, nh, vw, vh } = this._preprocess(source, isMirrored);
 
-      // Jalankan inferensi ONNX
+      // Jalankan inferensi ONNX dengan nama layer input dinamis
       const feeds = {};
-      const inputName = this.diagnostics.modelInputName || 'images';
+      const inputName = (this.session.inputNames && this.session.inputNames[0]) || this.diagnostics.modelInputName || 'images';
       feeds[inputName] = inputTensor;
 
       const outputMap = await this.session.run(feeds);
@@ -473,20 +483,27 @@ export class YOLOInferenceService {
       }
       this.latestCompletedFrameId = frameId;
 
-      const outputTensor = outputMap[this.diagnostics.modelOutputName] || outputMap.output0 || Object.values(outputMap)[0];
+      // Ambil output layer secara dinamis: session.outputNames[0]
+      const outputName = (this.session.outputNames && this.session.outputNames[0]) || this.diagnostics.modelOutputName || 'output0';
+      const outputTensor = outputMap[outputName] || outputMap.output0 || Object.values(outputMap)[0];
       const outputData = outputTensor.data;
       
       const dims = outputTensor.dims || [1, 4 + this.numClasses, 8400];
       let numChannels = 4 + this.numClasses;
       let numAnchors = 8400;
+      let isChannelsFirst = true;
 
       if (dims && dims.length >= 3) {
         if (dims[1] < dims[2]) {
+          // Standard YOLOv8 layout: [1, 11, 8400]
           numChannels = dims[1];
           numAnchors = dims[2];
+          isChannelsFirst = true;
         } else {
-          numChannels = dims[2];
+          // Transposed layout: [1, 8400, 11]
           numAnchors = dims[1];
+          numChannels = dims[2];
+          isChannelsFirst = false;
         }
       }
 
@@ -495,9 +512,7 @@ export class YOLOInferenceService {
 
       // Verifikasi output custom model tetap [1, 11, 8400]
       if (this.modelConfig.isCustom && numChannels !== 11) {
-        console.warn(`[VisionX Warning] Custom model V1 diharapkan 11 channel, terdeteksi: ${numChannels}`);
-      } else if (!this.modelConfig.isCustom && numChannels !== 84) {
-        console.warn(`[VisionX Warning] Pretrained COCO model diharapkan 84 channel, terdeteksi: ${numChannels}`);
+        console.warn(`[VisionX Warning] Model V2 diharapkan 11 channel, terdeteksi: ${numChannels}`);
       }
 
       // Hitung tensor output min / max untuk verifikasi diagnostik
@@ -514,7 +529,6 @@ export class YOLOInferenceService {
       let droppedByPadding = 0;
       let droppedByMinSize = 0;
       let droppedByAspectRatio = 0;
-      let droppedByMarginal = 0;
       let acceptedCount = 0;
 
       const activePadX = padX;
@@ -526,11 +540,22 @@ export class YOLOInferenceService {
         let maxScore = -1;
         let maxClassId = -1;
 
-        for (let c = 0; c < numClasses; c++) {
-          const score = outputData[(4 + c) * numAnchors + i];
-          if (score > maxScore) {
-            maxScore = score;
-            maxClassId = c;
+        if (isChannelsFirst) {
+          for (let c = 0; c < numClasses; c++) {
+            const score = outputData[(4 + c) * numAnchors + i];
+            if (score > maxScore) {
+              maxScore = score;
+              maxClassId = c;
+            }
+          }
+        } else {
+          const anchorOffset = i * numChannels;
+          for (let c = 0; c < numClasses; c++) {
+            const score = outputData[anchorOffset + 4 + c];
+            if (score > maxScore) {
+              maxScore = score;
+              maxClassId = c;
+            }
           }
         }
 
@@ -539,23 +564,33 @@ export class YOLOInferenceService {
           totalRawCount++;
         }
 
-        // Confidence Filtering menggunakan confThreshold yang aktif
+        // Confidence Filtering menggunakan confThreshold yang aktif (default 0.25)
         if (maxScore >= this.confThreshold && maxClassId >= 0 && maxClassId < activeClasses.length) {
-          const cx = outputData[0 * numAnchors + i];
-          const cy = outputData[1 * numAnchors + i];
-          const w = outputData[2 * numAnchors + i];
-          const h = outputData[3 * numAnchors + i];
+          let cx, cy, w, h;
+          if (isChannelsFirst) {
+            cx = outputData[0 * numAnchors + i];
+            cy = outputData[1 * numAnchors + i];
+            w = outputData[2 * numAnchors + i];
+            h = outputData[3 * numAnchors + i];
+          } else {
+            const anchorOffset = i * numChannels;
+            cx = outputData[anchorOffset + 0];
+            cy = outputData[anchorOffset + 1];
+            w = outputData[anchorOffset + 2];
+            h = outputData[anchorOffset + 3];
+          }
+
           const className = activeClasses[maxClassId] || `class_${maxClassId}`;
 
           // 1. FILTER: Cek apakah anchor center berada di dalam area aktif video (bukan di letterbox padding)
           if (
-            cx < activePadX + 2 ||
-            cx > (activePadX + activeNw - 2) ||
-            cy < activePadY + 2 ||
-            cy > (activePadY + activeNh - 2)
+            cx < (activePadX - 5) ||
+            cx > (activePadX + activeNw + 5) ||
+            cy < (activePadY - 5) ||
+            cy > (activePadY + activeNh + 5)
           ) {
             droppedByPadding++;
-            const reason = `anchor center (${cx.toFixed(1)}, ${cy.toFixed(1)}) in letterbox padding [padX=${activePadX}, padY=${activePadY}]`;
+            const reason = `anchor center (${cx.toFixed(1)}, ${cy.toFixed(1)}) in letterbox padding`;
             this._logFilterDecision('DROPPED', className, maxScore, reason);
             continue;
           }
@@ -571,46 +606,25 @@ export class YOLOInferenceService {
           const bh = mapped.y2 - mapped.y1;
           const area = bw * bh;
 
-          // 2. FILTER: Cek dimensi minimum (mencegah degenerasi sub-16px noise)
-          if (bw < 16 || bh < 16 || area < 256) {
+          // 2. FILTER: Cek dimensi minimum (mencegah degenerasi sub-8px noise)
+          if (bw < 8 || bh < 8 || area < 64) {
             droppedByMinSize++;
-            const reason = `box too small (${bw}x${bh}, area ${area} < 256px)`;
+            const reason = `box too small (${bw.toFixed(0)}x${bh.toFixed(0)}, area ${area.toFixed(0)} < 64px)`;
             this._logFilterDecision('DROPPED', className, maxScore, reason);
             continue;
           }
 
-          // 3. FILTER: Cek rasio aspek (menghilangkan garis pinggir meja, kabel, artefak tepi)
+          // 3. FILTER: Cek rasio aspek (menghilangkan garis artefak ekstrim)
           const aspect = bw / bh;
-          if (aspect < 0.15 || aspect > 6.5) {
+          if (aspect < 0.10 || aspect > 10.0) {
             droppedByAspectRatio++;
-            const reason = `extreme aspect ratio ${aspect.toFixed(2)} (allowed 0.15-6.5)`;
-            this._logFilterDecision('DROPPED', className, maxScore, reason);
-            continue;
-          }
-
-          // 4. FILTER: Sanitasi khusus untuk kelas yang rentan false-positive di stationary real-device (person & bottle)
-          const videoArea = (vw || 640) * (vh || 480);
-          if (className === 'person' && maxScore < 0.52 && (area < 2500 || area / videoArea < 0.003)) {
-            droppedByMarginal++;
-            const reason = `marginal score (${maxScore.toFixed(3)} < 0.52) with small area (${area}px < 2500px) for person`;
-            this._logFilterDecision('DROPPED', className, maxScore, reason);
-            continue;
-          }
-          if (className === 'bottle' && maxScore < 0.50 && (area < 1200 || area / videoArea < 0.0015)) {
-            droppedByMarginal++;
-            const reason = `marginal score (${maxScore.toFixed(3)} < 0.50) with small area (${area}px < 1200px) for bottle`;
-            this._logFilterDecision('DROPPED', className, maxScore, reason);
-            continue;
-          }
-          if (maxScore < 0.50 && (area < 400 || area / videoArea < 0.0005)) {
-            droppedByMarginal++;
-            const reason = `marginal score (${maxScore.toFixed(3)} < 0.50) with tiny area (${area}px < 400px)`;
+            const reason = `extreme aspect ratio ${aspect.toFixed(2)}`;
             this._logFilterDecision('DROPPED', className, maxScore, reason);
             continue;
           }
 
           acceptedCount++;
-          this._logFilterDecision('ACCEPTED', className, maxScore, `valid detection bbox=[${mapped.x1},${mapped.y1},${mapped.x2},${mapped.y2}] size=${bw}x${bh}`);
+          this._logFilterDecision('ACCEPTED', className, maxScore, `valid detection bbox=[${mapped.x1.toFixed(0)},${mapped.y1.toFixed(0)},${mapped.x2.toFixed(0)},${mapped.y2.toFixed(0)}]`);
 
           rawCandidates.push({
             class_id: maxClassId,
@@ -632,8 +646,10 @@ export class YOLOInferenceService {
       const inferenceTimeMs = Math.round(performance.now() - startTime);
 
       // Update diagnostics tracking
+      this.diagnostics.modelInputName = inputName;
+      this.diagnostics.modelOutputName = outputName;
       this.diagnostics.modelInputShape = '[1, 3, 640, 640]';
-      this.diagnostics.modelOutputShape = `[1, ${numChannels}, ${numAnchors}]`;
+      this.diagnostics.modelOutputShape = `[${dims.join(', ')}]`;
       this.diagnostics.tensorMin = tensorMin;
       this.diagnostics.tensorMax = tensorMax;
       this.diagnostics.lastInferenceLatencyMs = inferenceTimeMs;
@@ -644,21 +660,18 @@ export class YOLOInferenceService {
       this.diagnostics.droppedByPadding = droppedByPadding;
       this.diagnostics.droppedByMinSize = droppedByMinSize;
       this.diagnostics.droppedByAspectRatio = droppedByAspectRatio;
-      this.diagnostics.droppedByMarginal = droppedByMarginal;
       this.diagnostics.acceptedCount = acceptedCount;
 
-      // Diagnostic Logging per requirements
-      if (isFirstInference || frameId % 30 === 1) {
+      // Console log terstruktur untuk debugging di browser Console (Requirement 4)
+      const detectionsSummary = finalDetections.map(d => `${d.class_name} (${(d.confidence * 100).toFixed(1)}%)`).join(', ') || 'None';
+      if (isFirstInference || frameId % 30 === 1 || finalDetections.length > 0) {
         console.log(
-          `[VisionX Diagnostic Log] MODEL: ${this.status.toUpperCase()} | ` +
-          `INPUT: 640x640 | ` +
-          `OUTPUT: [1,${numChannels},${numAnchors}] | ` +
-          `TENSOR MIN/MAX: [${tensorMin.toFixed(4)}, ${tensorMax.toFixed(4)}] | ` +
-          `RAW CANDIDATES: ${totalRawCount} | ` +
-          `CONF PASS: ${rawCandidates.length} | ` +
-          `DROPPED: [pad:${droppedByPadding}, size:${droppedByMinSize}, aspect:${droppedByAspectRatio}, marginal:${droppedByMarginal}] | ` +
-          `NMS RESULT: ${finalDetections.length} | ` +
-          `FINAL DETECTIONS: ${finalDetections.length}`
+          `[VisionX YOLOv8] Frame #${frameId} | ` +
+          `Input: ${inputName} [1, 3, 640, 640] | ` +
+          `Output: ${outputName} [${dims.join(', ')}] | ` +
+          `Candidates (>=${this.confThreshold}): ${rawCandidates.length} | ` +
+          `Detections (${finalDetections.length}): [${detectionsSummary}] | ` +
+          `Latency: ${inferenceTimeMs}ms`
         );
       }
 

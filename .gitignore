@@ -33,7 +33,10 @@ scratch/
 *.pt
 *.onnx
 *.parquet
-web/public/models/
+!web/public/models/
+!web/public/models/*.onnx
+!web/dist/models/
+!web/dist/models/*.onnx
 
 # Environment Variables
 .env

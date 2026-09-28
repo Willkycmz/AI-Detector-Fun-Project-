@@ -9,6 +9,10 @@ import os
 from typing import Union
 
 
+# URL Endpoint Cloudflare Tunnel default (Server HP Termux)
+DEFAULT_ENDPOINT_URL = os.getenv("VISIONX_ENDPOINT_URL", "https://visionx.my.id/api/upload")
+
+
 @dataclass
 class AppConfig:
     """Konfigurasi runtime untuk aplikasi VisionX."""
@@ -26,13 +30,15 @@ class AppConfig:
     class_name: str = "object"
     save_dir: str = "datasets/raw"
     window_title: str = "VisionX - Computer Vision System"
+    endpoint_url: str = DEFAULT_ENDPOINT_URL
+    auto_upload: bool = False
 
 
 def parse_arguments() -> AppConfig:
     """
     Membaca CLI arguments dan menghasilkan objek AppConfig.
     Contoh:
-        python app/main.py --source 0 --conf 0.5 --model models/yolov8n.pt
+        python app/main.py --source 0 --conf 0.5 --model models/yolov8n.pt --endpoint https://visionx.my.id/api/upload
     """
     parser = argparse.ArgumentParser(
         description="VisionX: Realtime Object Detection MVP using OpenCV & YOLO",
@@ -107,6 +113,17 @@ def parse_arguments() -> AppConfig:
         default="datasets/raw",
         help="Direktori penyimpanan gambar mentah (raw)"
     )
+    parser.add_argument(
+        "--endpoint",
+        type=str,
+        default=DEFAULT_ENDPOINT_URL,
+        help="URL endpoint Cloudflare Tunnel server Flask HP Termux (default: https://visionx.my.id/api/upload)"
+    )
+    parser.add_argument(
+        "--auto-upload",
+        action="store_true",
+        help="Otomatis kirim gambar hasil deteksi/koleksi ke endpoint server Cloudflare Tunnel"
+    )
 
     args = parser.parse_args()
 
@@ -128,5 +145,7 @@ def parse_arguments() -> AppConfig:
         show_fps=not args.no_fps,
         mode=args.mode,
         class_name=args.class_name,
-        save_dir=args.save_dir
+        save_dir=args.save_dir,
+        endpoint_url=args.endpoint,
+        auto_upload=args.auto_upload
     )

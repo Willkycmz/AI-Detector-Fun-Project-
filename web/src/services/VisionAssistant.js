@@ -310,12 +310,15 @@ export class VisionAssistant {
       // 3. Ambil riwayat percakapan terkini (Sliding Window 6 turns)
       const conversationHistory = this.conversationManager ? this.conversationManager.getRecentTurns(6) : [];
 
-      // 4. Kirim ke AIProvider bersama riwayat percakapan
+      // 4. Kirim ke AIProvider bersama riwayat percakapan dan callback streaming progresif
       const aiResponse = await this.aiProvider.askVision({
         image: snapshotDataUrl,
         context,
         question: trimmedQuestion,
-        conversationHistory
+        conversationHistory,
+        onChunk: (chunk, fullText) => {
+          this._emit('streamChunk', { chunk, fullText, question: trimmedQuestion });
+        }
       });
 
       const latencyMs = Math.round(performance.now() - startTime);
