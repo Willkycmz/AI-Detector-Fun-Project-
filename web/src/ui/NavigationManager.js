@@ -59,6 +59,7 @@ export class NavigationManager {
   normalizeMode(mode) {
     if (!mode || typeof mode !== 'string') return null;
     const clean = mode.trim().toLowerCase();
+    if (clean === 'home' || clean === 'landing') return 'home';
     if (PRIMARY_MODES.includes(clean)) return clean;
     if (MODE_ALIASES[clean]) return MODE_ALIASES[clean];
     return null;
@@ -115,6 +116,21 @@ export class NavigationManager {
       }
       return btn;
     }).filter(Boolean);
+
+    // 2b. Home Navigation Triggers (Brand Logo & Desktop Home Tab)
+    const homeTriggers = [
+      document.getElementById('btnNavHome'),
+      document.getElementById('brandLogo')
+    ].filter(Boolean);
+
+    homeTriggers.forEach((btn) => {
+      const clickHandler = (e) => {
+        e.preventDefault();
+        this.setActiveMode('home', { triggerCallback: true });
+      };
+      btn.addEventListener('click', clickHandler);
+      this._listeners.push({ el: btn, event: 'click', fn: clickHandler });
+    });
 
     // 3. Accessible Keyboard Navigation
     if (this.enableKeyboard) {
@@ -245,6 +261,21 @@ export class NavigationManager {
         }
       }
     });
+
+    // Sync Desktop Home Tab if present
+    const homeBtn = document.getElementById('btnNavHome');
+    if (homeBtn) {
+      const isHome = (mode === 'home');
+      if (isHome) {
+        homeBtn.classList.add('active');
+        homeBtn.setAttribute('aria-selected', 'true');
+        homeBtn.setAttribute('tabindex', '0');
+      } else {
+        homeBtn.classList.remove('active');
+        homeBtn.setAttribute('aria-selected', 'false');
+        homeBtn.setAttribute('tabindex', '-1');
+      }
+    }
   }
 
   /**

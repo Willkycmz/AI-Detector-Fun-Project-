@@ -48,7 +48,9 @@ class VisionXWebApp {
     this.collectElements();
 
     // 2. Inisialisasi state aplikasi & rendering
-    this.currentMode = 'detection'; // 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+    this.currentMode = 'home'; // 'home' | 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+    this.isStartingCamera = false;
+    this.hasLoadedCameraDevices = false;
     this.animationFrameId = null;
     this.prevTime = performance.now();
     this.fpsSmooth = 0;
@@ -230,6 +232,14 @@ class VisionXWebApp {
   collectElements() {
     // DOM Elements
     this.elements = {
+      // Home & Main Layout Containers (V1.7)
+      homeView: document.getElementById('homeView'),
+      stageCard: document.getElementById('stageCard'),
+      controlsCard: document.getElementById('controlsCard'),
+      brandLogo: document.getElementById('brandLogo'),
+      btnNavHome: document.getElementById('btnNavHome'),
+      heroCameraButtons: document.querySelector('.hero-camera-buttons'),
+
       // Stage & Video
       video: document.getElementById('videoElement'),
       canvas: document.getElementById('canvasOverlay'),
@@ -571,6 +581,7 @@ class VisionXWebApp {
       this.themeManager = new ThemeManager();
       this.bottomSheetManager = new BottomSheetManager();
       this.navigationManager = new NavigationManager({
+        initialMode: 'home',
         onModeChange: (mode) => this.setMode(mode)
       });
       this.contextualPanelManager = new ContextualPanelManager();
@@ -595,9 +606,6 @@ class VisionXWebApp {
       const initialModelId = (this.elements.modelSelect && this.elements.modelSelect.value) || 'visionx_v2';
       await this.loadSelectedModel(initialModelId);
 
-      // Populate camera devices list
-      await this.loadCameraDevices();
-
       // Inisialisasi UI Personal Objects (V1.2)
       this.updatePersonalObjectsUI();
 
@@ -608,6 +616,9 @@ class VisionXWebApp {
       // Prefetch data Identity Lab & Dataset Manager di background
       this.identityService.getProfile().catch(() => {});
       this.managerService.fetchStats().catch(() => {});
+
+      // Set initial view ke Home (Landing state)
+      this.setMode('home');
     } catch (fatalErr) {
       console.error('[VisionX Fatal] Peringatan inisialisasi background:', fatalErr);
       this.updateInferenceUI('error', 'Init Error: ' + fatalErr.message);
@@ -619,6 +630,42 @@ class VisionXWebApp {
    * Bind semua event listener UI
    */
   bindEvents() {
+    // Home Triggers (Desktop Nav Tab & Brand Logo)
+    if (this.elements.btnNavHome) {
+      this.elements.btnNavHome.addEventListener('click', () => this.setMode('home'));
+    }
+    if (this.elements.brandLogo) {
+      this.elements.brandLogo.addEventListener('click', () => this.setMode('home'));
+      this.elements.brandLogo.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.setMode('home');
+        }
+      });
+    }
+
+    // Home Landing Page Cards Navigation
+    if (this.elements.homeView) {
+      const homeCards = this.elements.homeView.querySelectorAll('[data-nav-target]');
+      homeCards.forEach((card) => {
+        const target = card.dataset.navTarget;
+        const handleNav = (e) => {
+          e.preventDefault();
+          if (target === 'chat') {
+            this.openChatAssistant();
+          } else if (target) {
+            this.setMode(target);
+          }
+        };
+        card.addEventListener('click', handleNav);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleNav(e);
+          }
+        });
+      });
+    }
+
     // Mode Switcher Tabs (5 Modes)
     if (this.elements.btnModeDetect) this.elements.btnModeDetect.addEventListener('click', () => this.setMode('detection'));
     if (this.elements.btnModeCollect) this.elements.btnModeCollect.addEventListener('click', () => this.setMode('collection'));
@@ -1174,6 +1221,17 @@ class VisionXWebApp {
 
     this.elements.btnIdLabCaptureCam.addEventListener('click', async () => {
       if (this.cameraService.state.status !== 'connected') {
+        try {
+          await this.handleStartCamera();
+          for (let i = 0; i < 20; i++) {
+            if (this.elements.video && this.elements.video.readyState >= 2) break;
+            await new Promise(r => setTimeout(r, 100));
+          }
+        } catch (camErr) {
+          console.warn('[Identity Lab Camera Start]', camErr);
+        }
+      }
+      if (this.cameraService.state.status !== 'connected' || !this.elements.video || this.elements.video.readyState < 2) {
         this.showError('Nyalakan kamera terlebih dahulu untuk mengambil foto wajah referensi.');
         return;
       }
@@ -1219,10 +1277,28 @@ class VisionXWebApp {
   }
 
   /**
-   * Mengganti Mode aplikasi: 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+   * Membuka Chat Assistant dari Home tanpa mengaktifkan kamera otomatis
    */
-  setMode(mode) {
-    if (!['detection', 'collection', 'manager', 'identity', 'read_text'].includes(mode)) return;
+  openChatAssistant() {
+    this.setMode('detection', { startCamera: false });
+    if (this.contextualPanelManager) {
+      this.contextualPanelManager.openTool('ask');
+    }
+    const askInput = document.getElementById('askVisionInput');
+    if (askInput) {
+      setTimeout(() => {
+        askInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        askInput.focus();
+      }, 80);
+    }
+  }
+
+  /**
+   * Mengganti Mode aplikasi: 'home' | 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+   */
+  setMode(mode, options = {}) {
+    if (!['home', 'detection', 'collection', 'manager', 'identity', 'read_text'].includes(mode)) return;
+    const prevMode = this.currentMode;
     this.currentMode = mode;
 
     if (this.navigationManager && this.navigationManager.getActiveMode() !== mode) {
@@ -1230,7 +1306,7 @@ class VisionXWebApp {
     }
 
     // Reset tab styles
-    [this.elements.btnModeDetect, this.elements.btnModeCollect, this.elements.btnModeManager, this.elements.btnModeIdentity, this.elements.btnModeReadText]
+    [this.elements.btnNavHome, this.elements.btnModeDetect, this.elements.btnModeCollect, this.elements.btnModeManager, this.elements.btnModeIdentity, this.elements.btnModeReadText]
       .forEach(btn => {
         if (btn) {
           btn.classList.remove('active');
@@ -1239,17 +1315,55 @@ class VisionXWebApp {
       });
 
     // Sembunyikan semua kontrol panel
-    this.elements.detectionControls.classList.add('hidden');
-    this.elements.collectionControls.classList.add('hidden');
-    this.elements.managerControls.classList.add('hidden');
-    this.elements.identityControls.classList.add('hidden');
+    if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+    if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+    if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+    if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
     if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
-    this.elements.debugPanel.classList.add('hidden');
+    if (this.elements.debugPanel) this.elements.debugPanel.classList.add('hidden');
     if (this.elements.ocrBadge) this.elements.ocrBadge.classList.add('hidden');
 
+    if (mode === 'home') {
+      // Pastikan kamera dihentikan saat di Home
+      if (this.cameraService && this.cameraService.state.status === 'connected') {
+        this.handleStopCamera();
+      }
+
+      // Tampilkan Home view, sembunyikan Stage kamera dan Controls card
+      if (this.elements.homeView) this.elements.homeView.classList.remove('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.add('hidden');
+
+      if (this.elements.btnNavHome) {
+        this.elements.btnNavHome.classList.add('active');
+        this.elements.btnNavHome.setAttribute('aria-selected', 'true');
+      }
+
+      if (this.elements.modeBadge) {
+        this.elements.modeBadge.className = 'badge badge-mode-home';
+        this.elements.modeStatusText.textContent = 'Home';
+      }
+
+      if (this.elements.activeModelBadge) this.elements.activeModelBadge.classList.add('hidden');
+      if (this.elements.inferenceBadge) this.elements.inferenceBadge.classList.add('hidden');
+      if (this.elements.detectionCountBadge) this.elements.detectionCountBadge.classList.add('hidden');
+      if (this.elements.classBadge) this.elements.classBadge.classList.add('hidden');
+      if (this.elements.countBadge) this.elements.countBadge.classList.add('hidden');
+      return;
+    }
+
+    // Untuk semua mode fitur (selain home): sembunyikan Home view dan tampilkan Controls card
+    if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+    if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+
     if (mode === 'detection') {
-      this.elements.btnModeDetect.classList.add('active');
-      this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
+      if (this.elements.btnModeDetect) {
+        this.elements.btnModeDetect.classList.add('active');
+        this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
+      }
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+
       this.elements.modeBadge.className = 'badge badge-mode-detect';
       this.elements.modeStatusText.textContent = 'Detection Mode';
 
@@ -1265,9 +1379,21 @@ class VisionXWebApp {
       this.elements.stageWatermark.className = 'stage-watermark';
       this.elements.watermarkMode.textContent = 'DETECTION';
       this.elements.watermarkExtra.textContent = '';
+
+      // Lazy camera start saat masuk ke Detection (kecuali jika opsi startCamera dimatikan seperti untuk Chat)
+      if (options.startCamera !== false) {
+        if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
+          this.handleStartCamera();
+        }
+      }
     } else if (mode === 'collection') {
-      this.elements.btnModeCollect.classList.add('active');
-      this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
+      if (this.elements.btnModeCollect) {
+        this.elements.btnModeCollect.classList.add('active');
+        this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
+      }
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+
       this.elements.modeBadge.className = 'badge badge-mode-collect';
       this.elements.modeStatusText.textContent = 'Collection Mode';
 
@@ -1284,7 +1410,21 @@ class VisionXWebApp {
       this.elements.watermarkMode.textContent = 'COLLECTION';
       this.elements.watermarkExtra.textContent = `[${this.captureService.currentClass}]`;
       this.updateCollectionUI();
+
+      // Lazy camera start untuk collection
+      if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
+        this.handleStartCamera();
+      }
     } else if (mode === 'manager') {
+      // Hentikan kamera jika sedang aktif
+      if (this.cameraService && this.cameraService.state.status === 'connected') {
+        this.handleStopCamera();
+      }
+
+      // Sembunyikan panggung kamera dan kontrol hero kamera di Dataset Manager
+      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
+      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.add('hidden');
+
       this.elements.btnModeManager.classList.add('active');
       this.elements.btnModeManager.setAttribute('aria-selected', 'true');
       this.elements.modeBadge.className = 'badge badge-mode-manager';
@@ -1299,15 +1439,15 @@ class VisionXWebApp {
       this.elements.managerControls.classList.remove('hidden');
       if (this.renderer) this.renderer.clear();
 
-      this.elements.stageWatermark.className = 'stage-watermark';
-      this.elements.watermarkMode.textContent = 'MANAGER';
-      this.elements.watermarkExtra.textContent = '';
       this.loadManagerData();
     } else if (mode === 'identity') {
       this.elements.btnModeIdentity.classList.add('active');
       this.elements.btnModeIdentity.setAttribute('aria-selected', 'true');
       this.elements.modeBadge.className = 'badge badge-mode-identity';
       this.elements.modeStatusText.textContent = 'Identity Lab';
+
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1322,11 +1462,15 @@ class VisionXWebApp {
       this.elements.watermarkMode.textContent = 'IDENTITY';
       this.elements.watermarkExtra.textContent = '[VisionX Developer]';
       this.loadIdentityData();
+      // TIDAK otomatis menyalakan kamera saat masuk Identity Lab!
     } else if (mode === 'read_text') {
       if (this.elements.btnModeReadText) {
         this.elements.btnModeReadText.classList.add('active');
         this.elements.btnModeReadText.setAttribute('aria-selected', 'true');
       }
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.heroCameraButtons) this.elements.heroCameraButtons.classList.remove('hidden');
+
       this.elements.modeBadge.className = 'badge badge-mode-readtext';
       this.elements.modeStatusText.textContent = 'Read Text Mode';
 
@@ -1342,6 +1486,11 @@ class VisionXWebApp {
       this.elements.stageWatermark.className = 'stage-watermark';
       this.elements.watermarkMode.textContent = 'READ TEXT';
       this.elements.watermarkExtra.textContent = '[OCR & TTS]';
+
+      // Lazy camera start untuk read_text
+      if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
+        this.handleStartCamera();
+      }
     }
   }
 
@@ -2378,15 +2527,18 @@ class VisionXWebApp {
   }
 
   async loadCameraDevices() {
+    if (this.hasLoadedCameraDevices) return;
     try {
       const devices = await this.cameraService.getAvailableDevices();
       this.populateDeviceSelect(devices);
+      this.hasLoadedCameraDevices = true;
     } catch (err) {
       console.warn('[VisionX] Tidak dapat mengambil daftar kamera:', err);
     }
   }
 
   populateDeviceSelect(devices) {
+    if (!this.elements.deviceSelect) return;
     const select = this.elements.deviceSelect;
     const currentVal = select.value;
     select.innerHTML = '<option value="">Default / Auto Camera</option>';
@@ -2401,22 +2553,35 @@ class VisionXWebApp {
   }
 
   async handleStartCamera(deviceId = null) {
-    const targetDevice = deviceId || this.elements.deviceSelect.value || null;
+    if (this.isStartingCamera) return;
+    if (this.cameraService && this.cameraService.state.status === 'connected') return;
+
+    this.isStartingCamera = true;
     try {
+      if (!this.hasLoadedCameraDevices) {
+        await this.loadCameraDevices();
+      }
+      const targetDevice = deviceId || (this.elements.deviceSelect && this.elements.deviceSelect.value) || null;
       await this.cameraService.start(targetDevice);
       this.startRenderLoop();
     } catch (err) {
       console.error('[VisionX] Gagal memulai kamera:', err);
+    } finally {
+      this.isStartingCamera = false;
     }
   }
 
   handleStopCamera() {
     this.stopRenderLoop();
-    this.cameraService.stop();
-    this.renderer.clear();
-    this.elements.fpsValue.textContent = '0.0';
+    if (this.cameraService) {
+      this.cameraService.stop();
+    }
+    if (this.renderer) {
+      this.renderer.clear();
+    }
+    if (this.elements.fpsValue) this.elements.fpsValue.textContent = '0.0';
     this.fpsSmooth = 0;
-    this.elements.detectionCountValue.textContent = '0';
+    if (this.elements.detectionCountValue) this.elements.detectionCountValue.textContent = '0';
     this.updateDebugTable([], 0, 0);
   }
 
