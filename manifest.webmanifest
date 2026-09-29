@@ -1,0 +1,19 @@
+{
+  "name": "VisionX - AI Vision Assistant",
+  "short_name": "VisionX",
+  "description": "Asisten AI Multimodal dengan integrasi Computer Vision lokal, deteksi objek real-time, OCR, dan persepsi spasial.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070b14",
+  "theme_color": "#070b14",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
