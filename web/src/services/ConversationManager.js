@@ -291,6 +291,19 @@ export class ConversationManager {
   }
 
   /**
+   * Memuat turns riwayat dari penyimpanan eksternal (IndexedDB)
+   * @param {Array<Object>} turns
+   * @param {string} [sessionId=null]
+   */
+  loadTurns(turns = [], sessionId = null) {
+    if (sessionId) {
+      this.sessionId = sessionId;
+    }
+    this.turns = Array.isArray(turns) ? [...turns] : [];
+    this._enforceLimit();
+  }
+
+  /**
    * Mengambil ringkasan diagnostik sesi percakapan
    * @returns {Object}
    */

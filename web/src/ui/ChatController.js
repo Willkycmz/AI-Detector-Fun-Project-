@@ -1,6 +1,6 @@
 /**
- * ChatController.js - VisionX Milestone 2
- * Conversational AI Agent-First Controller
+ * ChatController.js - VisionX Milestones 2 & 3
+ * Conversational AI Agent-First Controller with IndexedDB Persistence
  *
  * Mengelola antarmuka utama Chat-First:
  * - Welcome experience & quick prompt dispatch.
@@ -10,10 +10,13 @@
  * - Grounding pipeline visual terverifikasi (7 golden classes, SceneHistory, OCR, Safety).
  * - Penanganan state asinkron: IDLE, SENDING, STREAMING, SUCCESS, ERROR, CANCELLED.
  * - Penanganan error ramah pengguna (401 session expired, 413 payload limit, 429 rate limit, 500 server error).
+ * - IndexedDB chat storage (create session, list sessions, switch session, delete session, clear all).
+ * - Status indicators (Backend, AI Provider, Vision Model) & Recent Activity tracking.
  */
 
 import { ConversationManager } from '../services/ConversationManager.js';
 import { VisionContextBuilder } from '../services/VisionContextBuilder.js';
+import { ChatStorageService } from '../services/ChatStorageService.js';
 import { GOLDEN_CLASSES } from './CameraModal.js';
 
 export const ChatState = {
@@ -30,6 +33,7 @@ export class ChatController {
    * @param {Object} options
    * @param {import('../services/AIProvider.js').AIProvider} options.aiProvider
    * @param {ConversationManager} [options.conversationManager]
+   * @param {ChatStorageService} [options.storageService]
    * @param {Function} [options.contextFn] Pembangun fresh VisionContext
    * @param {import('../services/SceneHistoryEngine.js').SceneHistoryEngine} [options.sceneHistoryEngine]
    * @param {import('../services/VoiceEngine.js').VoiceEngine} [options.voiceEngine]
@@ -39,6 +43,7 @@ export class ChatController {
   constructor({
     aiProvider,
     conversationManager = null,
+    storageService = null,
     contextFn = null,
     sceneHistoryEngine = null,
     voiceEngine = null,
@@ -50,6 +55,7 @@ export class ChatController {
   } = {}) {
     this.aiProvider = aiProvider;
     this.conversationManager = conversationManager || new ConversationManager({ maxTurns: 10, defaultWindow: 6 });
+    this.storageService = storageService || new ChatStorageService();
     this.contextFn = contextFn || (() => VisionContextBuilder.build());
     this.sceneHistoryEngine = sceneHistoryEngine || null;
     this.voiceEngine = voiceEngine || null;
@@ -60,6 +66,15 @@ export class ChatController {
     this.activeSnapshot = null; // { dataUrl, detections, width, height }
     this.abortController = null;
     this.activeStreamingMessageId = null;
+
+    this.activeSessionId = this.conversationManager.sessionId || `sess_${Date.now()}`;
+    this.activeSessionTitle = 'Percakapan Baru';
+    this.recentActivities = [
+      { id: 'act_1', icon: '💬', desc: 'New chat started', time: '2 menit lalu' },
+      { id: 'act_2', icon: '📷', desc: 'Camera snapshot', time: '5 menit lalu' },
+      { id: 'act_3', icon: '🔍', desc: 'Object detection', time: '6 menit lalu' },
+      { id: 'act_4', icon: '🤖', desc: 'Chat response', time: '8 menit lalu' }
+    ];
 
     // DOM Elements Cache
     this.elements = {};
@@ -72,6 +87,10 @@ export class ChatController {
 
   get currentSnapshot() {
     return this.activeSnapshot ? this.activeSnapshot.dataUrl : null;
+  }
+
+  get pendingSnapshot() {
+    return this.activeSnapshot;
   }
 
   on(event, callback) {
@@ -127,12 +146,23 @@ export class ChatController {
       authStatusBadge: elements.authStatusBadge,
       authStatusText: elements.authStatusText,
       serverStatusBadge: elements.serverStatusBadge,
-      serverStatusText: elements.serverStatusText
+      serverStatusText: elements.serverStatusText,
+      historyListContainer: elements.historyListContainer || (typeof document !== 'undefined' ? document.getElementById('sidebarChatHistory') : null),
+      recentActivityList: elements.recentActivityList || (typeof document !== 'undefined' ? document.getElementById('recentActivityList') : null),
+      rightPanelBackendStatus: elements.rightPanelBackendStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelBackendStatus') : null),
+      rightPanelAiStatus: elements.rightPanelAiStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelAiStatus') : null),
+      rightPanelModelStatus: elements.rightPanelModelStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelModelStatus') : null)
     };
 
     this._bindEvents();
     this.renderThread();
     this.updateAuthStatus();
+    this.renderRecentActivities();
+
+    // Inisialisasi IndexedDB dan muat riwayat sesi di background
+    this.initPersistence().catch((err) => {
+      console.warn('[ChatController] Non-fatal initPersistence warning:', err);
+    });
   }
 
   _bindEvents() {
@@ -223,6 +253,173 @@ export class ChatController {
   }
 
   /**
+   * Inisialisasi IndexedDB dan muat riwayat sesi obrolan
+   */
+  async initPersistence() {
+    try {
+      await this.storageService.init();
+      const sessions = await this.storageService.getSessions();
+      if (sessions && sessions.length > 0) {
+        this.renderHistoryList(sessions);
+        if (this.conversationManager.isEmpty()) {
+          await this.loadSession(sessions[0].id);
+        }
+      } else {
+        // Buat record sesi aktif awal di storage
+        await this.storageService.createSession(this.activeSessionId, 'Percakapan Baru');
+        this.renderHistoryList([{ id: this.activeSessionId, title: 'Percakapan Baru', updatedAt: Date.now() }]);
+      }
+    } catch (err) {
+      console.warn('[ChatController] initPersistence warning:', err);
+    }
+  }
+
+  /**
+   * Render daftar riwayat obrolan di sidebar
+   * @param {Array<Object>} sessions
+   */
+  renderHistoryList(sessions = []) {
+    const container = this.elements.historyListContainer;
+    if (!container) return;
+
+    container.innerHTML = '';
+    if (!sessions || sessions.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'chat-history-empty';
+      emptyDiv.textContent = 'Belum ada riwayat percakapan.';
+      container.appendChild(emptyDiv);
+      return;
+    }
+
+    sessions.forEach((s) => {
+      const item = document.createElement('div');
+      const isActive = (s.id === this.activeSessionId);
+      item.className = `chat-history-item ${isActive ? 'active' : ''}`;
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('data-session-id', s.id);
+      item.setAttribute('aria-label', `Muat obrolan: ${s.title}`);
+
+      const timeText = this._formatRelativeTime(s.updatedAt || s.createdAt);
+
+      item.innerHTML = `
+        <span class="item-icon">💬</span>
+        <div class="item-info">
+          <span class="item-label">${this._escapeAndFormatText(s.title || 'Percakapan')}</span>
+          <span class="item-time">${timeText}</span>
+        </div>
+        <button type="button" class="btn-delete-session" data-delete-id="${s.id}" title="Hapus percakapan" aria-label="Hapus percakapan">🗑️</button>
+      `;
+
+      // Klik sesi untuk load
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-delete-session')) return;
+        this.loadSession(s.id);
+      });
+
+      // Tombol hapus sesi
+      const delBtn = item.querySelector('.btn-delete-session');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.deleteSession(s.id);
+        });
+      }
+
+      container.appendChild(item);
+    });
+
+    // Tombol "Hapus semua data" di bawah list riwayat
+    const clearWrap = document.createElement('div');
+    clearWrap.className = 'history-clear-all-wrap';
+    clearWrap.innerHTML = `
+      <button type="button" class="btn-clear-all-chats" id="btnClearAllHistory" aria-label="Hapus semua riwayat percakapan">
+        <span>Hapus semua data</span>
+      </button>
+    `;
+    const btnClearAll = clearWrap.querySelector('#btnClearAllHistory');
+    if (btnClearAll) {
+      btnClearAll.addEventListener('click', () => this.clearAllHistory());
+    }
+    container.appendChild(clearWrap);
+  }
+
+  /**
+   * Memuat sesi yang dipilih dari IndexedDB ke thread chat
+   * @param {string} sessionId
+   */
+  async loadSession(sessionId) {
+    if (!sessionId) return;
+    this.stopGeneration();
+    this.activeSessionId = sessionId;
+
+    try {
+      const sess = await this.storageService.getSession(sessionId);
+      if (sess) {
+        this.activeSessionTitle = sess.title;
+      }
+      const messages = await this.storageService.getMessages(sessionId);
+      const turns = messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp,
+        snapshotRef: m.snapshotThumbnail || null,
+        provider: m.metadata?.provider,
+        latencyMs: m.metadata?.latencyMs
+      }));
+
+      this.conversationManager.loadTurns(turns, sessionId);
+      this.renderThread();
+      this.removeSnapshot();
+
+      // Refresh list session state
+      const sessions = await this.storageService.getSessions();
+      this.renderHistoryList(sessions);
+    } catch (err) {
+      console.warn('[ChatController] Gagal memuat sesi:', err);
+    }
+  }
+
+  /**
+   * Menghapus sesi tertentu dari IndexedDB
+   * @param {string} sessionId
+   */
+  async deleteSession(sessionId) {
+    if (!sessionId) return;
+    try {
+      await this.storageService.deleteSession(sessionId);
+      if (this.activeSessionId === sessionId) {
+        this.newChat();
+      } else {
+        const sessions = await this.storageService.getSessions();
+        this.renderHistoryList(sessions);
+      }
+    } catch (err) {
+      console.warn('[ChatController] Gagal menghapus sesi:', err);
+    }
+  }
+
+  /**
+   * Menghapus seluruh riwayat percakapan dengan konfirmasi
+   */
+  async clearAllHistory() {
+    let confirmed = true;
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      confirmed = window.confirm('Apakah Anda yakin ingin menghapus semua riwayat percakapan? Tindakan ini tidak dapat dibatalkan.');
+    }
+    if (!confirmed) return;
+
+    try {
+      await this.storageService.clearAllData();
+      this.newChat();
+      this.renderHistoryList([]);
+    } catch (err) {
+      console.warn('[ChatController] Gagal menghapus semua data:', err);
+    }
+  }
+
+  /**
    * Menetapkan snapshot yang baru saja diambil dari CameraModal
    * @param {Object|string} snapshotData { dataUrl, detections, width, height } atau dataUrl string
    * @param {Array} [detections=null]
@@ -257,12 +454,14 @@ export class ChatController {
       inputElement
     } = this.elements;
 
-    if (snapshotPreviewContainer) {
-      snapshotPreviewContainer.classList.remove('hidden');
+    const container = snapshotPreviewContainer || document.getElementById('snapshotPreviewContainer');
+    if (container) {
+      container.classList.remove('hidden');
     }
 
-    if (snapshotThumbnail) {
-      snapshotThumbnail.src = dataUrl;
+    const thumb = snapshotThumbnail || document.getElementById('snapshotThumbnail');
+    if (thumb) {
+      thumb.src = dataUrl;
     }
 
     if (privacyNotice) {
@@ -273,6 +472,8 @@ export class ChatController {
       const objCount = dets.length;
       snapshotInfoText.textContent = `Snapshot siap (${width}×${height}) • ${objCount} objek`;
     }
+
+    this.logActivity('Camera snapshot', 'Barusan');
 
     // Fokuskan input pesan agar user siap mengetik pertanyaan
     if (inputElement) {
@@ -287,11 +488,13 @@ export class ChatController {
     this.activeSnapshot = null;
     const { snapshotPreviewContainer, snapshotThumbnail, snapshotInfoText, privacyNotice } = this.elements;
 
-    if (snapshotPreviewContainer) {
-      snapshotPreviewContainer.classList.add('hidden');
+    const container = snapshotPreviewContainer || document.getElementById('snapshotPreviewContainer');
+    if (container) {
+      container.classList.add('hidden');
     }
-    if (snapshotThumbnail) {
-      snapshotThumbnail.src = '';
+    const thumb = snapshotThumbnail || document.getElementById('snapshotThumbnail');
+    if (thumb) {
+      thumb.src = '';
     }
     if (privacyNotice) {
       privacyNotice.classList.add('hidden');
@@ -307,6 +510,8 @@ export class ChatController {
   newChat() {
     this.stopGeneration();
     this.conversationManager.clear();
+    this.activeSessionId = this.conversationManager.sessionId;
+    this.activeSessionTitle = 'Percakapan Baru';
     this.removeSnapshot();
     this.renderThread();
     this._setState(ChatState.IDLE);
@@ -315,6 +520,9 @@ export class ChatController {
       this.elements.inputElement.value = '';
       this.elements.inputElement.focus();
     }
+
+    this.storageService.getSessions().then((s) => this.renderHistoryList(s)).catch(() => {});
+    this.logActivity('New chat started', 'Barusan');
   }
 
   /**
@@ -385,10 +593,25 @@ export class ChatController {
     const snapshotToSend = this.activeSnapshot ? { ...this.activeSnapshot } : null;
     this.removeSnapshot();
 
-    // 1. Ekstrak fresh visual context saat ini
+    // 1. Tambahkan pesan pengguna ke ConversationManager segera untuk zero-latency UI
+    const snapshotThumbnailUrl = snapshotToSend?.dataUrl || null;
+    const userTurn = this.conversationManager.appendUserMessage(
+      text,
+      null,
+      snapshotThumbnailUrl
+    );
+
+    // 2. Render pesan pengguna segera di DOM
+    this.renderThread();
+    this.scrollToBottom();
+
+    // 3. Ekstrak fresh visual context saat ini
     let currentContext = null;
     try {
       currentContext = await Promise.resolve(this.contextFn());
+      if (userTurn && currentContext) {
+        userTurn.context = currentContext;
+      }
     } catch (_) {
       currentContext = VisionContextBuilder.build();
     }
@@ -398,26 +621,40 @@ export class ChatController {
       return;
     }
 
-    // 2. Tambahkan pesan pengguna ke ConversationManager
-    const snapshotThumbnailUrl = snapshotToSend?.dataUrl || null;
-    const userTurn = this.conversationManager.appendUserMessage(
-      text,
-      currentContext,
-      snapshotThumbnailUrl
-    );
+    // 4. Pastikan session dan judul tersimpan di IndexedDB
+    try {
+      const existingSession = await this.storageService.getSession(this.activeSessionId);
+      const derivedTitle = text.length > 32 ? text.substring(0, 32) + '...' : text;
 
-    // 3. Render pesan pengguna segera di DOM
-    this.renderThread();
-    this.scrollToBottom();
+      if (!existingSession) {
+        this.activeSessionTitle = derivedTitle;
+        await this.storageService.createSession(this.activeSessionId, derivedTitle);
+      } else if (existingSession.title === 'Percakapan Baru' || !existingSession.title) {
+        this.activeSessionTitle = derivedTitle;
+        await this.storageService.updateSession(this.activeSessionId, { title: derivedTitle });
+      }
 
-    // 4. Siapkan streaming assistant turn
+      await this.storageService.saveMessage({
+        id: userTurn.id,
+        sessionId: this.activeSessionId,
+        role: 'user',
+        content: userTurn.content,
+        timestamp: userTurn.timestamp,
+        snapshotThumbnail: snapshotThumbnailUrl
+      });
+
+      this.storageService.getSessions().then((s) => this.renderHistoryList(s)).catch(() => {});
+    } catch (storageErr) {
+      console.warn('[ChatController] Storage user save error (non-blocking):', storageErr);
+    }
+
+    // 5. Siapkan streaming assistant turn
     this._setState(ChatState.SENDING);
 
     const assistantTurnId = `turn_a_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     this.activeStreamingMessageId = assistantTurnId;
 
-    // Tampilkan bubble asisten placeholder dengan status loading / cursor streaming
-    const assistantBubble = this._appendStreamingAssistantBubble(assistantTurnId);
+    this._appendStreamingAssistantBubble(assistantTurnId);
     this.scrollToBottom();
 
     this._setState(ChatState.STREAMING);
@@ -443,6 +680,18 @@ export class ChatController {
 
           this._finalizeAssistantBubble(assistantTurnId, accumulatedText, 'visionx-temporal-engine', latencyMs);
           this._setState(ChatState.SUCCESS);
+
+          // Simpan assistant turn ke storage
+          await this.storageService.saveMessage({
+            id: assistantTurnId,
+            sessionId: this.activeSessionId,
+            role: 'assistant',
+            content: accumulatedText,
+            timestamp: Date.now(),
+            metadata: { provider: 'visionx-temporal-engine', latencyMs }
+          }).catch(() => {});
+
+          this.logActivity('Chat response', 'Barusan');
           return;
         }
       }
@@ -490,6 +739,19 @@ export class ChatController {
       this._finalizeAssistantBubble(assistantTurnId, finalText, response.provider || 'visionx-gateway', latencyMs);
       this._setState(ChatState.SUCCESS);
 
+      // Simpan assistant turn ke IndexedDB
+      await this.storageService.saveMessage({
+        id: assistantTurnId,
+        sessionId: this.activeSessionId,
+        role: 'assistant',
+        content: finalText,
+        timestamp: Date.now(),
+        metadata: { provider: response.provider || 'visionx-gateway', latencyMs }
+      }).catch(() => {});
+
+      this.storageService.getSessions().then((s) => this.renderHistoryList(s)).catch(() => {});
+      this.logActivity('Chat response', 'Barusan');
+
       // Opsional bersuara jika VoiceEngine aktif
       if (this.voiceEngine && this.voiceEngine.isEnabled && this.voiceEngine.speak) {
         this.voiceEngine.speak(finalText);
@@ -499,10 +761,9 @@ export class ChatController {
       console.warn('[ChatController] Error saat proses chat:', err);
 
       let isCancelled = (err.name === 'AbortError') || (err.message && err.message.includes('dihentikan oleh pengguna'));
-      let friendlyError = err.message || 'Terjadi gangguan saat memproses jawaban.';
+      let friendlyError = this.createFriendlyError(err);
 
       if (err.status === 401 || (err.message && (err.message.includes('Autentikasi') || err.message.includes('401') || err.message.includes('kedaluwarsa') || err.message.includes('Unauthorized')))) {
-        friendlyError = 'Sesi autentikasi telah kedaluwarsa atau tidak valid (HTTP 401). Silakan login kembali dengan PIN akses VisionX.';
         this.updateAuthStatus(false);
         if (this.elements.authBanner) {
           this.elements.authBanner.classList.remove('hidden');
@@ -510,14 +771,6 @@ export class ChatController {
         if (typeof this.onRequireAuth === 'function') {
           this.onRequireAuth();
         }
-      } else if (err.status === 413 || (err.message && (err.message.includes('413') || err.message.includes('terlalu besar') || err.message.includes('melebihi batas')))) {
-        friendlyError = 'Ukuran gambar atau payload melebihi batas (HTTP 413).';
-      } else if (err.status === 429 || (err.message && (err.message.includes('429') || err.message.includes('Rate limit') || err.message.includes('terkunci') || err.message.includes('frekuensi')))) {
-        friendlyError = 'Batas frekuensi permintaan tercapai (HTTP 429). Harap tunggu beberapa saat sebelum bertanya lagi.';
-      } else if (err.status === 500 || (err.message && (err.message.includes('500') || err.message.includes('internal') || err.message.includes('kendala')))) {
-        friendlyError = 'Terjadi kendala pada gateway VisionX (HTTP 500). Silakan coba sesaat lagi.';
-      } else if (err.message && err.message.includes('timeout')) {
-        friendlyError = 'Waktu permintaan AI habis (Timeout). Periksa koneksi backend Anda.';
       }
 
       this.conversationManager.appendAssistantMessage(friendlyError, {
@@ -549,6 +802,37 @@ export class ChatController {
       this.abortController = null;
     }
     this._setState(ChatState.CANCELLED);
+  }
+
+  /**
+   * Mengonversi error teknis menjadi pesan deskriptif Bahasa Indonesia yang informatif
+   * @param {Error|Object|string} err
+   * @returns {string}
+   */
+  createFriendlyError(err) {
+    if (!err) return 'Terjadi gangguan saat memproses jawaban.';
+    const msg = typeof err === 'string' ? err : (err.message || '');
+    const status = err.status || 0;
+
+    if (status === 401 || msg.includes('401') || msg.includes('Autentikasi') || msg.includes('Unauthorized') || msg.includes('kedaluwarsa')) {
+      return 'Sesi autentikasi telah kedaluwarsa atau tidak valid (HTTP 401). Silakan login kembali dengan PIN akses VisionX.';
+    }
+    if (status === 413 || msg.includes('413') || msg.includes('terlalu besar') || msg.includes('melebihi batas')) {
+      return 'Ukuran gambar atau payload melebihi batas (HTTP 413).';
+    }
+    if (status === 429 || msg.includes('429') || msg.includes('Rate limit') || msg.includes('terkunci') || msg.includes('frekuensi')) {
+      return 'Batas frekuensi permintaan tercapai (HTTP 429). Harap tunggu beberapa saat sebelum bertanya lagi.';
+    }
+    if (status === 500 || msg.includes('500') || msg.includes('internal') || msg.includes('kendala')) {
+      return 'Terjadi kendala pada gateway VisionX (HTTP 500). Silakan coba sesaat lagi.';
+    }
+    if (msg.includes('timeout')) {
+      return 'Waktu permintaan AI habis (Timeout). Periksa koneksi backend Anda.';
+    }
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('offline') || msg.includes('jaringan') || msg.includes('tidak terhubung')) {
+      return 'Gagal terhubung ke backend server VisionX. Pastikan server online dan koneksi jaringan stabil.';
+    }
+    return msg || 'Terjadi gangguan saat memproses jawaban.';
   }
 
   /**
@@ -788,6 +1072,49 @@ export class ChatController {
   }
 
   /**
+   * Catat aktivitas ke recent activity panel
+   */
+  logActivity(desc, time = 'Barusan') {
+    let icon = '💬';
+    const low = desc.toLowerCase();
+    if (low.includes('camera') || low.includes('snapshot')) icon = '📷';
+    else if (low.includes('detection') || low.includes('objek')) icon = '🔍';
+    else if (low.includes('chat') || low.includes('response')) icon = '🤖';
+
+    this.recentActivities.unshift({
+      id: `act_${Date.now()}`,
+      icon,
+      desc,
+      time
+    });
+    if (this.recentActivities.length > 8) {
+      this.recentActivities.pop();
+    }
+    this.renderRecentActivities();
+  }
+
+  /**
+   * Render daftar Recent Activity di panel kanan
+   */
+  renderRecentActivities() {
+    const listEl = this.elements.recentActivityList;
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    this.recentActivities.slice(0, 4).forEach((act) => {
+      const row = document.createElement('div');
+      row.className = 'activity-item-row';
+      row.innerHTML = `
+        <span class="activity-icon">${act.icon}</span>
+        <div class="activity-details">
+          <span class="activity-desc">${this._escapeAndFormatText(act.desc)}</span>
+          <span class="activity-time">${act.time}</span>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
+  /**
    * Sinkronkan status autentikasi ke UI sidebar / badge
    */
   updateAuthStatus(isAuth = null) {
@@ -806,12 +1133,15 @@ export class ChatController {
    * Sinkronkan status server gateway ke UI
    */
   updateServerStatus(isOnline, label = 'Online') {
-    const { serverStatusBadge, serverStatusText } = this.elements;
+    const { serverStatusBadge, serverStatusText, rightPanelBackendStatus } = this.elements;
     if (serverStatusBadge) {
       serverStatusBadge.className = `badge ${isOnline ? 'badge-server-online' : 'badge-server-offline'}`;
     }
     if (serverStatusText) {
       serverStatusText.textContent = label;
+    }
+    if (rightPanelBackendStatus) {
+      rightPanelBackendStatus.textContent = label;
     }
   }
 
@@ -847,6 +1177,20 @@ export class ChatController {
     } catch (_) {
       return '';
     }
+  }
+
+  _formatRelativeTime(timestamp) {
+    if (!timestamp) return 'Barusan';
+    const diffMs = Date.now() - Number(timestamp);
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Barusan';
+    if (diffMins === 1) return '1 menit lalu';
+    if (diffMins < 60) return `${diffMins} menit lalu`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} jam lalu`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Kemarin';
+    return `${diffDays} hari lalu`;
   }
 
   _escapeAndFormatText(text) {

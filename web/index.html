@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>VisionX V1.5 - Realtime AI Vision Assistant</title>
+  <title>VisionX - AI Vision Assistant</title>
+  <meta name="description" content="VisionX - Asisten AI Multimodal dengan integrasi Computer Vision lokal, deteksi objek real-time, OCR, dan persepsi spasial." />
+  <meta name="theme-color" content="#070b14" />
+  <meta property="og:title" content="VisionX - AI Vision Assistant" />
+  <meta property="og:description" content="VisionX AI Conversational Platform dengan Edge Computer Vision &amp; Multimodal Perception." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://app.visionx.my.id" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,12 +22,12 @@
 <body>
   <div class="app-container">
     <!-- =========================================================================
-         DESKTOP SIDEBAR / MOBILE DRAWER (Milestone 2 Chat-First Architecture)
+         DESKTOP SIDEBAR / MOBILE DRAWER (Dark Cyber AI Product Architecture)
          ========================================================================= -->
     <aside id="appSidebar" class="app-sidebar" aria-label="Navigasi Utama VisionX">
       <div class="sidebar-header">
         <div class="sidebar-brand" id="sidebarBrandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
-          <svg class="brand-icon" viewBox="0 0 100 100">
+          <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
             <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
             <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
             <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
@@ -36,7 +43,7 @@
       <!-- Action: New Chat -->
       <div class="sidebar-action-group">
         <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Obrolan Baru">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -45,9 +52,16 @@
       </div>
 
       <!-- Chat History Section -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-title">Riwayat Percakapan</div>
+      <div class="sidebar-section sidebar-history-section">
+        <div class="sidebar-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>Chat History</span>
+        </div>
         <div id="sidebarChatHistory" class="sidebar-chat-history">
+          <!-- Diisi secara dinamis oleh ChatController dari IndexedDB -->
           <div class="chat-history-item active" id="activeChatSessionItem" role="button" tabindex="0">
             <span class="item-icon">💬</span>
             <span class="item-label">Sesi Obrolan Aktif</span>
@@ -55,51 +69,72 @@
         </div>
       </div>
 
-      <!-- Tools & Labs Menu (Legacy Feature Access Preserved) -->
+      <!-- Tools Navigation Menu -->
       <div class="sidebar-section sidebar-tools-section">
-        <div class="sidebar-section-title">Tools &amp; Lab</div>
+        <div class="sidebar-section-title">Tools</div>
         <nav class="sidebar-nav">
           <button type="button" id="btnSidebarChat" class="sidebar-nav-item active" data-mode="home" aria-label="Buka Chat AI">
             <span class="item-icon">💬</span>
             <span>Chat Assistant</span>
           </button>
-          <button type="button" id="btnSidebarDetect" class="sidebar-nav-item" data-mode="detection" aria-label="Buka Deteksi Kamera Live">
-            <span class="item-icon">📷</span>
-            <span>Vision Live</span>
+          <button type="button" id="btnSidebarDetect" class="sidebar-nav-item" data-mode="detection" aria-label="Buka Deteksi Objek">
+            <span class="item-icon">🎯</span>
+            <span>Detection</span>
           </button>
-          <button type="button" id="btnSidebarReadText" class="sidebar-nav-item" data-mode="read_text" aria-label="Buka OCR Read Text">
-            <span class="item-icon">🔤</span>
+          <button type="button" id="btnSidebarReadText" class="sidebar-nav-item" data-mode="read_text" aria-label="Buka Pembaca Teks OCR">
+            <span class="item-icon">📄</span>
             <span>Read Text</span>
           </button>
-          <button type="button" id="btnSidebarCollect" class="sidebar-nav-item" data-mode="collection" aria-label="Buka Dataset Collection">
-            <span class="item-icon">📦</span>
+          <button type="button" id="btnSidebarCollect" class="sidebar-nav-item" data-mode="collection" aria-label="Buka Koleksi Dataset">
+            <span class="item-icon">🗄️</span>
             <span>Collection</span>
           </button>
           <button type="button" id="btnSidebarManager" class="sidebar-nav-item" data-mode="manager" aria-label="Buka Dataset Manager">
-            <span class="item-icon">🗂️</span>
+            <span class="item-icon">📁</span>
             <span>Dataset Manager</span>
           </button>
           <button type="button" id="btnSidebarIdentity" class="sidebar-nav-item" data-mode="identity" aria-label="Buka Identity Lab">
             <span class="item-icon">👤</span>
             <span>Identity Lab</span>
           </button>
+          <button type="button" id="btnSidebarSafety" class="sidebar-nav-item" data-mode="safety" aria-label="Buka Panel Safety">
+            <span class="item-icon">🛡️</span>
+            <span>Safety</span>
+          </button>
+          <button type="button" id="btnSidebarMemory" class="sidebar-nav-item" data-mode="memory" aria-label="Buka Object Memory">
+            <span class="item-icon">🧠</span>
+            <span>Memory</span>
+          </button>
+          <button type="button" id="btnSidebarPersonal" class="sidebar-nav-item" data-mode="personal" aria-label="Buka Personal Objects">
+            <span class="item-icon">📦</span>
+            <span>Personal Objects</span>
+          </button>
         </nav>
       </div>
 
-      <!-- Sidebar Footer: Server & Auth Status -->
+      <!-- Sidebar Footer: Server & Auth Status + User Profile Card -->
       <div class="sidebar-footer">
-        <div class="sidebar-status-row">
-          <span class="status-title">Server Gateway:</span>
-          <span id="sidebarServerStatus" class="badge badge-server-online">Online</span>
+        <div class="sidebar-status-list">
+          <div class="sidebar-status-row" id="sidebarServerStatusRow">
+            <span class="status-title">Server Status:</span>
+            <span id="sidebarServerStatus" class="badge badge-server-online">
+              <span class="status-dot green"></span> Online
+            </span>
+          </div>
+          <div class="sidebar-status-row clickable" id="sidebarAuthStatusRow" role="button" tabindex="0" title="Status Autentikasi / Klik untuk Login PIN" aria-label="Status Autentikasi">
+            <span class="status-title">Authentication:</span>
+            <span id="sidebarAuthStatus" class="badge badge-auth-active">
+              <span class="lock-icon">🔒</span> Logged In &rsaquo;
+            </span>
+          </div>
         </div>
-        <div class="sidebar-status-row">
-          <span class="status-title">Autentikasi:</span>
-          <span id="sidebarAuthStatus" class="badge badge-auth-active">Authenticated</span>
-        </div>
-        <div class="sidebar-footer-actions">
-          <button type="button" id="btnSidebarLogin" class="btn btn-xs btn-outline" aria-label="Login PIN Akses">🔑 Login PIN</button>
-          <button type="button" id="btnSidebarLogout" class="btn btn-xs btn-outline hidden" aria-label="Logout">Keluar</button>
-          <button type="button" id="btnSidebarTheme" class="btn btn-xs btn-icon" aria-label="Ganti Tema">🌙</button>
+        <div class="sidebar-user-card" id="sidebarUserCard" role="button" tabindex="0" title="Profil VisionX User" aria-label="Profil Pengguna">
+          <div class="user-avatar-circle">V</div>
+          <div class="user-info-text">
+            <span class="user-name">VisionX User</span>
+            <span class="user-email">user@visionx.my.id</span>
+          </div>
+          <button type="button" class="btn-user-settings" id="btnUserSettings" aria-label="Pengaturan Pengguna" title="Pengaturan">⚙️</button>
         </div>
       </div>
     </aside>
@@ -125,150 +160,144 @@
           <button type="button" id="btnMobileNewChat" class="btn btn-icon btn-mobile-new" title="New Chat" aria-label="Mulai Obrolan Baru">＋</button>
         </div>
       </div>
-    <header class="app-header">
-      <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Beranda">
-        <svg class="brand-icon" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
-          <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
-          <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
-        </svg>
-        <div>
-          <h1 class="brand-title">VisionX Web <span class="version-tag">V1.7</span></h1>
-          <span class="brand-subtitle">AI Vision Platform &bull; Realtime Detection &bull; Chat Assistant &bull; Edge Perception</span>
+    <header class="app-header" id="mainAppHeader">
+      <div class="header-main-bar">
+        <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
+          <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+            <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+          </svg>
+          <div class="brand-title-wrap">
+            <h1 class="brand-title">VisionX <span class="version-tag">V2.0</span></h1>
+            <span class="brand-subtitle">AI Vision Platform &bull; Realtime Detection &bull; Chat Assistant</span>
+          </div>
+        </div>
+
+        <!-- Mode Switcher Tabs (Preserved for NavigationManager & tool mode switching) -->
+        <div class="mode-switcher-container">
+          <div class="mode-toggle-group" role="tablist">
+            <button id="btnNavHome" class="mode-tab active" role="tab" aria-selected="true" title="VisionX Home / Chat">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              Home
+            </button>
+            <button id="btnModeDetect" class="mode-tab" role="tab" aria-selected="false" title="Realtime Object Detection & Face Layer">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+                <line x1="12" y1="2" x2="12" y2="5"></line>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="5" y2="12"></line>
+                <line x1="19" y1="12" x2="22" y2="12"></line>
+              </svg>
+              Vision
+            </button>
+            <button id="btnModeReadText" class="mode-tab" role="tab" aria-selected="false" title="Read Text Mode: OCR Teks dari Kamera & Pembaca Suara (Shortcut: R)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                <line x1="9" y1="7" x2="15" y2="7"></line>
+                <line x1="9" y1="11" x2="13" y2="11"></line>
+              </svg>
+              Read Text
+            </button>
+            <button id="btnModeCollect" class="mode-tab" role="tab" aria-selected="false" title="Pengambilan Dataset Kamera Bersih">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              Dataset Collection
+            </button>
+            <button id="btnModeManager" class="mode-tab" role="tab" aria-selected="false" title="Manajemen Dataset Disk, Recycle Bin & Multi-Select">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+              Dataset Manager
+            </button>
+            <button id="btnModeIdentity" class="mode-tab" role="tab" aria-selected="false" title="Identity Lab: Profil Pengembang & Pengenalan Wajah">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Identity Lab
+            </button>
+          </div>
+        </div>
+
+        <!-- Top Right Clean Actions matching visual reference -->
+        <div class="header-actions">
+          <button id="btnThemeToggle" class="btn btn-icon theme-toggle-btn" title="Ganti Tema (Light/Dark)" aria-label="Ganti Tema">
+            <span id="themeToggleIcon">🌙</span>
+          </button>
+          <button type="button" id="btnNotifications" class="btn btn-icon notif-btn" aria-label="Notifikasi" title="Notifikasi (1)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span class="notif-badge">1</span>
+          </button>
+          <div class="user-avatar-pill" id="headerUserAvatar" role="button" tabindex="0" title="Profil VisionX User" aria-label="Profil Pengguna">
+            <span class="avatar-letter">V</span>
+          </div>
         </div>
       </div>
 
-      <!-- Mode Switcher Tabs -->
-      <div class="mode-switcher-container">
-        <div class="mode-toggle-group" role="tablist">
-          <button id="btnNavHome" class="mode-tab active" role="tab" aria-selected="true" title="VisionX Home / Beranda">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            Home
-          </button>
-          <button id="btnModeDetect" class="mode-tab" role="tab" aria-selected="false" title="Realtime Object Detection & Face Layer">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-              <line x1="12" y1="2" x2="12" y2="5"></line>
-              <line x1="12" y1="19" x2="12" y2="22"></line>
-              <line x1="2" y1="12" x2="5" y2="12"></line>
-              <line x1="19" y1="12" x2="22" y2="12"></line>
-            </svg>
-            Vision
-          </button>
-          <button id="btnModeReadText" class="mode-tab" role="tab" aria-selected="false" title="Read Text Mode: OCR Teks dari Kamera & Pembaca Suara (Shortcut: R)">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-              <line x1="9" y1="7" x2="15" y2="7"></line>
-              <line x1="9" y1="11" x2="13" y2="11"></line>
-            </svg>
-            Read Text
-          </button>
-          <button id="btnModeCollect" class="mode-tab" role="tab" aria-selected="false" title="Pengambilan Dataset Kamera Bersih">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="4"></circle>
-            </svg>
-            Dataset Collection
-          </button>
-          <button id="btnModeManager" class="mode-tab" role="tab" aria-selected="false" title="Manajemen Dataset Disk, Recycle Bin & Multi-Select">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              <line x1="12" y1="11" x2="12" y2="17"></line>
-              <line x1="9" y1="14" x2="15" y2="14"></line>
-            </svg>
-            Dataset Manager
-          </button>
-          <button id="btnModeIdentity" class="mode-tab" role="tab" aria-selected="false" title="Identity Lab: Profil Pengembang & Pengenalan Wajah">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            Identity Lab
-          </button>
-        </div>
-      </div>
-
+      <!-- Header Tool Badges (Visible in Vision/Collection/Tool Modes) -->
       <div class="header-badges">
-        <!-- Badge Mode Aktif -->
         <div id="modeBadge" class="badge badge-mode-home">
           <span class="badge-dot"></span>
           <span id="modeStatusText">Home</span>
         </div>
-
-        <!-- Badge Status Kamera -->
         <div id="cameraBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="cameraStatusText">Camera Disconnected</span>
         </div>
-
-        <!-- Badge Model Aktif (V0.5.1) -->
         <div id="activeModelBadge" class="badge badge-model-custom">
           <span class="badge-dot"></span>
-          <span id="activeModelBadgeText">VisionX V1 Custom</span>
+          <span id="activeModelBadgeText">VisionX Model</span>
         </div>
-
-        <!-- Badge Voice Assistant (V0.8) -->
         <div id="voiceBadge" class="badge badge-ready" title="Status Voice Assistant Engine (Shortcut: V)">
           <span class="badge-dot"></span>
           <span id="voiceBadgeText">Voice: Ready</span>
         </div>
-
-        <!-- Badge Status OCR (V0.9) -->
-        <div id="ocrBadge" class="badge badge-ready hidden" title="Status OCR Engine (Tesseract.js)">
+        <div id="ocrBadge" class="badge badge-ready hidden" title="Status OCR Engine">
           <span class="badge-dot"></span>
           <span id="ocrBadgeText">OCR: Ready</span>
         </div>
-
-        <!-- Badge Status Inferensi AI (Hanya di Detection Mode) -->
         <div id="inferenceBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="inferenceStatusText">Loading Model...</span>
         </div>
-
-        <!-- Badge Object Count (Hanya di Detection Mode) -->
         <div id="detectionCountBadge" class="badge badge-count">
           <span>Objects:</span>
           <strong id="detectionCountValue">0</strong>
         </div>
-
-        <!-- Badge Tracked Objects (V0.7) -->
         <div id="trackedCountBadge" class="badge badge-count">
           <span>Tracks:</span>
           <strong id="trackedCountValue">0</strong>
         </div>
-
-        <!-- Badge Active Class (Hanya di Collection Mode) -->
         <div id="classBadge" class="badge badge-class hidden">
           <span>Class:</span>
           <strong id="badgeClassName">object</strong>
         </div>
-
-        <!-- Badge Image Count (Hanya di Collection Mode) -->
         <div id="countBadge" class="badge badge-count hidden">
           <span>Images:</span>
           <strong id="badgeImageCount">0</strong>
         </div>
-
-        <!-- Badge FPS -->
         <div id="fpsBadge" class="badge badge-fps">
           <span>FPS:</span>
           <strong id="fpsValue">0.0</strong>
         </div>
-
-        <!-- Theme Toggle Button (V1.5) -->
-        <button id="btnThemeToggle" class="btn btn-icon theme-toggle-btn" title="Toggle Light/Dark Theme">
-          <span id="themeToggleIcon">🌙</span>
-        </button>
       </div>
     </header>
 
     <!-- Error / Warning Banner Toast -->
-    <div id="errorBanner" class="error-banner hidden">
+    <div id="errorBanner" class="error-banner hidden" role="alert" aria-live="assertive">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -278,7 +307,7 @@
     </div>
 
     <!-- Success Toast Notification -->
-    <div id="successBanner" class="success-banner hidden">
+    <div id="successBanner" class="success-banner hidden" role="status" aria-live="polite">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
         <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -288,94 +317,251 @@
 
     <!-- Home / Conversational AI View (Milestone 2 Main Experience) -->
     <section id="homeView" class="home-view chat-first-shell" aria-label="VisionX Conversational AI Interface">
-      <!-- Main Chat Experience Container -->
-      <div class="chat-container" id="chatContainer">
-        <!-- Welcome Screen (Visible when chat thread has no messages) -->
-        <div id="chatWelcomeScreen" class="chat-welcome-screen">
-          <div class="welcome-badge">
-            <span class="badge-dot green"></span>
-            <span>VISIONX • MULTIMODAL AI AGENT</span>
-          </div>
-          <h2 class="welcome-title">AI Vision Assistant</h2>
-          <p class="welcome-desc">
-            Asisten percakapan cerdas yang siap berdiskusi, memahami konteks visual VisionX secara real-time,
-            menganalisis snapshot kamera dengan deteksi objek YOLOv8 lokal, serta mereferensikan teks OCR, scene temporal, dan peringatan keselamatan.
-          </p>
-
-          <!-- Quick Prompts (4 Interactive Buttons) -->
-          <div class="quick-prompts-card" aria-label="Pertanyaan Cepat">
-            <div class="quick-prompts-header">
-              <span class="quick-prompts-icon">💡</span>
-              <span class="quick-prompts-label">Mulai dengan pertanyaan cepat:</span>
+      <div class="chat-workspace-wrapper">
+        <!-- Main Chat Experience Container -->
+        <div class="chat-container" id="chatContainer">
+          <!-- Welcome Screen (Visible when chat thread has no messages) -->
+          <div id="chatWelcomeScreen" class="chat-welcome-screen">
+            <div class="welcome-hero-logo" aria-hidden="true">
+              <svg class="welcome-brand-icon" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="44" fill="#0b1329" stroke="#06b6d4" stroke-width="5" class="outer-ring"/>
+                <circle cx="50" cy="50" r="27" fill="none" stroke="#a855f7" stroke-width="4.5" class="middle-ring"/>
+                <circle cx="50" cy="50" r="11" fill="#06b6d4" class="inner-dot"/>
+              </svg>
             </div>
-            <div class="quick-prompts-grid">
-              <button type="button" class="quick-prompt-btn" data-prompt="Apa yang ada di depan kamera?" aria-label="Tanyakan: Apa yang ada di depan kamera?">
-                <span class="prompt-icon">🔍</span>
-                <span class="prompt-text">Apa yang ada di depan kamera?</span>
-              </button>
-              <button type="button" class="quick-prompt-btn" data-prompt="Jelaskan situasi di sekitar." aria-label="Tanyakan: Jelaskan situasi di sekitar.">
-                <span class="prompt-icon">🌐</span>
-                <span class="prompt-text">Jelaskan situasi di sekitar.</span>
-              </button>
-              <button type="button" class="quick-prompt-btn" data-prompt="Apa yang berubah tadi?" aria-label="Tanyakan: Apa yang berubah tadi?">
-                <span class="prompt-icon">⏱️</span>
-                <span class="prompt-text">Apa yang berubah tadi?</span>
-              </button>
-              <button type="button" class="quick-prompt-btn" data-prompt="Apakah ada peringatan?" aria-label="Tanyakan: Apakah ada peringatan?">
-                <span class="prompt-icon">🛡️</span>
-                <span class="prompt-text">Apakah ada peringatan?</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <!-- Message Thread -->
-        <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
+            <h1 class="welcome-title">VisionX</h1>
+            <div class="welcome-subtitle">AI Vision Assistant</div>
+            <p class="welcome-desc">
+              Saya adalah VisionX, asisten AI yang terhubung dengan sistem computer vision. Saya dapat membantu Anda:
+            </p>
 
-        <!-- Chat Bottom Input Bar -->
-        <div class="chat-input-container" id="chatInputContainer">
-          <!-- Privacy Disclosure Notice -->
-          <div class="chat-privacy-disclosure" role="note" aria-label="Pemberitahuan Privasi">
-            <span class="disclosure-badge">🛡️ Privasi:</span>
-            <span class="disclosure-text">Deteksi objek YOLOv8 berjalan lokal di browser. Snapshot frame akan dikirim ke VisionX Backend &amp; provider AI terkonfigurasi.</span>
-          </div>
-
-          <!-- Snapshot Thumbnail Preview Container (Hidden by default) -->
-          <div id="snapshotPreviewContainer" class="snapshot-preview-container hidden" aria-live="polite">
-            <div class="snapshot-preview-card">
-              <img id="snapshotThumbnail" src="" alt="Pratinjau Snapshot Kamera" class="snapshot-thumbnail-img" />
-              <div class="snapshot-preview-info">
-                <span id="snapshotInfoText" class="snapshot-info-title">Snapshot Kamera Siap</span>
-                <span class="snapshot-info-sub">Akan dikirim bersama pesan Anda</span>
+            <!-- 4 Capability Cards in a horizontal row -->
+            <div class="capability-cards-grid">
+              <div class="capability-card" tabindex="0">
+                <div class="capability-icon-wrap icon-chat">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </div>
+                <div class="capability-text">
+                  <h3 class="capability-name">Chat &amp; Answer</h3>
+                  <span class="capability-sub">Tanya apa saja</span>
+                </div>
               </div>
-              <button type="button" id="btnRemoveSnapshot" class="btn-remove-snapshot" title="Hapus snapshot ini" aria-label="Hapus snapshot">✕ Hapus</button>
+
+              <div class="capability-card" tabindex="0">
+                <div class="capability-icon-wrap icon-vision">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </div>
+                <div class="capability-text">
+                  <h3 class="capability-name">Vision Analysis</h3>
+                  <span class="capability-sub">Analisis gambar &amp; snapshot</span>
+                </div>
+              </div>
+
+              <div class="capability-card" tabindex="0">
+                <div class="capability-icon-wrap icon-detect">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                    <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </div>
+                <div class="capability-text">
+                  <h3 class="capability-name">Local Detection</h3>
+                  <span class="capability-sub">Deteksi objek lokal</span>
+                </div>
+              </div>
+
+              <div class="capability-card" tabindex="0">
+                <div class="capability-icon-wrap icon-context">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  </svg>
+                </div>
+                <div class="capability-text">
+                  <h3 class="capability-name">Context Aware</h3>
+                  <span class="capability-sub">Gunakan OCR, scene, safety &amp; history</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Prompts (4 Interactive Buttons in 2x2 grid) -->
+            <div class="quick-prompts-section" aria-label="Pertanyaan Cepat">
+              <div class="quick-prompts-header">
+                <span class="quick-prompts-icon">⚡</span>
+                <span class="quick-prompts-title">Quick Prompts</span>
+              </div>
+              <div class="quick-prompts-grid">
+                <button type="button" class="quick-prompt-btn" data-prompt="Apa yang ada di depan kamera?" aria-label="Tanyakan: Apa yang ada di depan kamera?">
+                  <span class="prompt-text">Apa yang ada di depan kamera?</span>
+                  <span class="prompt-arrow">&rsaquo;</span>
+                </button>
+                <button type="button" class="quick-prompt-btn" data-prompt="Jelaskan situasi di sekitar." aria-label="Tanyakan: Jelaskan situasi di sekitar.">
+                  <span class="prompt-text">Jelaskan situasi di sekitar.</span>
+                  <span class="prompt-arrow">&rsaquo;</span>
+                </button>
+                <button type="button" class="quick-prompt-btn" data-prompt="Apa yang berubah tadi?" aria-label="Tanyakan: Apa yang berubah tadi?">
+                  <span class="prompt-text">Apa yang berubah tadi?</span>
+                  <span class="prompt-arrow">&rsaquo;</span>
+                </button>
+                <button type="button" class="quick-prompt-btn" data-prompt="Apakah ada peringatan?" aria-label="Tanyakan: Apakah ada peringatan?">
+                  <span class="prompt-text">Apakah ada peringatan?</span>
+                  <span class="prompt-arrow">&rsaquo;</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Input Action Row -->
-          <div class="chat-input-row">
-            <button type="button" id="btnOpenCamModal" class="btn btn-cam-trigger" title="Buka Kamera untuk Snapshot" aria-label="Buka Kamera untuk Snapshot">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                <circle cx="12" cy="13" r="4"></circle>
-              </svg>
-            </button>
-            <div class="input-field-wrapper">
-              <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Tanyakan apa pun atau ambil snapshot kamera..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
+          <!-- Message Thread -->
+          <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
+
+          <!-- Chat Bottom Input Dock -->
+          <div class="chat-input-container" id="chatInputContainer">
+            <!-- Privacy Disclosure Notice -->
+            <div class="chat-privacy-disclosure" role="note" aria-label="Pemberitahuan Privasi">
+              <span class="disclosure-badge">🛡️ Privasi:</span>
+              <span class="disclosure-text">Deteksi VisionX berjalan lokal di browser. Snapshot frame akan dikirim ke VisionX Backend &amp; provider AI terkonfigurasi.</span>
             </div>
-            <button type="button" id="btnStopGeneration" class="btn btn-stop-gen hidden" title="Hentikan Jawaban AI" aria-label="Hentikan Generasi">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-              </svg>
-            </button>
-            <button type="button" id="btnSendChatMessage" class="btn btn-send-chat" title="Kirim Pesan (Enter)" aria-label="Kirim Pesan">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="19" x2="12" y2="5"></line>
-                <polyline points="5 12 12 5 19 12"></polyline>
-              </svg>
-            </button>
+
+            <!-- Snapshot Thumbnail Preview Container (Hidden by default) -->
+            <div id="snapshotPreviewContainer" class="snapshot-preview-container hidden" aria-live="polite">
+              <div class="snapshot-preview-card">
+                <img id="snapshotThumbnail" src="" alt="Pratinjau Snapshot Kamera" class="snapshot-thumbnail-img" />
+                <div class="snapshot-preview-info">
+                  <span id="snapshotInfoText" class="snapshot-info-title">Snapshot Kamera Siap</span>
+                  <span class="snapshot-info-sub">Akan dikirim bersama pesan Anda</span>
+                </div>
+                <button type="button" id="btnRemoveSnapshot" class="btn-remove-snapshot" title="Hapus snapshot ini" aria-label="Hapus snapshot">✕ Hapus</button>
+              </div>
+            </div>
+
+            <!-- Floating Dock Row -->
+            <div class="chat-input-dock chat-input-row">
+              <button type="button" id="btnOpenCamModal" class="btn btn-cam-dock btn-cam-trigger" title="Buka Kamera untuk Snapshot" aria-label="Buka Kamera untuk Snapshot">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </button>
+
+              <div class="input-field-dock-wrapper input-field-wrapper">
+                <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Ketik pesan Anda..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
+              </div>
+
+              <div class="dock-actions-right">
+                <button type="button" id="btnAttachDoc" class="btn-dock-icon" title="Lampiran" aria-label="Lampiran">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                </button>
+                <button type="button" id="btnAttachImage" class="btn-dock-icon" title="Pilih Gambar" aria-label="Pilih Gambar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                </button>
+                <button type="button" id="btnStopGeneration" class="btn btn-stop-gen hidden" title="Hentikan Jawaban AI" aria-label="Hentikan Generasi">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                  </svg>
+                </button>
+                <button type="button" id="btnSendChatMessage" class="btn btn-send-dock btn-send-chat" title="Kirim Pesan (Enter)" aria-label="Kirim Pesan">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="dock-footnote">
+              <span>Tekan Enter untuk mengirim • Shift + Enter untuk baris baru</span>
+            </div>
           </div>
         </div>
+
+        <!-- Right Status & Information Panel (Visible on Desktop >= 1200px) -->
+        <aside class="chat-right-panel" id="chatRightPanel" aria-label="Status Sistem &amp; Aktivitas">
+          <!-- Card 1: System Status -->
+          <div class="panel-card system-status-card">
+            <div class="panel-card-header">
+              <div class="panel-title-with-dot">
+                <span class="status-dot green animate-pulse"></span>
+                <span class="panel-title">System Status</span>
+              </div>
+              <span class="badge badge-live">Live</span>
+            </div>
+            <div class="status-items-list">
+              <div class="status-item-row">
+                <div class="status-item-info">
+                  <span class="item-name">Backend Server</span>
+                  <span class="item-sub">visionx.my.id</span>
+                </div>
+                <div class="status-item-val online">
+                  <span class="status-dot green"></span>
+                  <span id="rightPanelBackendStatus">Online</span>
+                </div>
+              </div>
+              <div class="status-item-row">
+                <div class="status-item-info">
+                  <span class="item-name">AI Provider (Gemini)</span>
+                  <span class="item-sub">Multimodal</span>
+                </div>
+                <div class="status-item-val online">
+                  <span class="status-dot cyan"></span>
+                  <span id="rightPanelAiStatus">Connected</span>
+                </div>
+              </div>
+              <div class="status-item-row">
+                <div class="status-item-info">
+                  <span class="item-name">Vision Model</span>
+                  <span class="item-sub">Web ONNX Runtime</span>
+                </div>
+                <div class="status-item-val online">
+                  <span class="status-dot emerald"></span>
+                  <span id="rightPanelModelStatus">Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Recent Activity -->
+          <div class="panel-card recent-activity-card">
+            <div class="panel-card-header">
+              <div class="panel-title-with-icon">
+                <span class="panel-icon">🕒</span>
+                <span class="panel-title">Recent Activity</span>
+              </div>
+              <button type="button" class="panel-header-link" id="btnViewAllActivity" aria-label="Lihat Semua Aktivitas">View All</button>
+            </div>
+            <div class="activity-items-list" id="recentActivityList">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Card 3: Privasi & Keamanan -->
+          <div class="panel-card privacy-card">
+            <div class="panel-card-header">
+              <div class="panel-title-with-icon">
+                <span class="panel-icon">🛡️</span>
+                <span class="panel-title">Privasi &amp; Keamanan</span>
+              </div>
+            </div>
+            <p class="privacy-card-body">
+              Deteksi VisionX berjalan lokal di browser. Gambar yang Anda kirim akan dikirim ke backend VisionX dan dapat diteruskan ke penyedia AI eksternal yang dikonfigurasi.
+            </p>
+            <a href="#privacyNotice" class="privacy-learn-more" id="btnPrivacyLearnMore">Pelajari lebih lanjut &rarr;</a>
+          </div>
+        </aside>
       </div>
 
       <!-- Collapsible Legacy Tools Directory for feature preservation -->
