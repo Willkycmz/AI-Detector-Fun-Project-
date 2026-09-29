@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>VisionX - AI Vision Assistant</title>
   <meta name="description" content="VisionX - Asisten AI Multimodal dengan integrasi Computer Vision lokal, deteksi objek real-time, OCR, dan persepsi spasial." />
-  <meta name="theme-color" content="#070b14" />
+  <meta name="theme-color" content="#F7F7F5" />
   <meta property="og:title" content="VisionX - AI Vision Assistant" />
   <meta property="og:description" content="VisionX AI Conversational Platform dengan Edge Computer Vision &amp; Multimodal Perception." />
   <meta property="og:type" content="website" />
@@ -22,19 +22,19 @@
 <body>
   <div class="app-container">
     <!-- =========================================================================
-         DESKTOP SIDEBAR / MOBILE DRAWER (Dark Cyber AI Product Architecture)
+         DESKTOP SIDEBAR / MOBILE DRAWER (Clean Neutral AI Assistant Architecture)
          ========================================================================= -->
     <aside id="appSidebar" class="app-sidebar" aria-label="Navigasi Utama VisionX">
       <div class="sidebar-header">
         <div class="sidebar-brand" id="sidebarBrandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
           <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
-            <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+            <circle cx="50" cy="50" r="45" fill="#171717" stroke="#06b6d4" stroke-width="5"/>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#7c3aed" stroke-width="4.5"/>
             <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
           </svg>
           <div class="sidebar-brand-text">
             <span class="sidebar-title">VisionX</span>
-            <span class="sidebar-tag">AI Vision</span>
+            <span class="sidebar-tag">AI Assistant</span>
           </div>
         </div>
         <button type="button" id="btnCloseSidebar" class="btn-close-sidebar mobile-only" aria-label="Tutup Menu">✕</button>
@@ -42,12 +42,12 @@
 
       <!-- Action: New Chat -->
       <div class="sidebar-action-group">
-        <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Obrolan Baru">
+        <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Percakapan Baru">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          <span>＋ New Chat</span>
+          <span>＋ Percakapan Baru</span>
         </button>
       </div>
 
@@ -58,7 +58,7 @@
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span>Chat History</span>
+          <span>Riwayat Percakapan</span>
         </div>
         <div id="sidebarChatHistory" class="sidebar-chat-history">
           <!-- Diisi secara dinamis oleh ChatController dari IndexedDB -->
@@ -116,22 +116,22 @@
       <div class="sidebar-footer">
         <div class="sidebar-status-list">
           <div class="sidebar-status-row" id="sidebarServerStatusRow">
-            <span class="status-title">Server Status:</span>
+            <span class="status-title">Status Server:</span>
             <span id="sidebarServerStatus" class="badge badge-server-online">
-              <span class="status-dot green"></span> Online
+              <span class="status-dot green"></span> Aktif
             </span>
           </div>
           <div class="sidebar-status-row clickable" id="sidebarAuthStatusRow" role="button" tabindex="0" title="Status Autentikasi / Klik untuk Login PIN" aria-label="Status Autentikasi">
-            <span class="status-title">Authentication:</span>
+            <span class="status-title">Autentikasi:</span>
             <span id="sidebarAuthStatus" class="badge badge-auth-active">
-              <span class="lock-icon">🔒</span> Logged In &rsaquo;
+              <span class="lock-icon">🔒</span> Terhubung &rsaquo;
             </span>
           </div>
         </div>
-        <div class="sidebar-user-card" id="sidebarUserCard" role="button" tabindex="0" title="Profil VisionX User" aria-label="Profil Pengguna">
+        <div class="sidebar-user-card" id="sidebarUserCard" role="button" tabindex="0" title="Profil Pengguna VisionX" aria-label="Profil Pengguna">
           <div class="user-avatar-circle">V</div>
           <div class="user-info-text">
-            <span class="user-name">VisionX User</span>
+            <span class="user-name">Pengguna VisionX</span>
             <span class="user-email">user@visionx.my.id</span>
           </div>
           <button type="button" class="btn-user-settings" id="btnUserSettings" aria-label="Pengaturan Pengguna" title="Pengaturan">⚙️</button>
@@ -153,24 +153,24 @@
         </button>
         <div class="mobile-brand-title">
           <span class="brand-name">VisionX</span>
-          <span class="brand-tag">AI Vision</span>
+          <span class="brand-tag">AI Assistant</span>
         </div>
         <div class="mobile-header-status">
-          <span id="mobileStatusDot" class="status-dot green" title="Gateway Online"></span>
-          <button type="button" id="btnMobileNewChat" class="btn btn-icon btn-mobile-new" title="New Chat" aria-label="Mulai Obrolan Baru">＋</button>
+          <span id="mobileStatusDot" class="status-dot green" title="Server Aktif"></span>
+          <button type="button" id="btnMobileNewChat" class="btn btn-icon btn-mobile-new" title="Percakapan Baru" aria-label="Mulai Percakapan Baru">＋</button>
         </div>
       </div>
     <header class="app-header" id="mainAppHeader">
       <div class="header-main-bar">
         <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
           <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
-            <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+            <circle cx="50" cy="50" r="45" fill="#171717" stroke="#06b6d4" stroke-width="5"/>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#7c3aed" stroke-width="4.5"/>
             <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
           </svg>
           <div class="brand-title-wrap">
             <h1 class="brand-title">VisionX <span class="version-tag">V2.0</span></h1>
-            <span class="brand-subtitle">AI Vision Platform &bull; Realtime Detection &bull; Chat Assistant</span>
+            <span class="brand-subtitle" id="headerBreadcrumbTitle">Asisten AI</span>
           </div>
         </div>
 
@@ -231,6 +231,10 @@
 
         <!-- Top Right Clean Actions matching visual reference -->
         <div class="header-actions">
+          <div class="header-status-pill" id="headerServerStatusPill" title="Status Server Gateway">
+            <span class="status-dot green"></span>
+            <span class="status-pill-text" id="headerServerStatusText">Server aktif</span>
+          </div>
           <button id="btnThemeToggle" class="btn btn-icon theme-toggle-btn" title="Ganti Tema (Light/Dark)" aria-label="Ganti Tema">
             <span id="themeToggleIcon">🌙</span>
           </button>
@@ -241,7 +245,7 @@
             </svg>
             <span class="notif-badge">1</span>
           </button>
-          <div class="user-avatar-pill" id="headerUserAvatar" role="button" tabindex="0" title="Profil VisionX User" aria-label="Profil Pengguna">
+          <div class="user-avatar-pill" id="headerUserAvatar" role="button" tabindex="0" title="Profil Pengguna VisionX" aria-label="Profil Pengguna">
             <span class="avatar-letter">V</span>
           </div>
         </div>
@@ -320,115 +324,117 @@
       <div class="chat-workspace-wrapper">
         <!-- Main Chat Experience Container -->
         <div class="chat-container" id="chatContainer">
-          <!-- Welcome Screen (Visible when chat thread has no messages) -->
-          <div id="chatWelcomeScreen" class="chat-welcome-screen">
-            <div class="welcome-hero-logo" aria-hidden="true">
-              <svg class="welcome-brand-icon" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="44" fill="#0b1329" stroke="#06b6d4" stroke-width="5" class="outer-ring"/>
-                <circle cx="50" cy="50" r="27" fill="none" stroke="#a855f7" stroke-width="4.5" class="middle-ring"/>
-                <circle cx="50" cy="50" r="11" fill="#06b6d4" class="inner-dot"/>
-              </svg>
+          <div class="chat-scroll-area" id="chatScrollArea">
+            <!-- Welcome Screen (Visible when chat thread has no messages) -->
+            <div id="chatWelcomeScreen" class="chat-welcome-screen">
+              <div class="welcome-hero-logo" aria-hidden="true">
+                <svg class="welcome-brand-icon" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="44" fill="#171717" stroke="#06b6d4" stroke-width="4.5" class="outer-ring"/>
+                  <circle cx="50" cy="50" r="27" fill="none" stroke="#7c3aed" stroke-width="4" class="middle-ring"/>
+                  <circle cx="50" cy="50" r="11" fill="#06b6d4" class="inner-dot"/>
+                </svg>
+              </div>
+
+              <h1 class="welcome-title">VisionX</h1>
+              <div class="welcome-subtitle">AI Vision Assistant</div>
+              <p class="welcome-desc">
+                Saya adalah VisionX, asisten AI yang terhubung dengan sistem computer vision lokal. Saya dapat membantu Anda menganalisis citra visual, membaca teks, mendeteksi objek, dan memantau lingkungan.
+              </p>
+
+              <!-- 4 Capability Cards in a horizontal row -->
+              <div class="capability-cards-grid">
+                <div class="capability-card" tabindex="0">
+                  <div class="capability-icon-wrap icon-chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <div class="capability-text">
+                    <h3 class="capability-name">Chat &amp; Answers</h3>
+                    <span class="capability-sub">Tanya apa saja</span>
+                  </div>
+                </div>
+
+                <div class="capability-card" tabindex="0">
+                  <div class="capability-icon-wrap icon-vision">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </div>
+                  <div class="capability-text">
+                    <h3 class="capability-name">Vision Analysis</h3>
+                    <span class="capability-sub">Analisis gambar snapshot</span>
+                  </div>
+                </div>
+
+                <div class="capability-card" tabindex="0">
+                  <div class="capability-icon-wrap icon-detect">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+                      <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+                      <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+                      <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </div>
+                  <div class="capability-text">
+                    <h3 class="capability-name">Local Detection</h3>
+                    <span class="capability-sub">Deteksi objek lokal</span>
+                  </div>
+                </div>
+
+                <div class="capability-card" tabindex="0">
+                  <div class="capability-icon-wrap icon-context">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    </svg>
+                  </div>
+                  <div class="capability-text">
+                    <h3 class="capability-name">Context Awareness</h3>
+                    <span class="capability-sub">Memori spasial &amp; riwayat</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Prompts (4 Interactive Buttons in 2x2 grid) -->
+              <div class="quick-prompts-section" aria-label="Pertanyaan Cepat">
+                <div class="quick-prompts-header">
+                  <span class="quick-prompts-icon">⚡</span>
+                  <span class="quick-prompts-title">Pertanyaan Cepat</span>
+                </div>
+                <div class="quick-prompts-grid">
+                  <button type="button" class="quick-prompt-btn" data-prompt="Apa yang ada di depan kamera?" aria-label="Tanyakan: Apa yang ada di depan kamera?">
+                    <span class="prompt-text">Apa yang ada di depan kamera?</span>
+                    <span class="prompt-arrow">&rsaquo;</span>
+                  </button>
+                  <button type="button" class="quick-prompt-btn" data-prompt="Jelaskan situasi di sekitar." aria-label="Tanyakan: Jelaskan situasi di sekitar.">
+                    <span class="prompt-text">Jelaskan situasi di sekitar.</span>
+                    <span class="prompt-arrow">&rsaquo;</span>
+                  </button>
+                  <button type="button" class="quick-prompt-btn" data-prompt="Apa yang berubah tadi?" aria-label="Tanyakan: Apa yang berubah tadi?">
+                    <span class="prompt-text">Apa yang berubah tadi?</span>
+                    <span class="prompt-arrow">&rsaquo;</span>
+                  </button>
+                  <button type="button" class="quick-prompt-btn" data-prompt="Apakah ada peringatan?" aria-label="Tanyakan: Apakah ada peringatan?">
+                    <span class="prompt-text">Apakah ada peringatan?</span>
+                    <span class="prompt-arrow">&rsaquo;</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <h1 class="welcome-title">VisionX</h1>
-            <div class="welcome-subtitle">AI Vision Assistant</div>
-            <p class="welcome-desc">
-              Saya adalah VisionX, asisten AI yang terhubung dengan sistem computer vision. Saya dapat membantu Anda:
-            </p>
-
-            <!-- 4 Capability Cards in a horizontal row -->
-            <div class="capability-cards-grid">
-              <div class="capability-card" tabindex="0">
-                <div class="capability-icon-wrap icon-chat">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </div>
-                <div class="capability-text">
-                  <h3 class="capability-name">Chat &amp; Answer</h3>
-                  <span class="capability-sub">Tanya apa saja</span>
-                </div>
-              </div>
-
-              <div class="capability-card" tabindex="0">
-                <div class="capability-icon-wrap icon-vision">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </div>
-                <div class="capability-text">
-                  <h3 class="capability-name">Vision Analysis</h3>
-                  <span class="capability-sub">Analisis gambar &amp; snapshot</span>
-                </div>
-              </div>
-
-              <div class="capability-card" tabindex="0">
-                <div class="capability-icon-wrap icon-detect">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
-                    <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
-                    <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
-                    <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                </div>
-                <div class="capability-text">
-                  <h3 class="capability-name">Local Detection</h3>
-                  <span class="capability-sub">Deteksi objek lokal</span>
-                </div>
-              </div>
-
-              <div class="capability-card" tabindex="0">
-                <div class="capability-icon-wrap icon-context">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                  </svg>
-                </div>
-                <div class="capability-text">
-                  <h3 class="capability-name">Context Aware</h3>
-                  <span class="capability-sub">Gunakan OCR, scene, safety &amp; history</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Quick Prompts (4 Interactive Buttons in 2x2 grid) -->
-            <div class="quick-prompts-section" aria-label="Pertanyaan Cepat">
-              <div class="quick-prompts-header">
-                <span class="quick-prompts-icon">⚡</span>
-                <span class="quick-prompts-title">Quick Prompts</span>
-              </div>
-              <div class="quick-prompts-grid">
-                <button type="button" class="quick-prompt-btn" data-prompt="Apa yang ada di depan kamera?" aria-label="Tanyakan: Apa yang ada di depan kamera?">
-                  <span class="prompt-text">Apa yang ada di depan kamera?</span>
-                  <span class="prompt-arrow">&rsaquo;</span>
-                </button>
-                <button type="button" class="quick-prompt-btn" data-prompt="Jelaskan situasi di sekitar." aria-label="Tanyakan: Jelaskan situasi di sekitar.">
-                  <span class="prompt-text">Jelaskan situasi di sekitar.</span>
-                  <span class="prompt-arrow">&rsaquo;</span>
-                </button>
-                <button type="button" class="quick-prompt-btn" data-prompt="Apa yang berubah tadi?" aria-label="Tanyakan: Apa yang berubah tadi?">
-                  <span class="prompt-text">Apa yang berubah tadi?</span>
-                  <span class="prompt-arrow">&rsaquo;</span>
-                </button>
-                <button type="button" class="quick-prompt-btn" data-prompt="Apakah ada peringatan?" aria-label="Tanyakan: Apakah ada peringatan?">
-                  <span class="prompt-text">Apakah ada peringatan?</span>
-                  <span class="prompt-arrow">&rsaquo;</span>
-                </button>
-              </div>
-            </div>
+            <!-- Message Thread -->
+            <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
           </div>
-
-          <!-- Message Thread -->
-          <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
 
           <!-- Chat Bottom Input Dock -->
           <div class="chat-input-container" id="chatInputContainer">
             <!-- Privacy Disclosure Notice -->
             <div class="chat-privacy-disclosure" role="note" aria-label="Pemberitahuan Privasi">
               <span class="disclosure-badge">🛡️ Privasi:</span>
-              <span class="disclosure-text">Deteksi VisionX berjalan lokal di browser. Snapshot frame akan dikirim ke VisionX Backend &amp; provider AI terkonfigurasi.</span>
+              <span class="disclosure-text">Deteksi VisionX berjalan lokal di browser. Saat snapshot dikirim melalui Chat, gambar dikirim ke VisionX Backend dan dapat diteruskan ke penyedia AI eksternal.</span>
             </div>
 
             <!-- Snapshot Thumbnail Preview Container (Hidden by default) -->
@@ -568,7 +574,7 @@
       <details class="home-legacy-tools-wrapper">
         <summary class="tools-summary-toggle">🛠️ Direktori Fitur &amp; Lab Kamera...</summary>
         <div class="home-hero">
-          <div class="home-badge">VisionX AI Platform &bull; V1.7</div>
+          <div class="home-badge">VisionX AI Platform &bull; V2.0</div>
           <h2 class="home-title">Edge AI Vision &amp; Spatial Perception</h2>
           <p class="home-description">
             Platform visi komputer cerdas lokal dengan deteksi objek real-time, pembaca teks OCR,
@@ -719,36 +725,36 @@
           <circle cx="12" cy="13" r="4"></circle>
         </svg>
         <div class="placeholder-title">Kamera Belum Aktif</div>
-        <div class="placeholder-desc">Tekan tombol <strong>Start Camera</strong> untuk memulai streaming video, deteksi YOLOv8, atau pengumpulan dataset.</div>
+        <div class="placeholder-desc">Tekan tombol <strong>Mulai Kamera</strong> untuk mengaktifkan video dan deteksi objek.</div>
       </div>
     </main>
 
     <!-- Global Camera & Vision Controls Card -->
     <section id="controlsCard" class="controls-card hidden">
       <!-- 1. PRIMARY HERO ACTIONS (Always Visible, Min 48x48px Touch Targets) -->
-      <div class="primary-hero-bar" aria-label="Primary Camera and Vision Actions">
+      <div class="primary-hero-bar" aria-label="Aksi Utama Kamera dan Vision">
         <div class="hero-camera-buttons">
-          <button id="btnStart" class="btn btn-start btn-hero" title="Start Live Camera Stream">
+          <button id="btnStart" class="btn btn-start btn-hero" title="Mulai Streaming Kamera Live">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
-            <span>Start Camera</span>
+            <span>Mulai Kamera</span>
           </button>
-          <button id="btnStop" class="btn btn-stop btn-hero" disabled title="Stop Camera Stream">
+          <button id="btnStop" class="btn btn-stop btn-hero" disabled title="Hentikan Streaming Kamera">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <rect x="6" y="6" width="12" height="12"></rect>
             </svg>
-            <span>Stop Camera</span>
+            <span>Hentikan Kamera</span>
           </button>
         </div>
 
         <!-- Quick Ask Vision Action -->
         <button id="btnQuickAskVision" class="btn btn-quick-ask" type="button" title="Tanyakan ke Vision Assistant (Fokus input AI)"
-          onclick="const el = document.getElementById('askVisionInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }">
+          onclick="const el = document.getElementById('chatInput') || document.getElementById('askVisionInput'); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
           </svg>
-          <span>Ask Vision</span>
+          <span>Tanya AI</span>
         </button>
       </div>
 
@@ -775,17 +781,17 @@
       <div class="secondary-controls-bar">
         <!-- Model Selection -->
         <div class="model-select-group">
-          <label for="modelSelect" class="field-label-sm">Model:</label>
+          <label for="modelSelect" class="field-label-sm">Model Vision:</label>
           <select id="modelSelect" class="select-control model-select-sm">
             <option value="visionx_v2" selected>🚀 VisionX V2 (Real-World Improved)</option>
             <option value="visionx_v1">🎯 VisionX V1 (Custom 7 Classes)</option>
-            <option value="pretrained">🌐 Pretrained YOLOv8n (COCO 80 Classes)</option>
+            <option value="pretrained">🌐 Pretrained Vision Model (COCO 80 Classes)</option>
           </select>
         </div>
 
         <!-- Tracking Toggle -->
         <label class="toggle-control-compact" title="Aktifkan persistent Object Tracking ID & Velocity (V0.7)">
-          <span class="toggle-label-sm">Tracking:</span>
+          <span class="toggle-label-sm">Pelacakan:</span>
           <span class="switch switch-sm">
             <input type="checkbox" id="toggleTracking" checked />
             <span class="slider"></span>
@@ -800,14 +806,14 @@
             <polyline points="7 23 3 19 7 15"></polyline>
             <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
           </svg>
-          <span id="mirrorBtnText">Mirror</span>
+          <span id="mirrorBtnText">Cermin</span>
         </button>
 
         <!-- Camera Device Dropdown -->
         <div class="device-select-compact">
           <label for="deviceSelect" class="field-label-sm">Kamera:</label>
           <select id="deviceSelect" class="select-control select-sm">
-            <option value="">Default / Auto Camera</option>
+            <option value="">Kamera Default / Otomatis</option>
           </select>
         </div>
       </div>
@@ -862,7 +868,7 @@
                   </svg>
                 </div>
                 <div class="ask-vision-title-texts">
-                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="badge-v1-tag">V1.0 AI</span></h3>
+                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="badge-v1-tag">V2.0</span></h3>
                   <span class="ask-vision-subtitle">Asisten multimodal cerdas &bull; Menjawab pertanyaan dari snapshot kamera &amp; konteks visual</span>
                 </div>
               </div>
@@ -1095,7 +1101,7 @@
                   </svg>
                 </div>
                 <div class="memory-title-texts">
-                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="badge-v1-tag">V1.1</span></h3>
+                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="badge-v1-tag">V2.0</span></h3>
                   <span class="memory-subtitle">Memori temporal &amp; spasial objek lokal &bull; Melacak riwayat kemunculan &amp; posisi</span>
                 </div>
               </div>
@@ -1157,7 +1163,7 @@
                   </svg>
                 </div>
                 <div class="personal-title-texts">
-                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="badge-v1-tag">V1.2</span></h3>
+                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="badge-v1-tag">V2.0</span></h3>
                   <span class="personal-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
                 </div>
               </div>
@@ -1268,7 +1274,7 @@
                   </svg>
                 </div>
                 <div class="safety-alerts-title-texts">
-                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="badge-v1-tag">V1.3.1</span></h3>
+                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="badge-v1-tag">V2.0</span></h3>
                   <span class="safety-alerts-subtitle">Sistem peringatan keselamatan objek &amp; anomali pelacakan &bull; Terintegrasi VoiceEngine</span>
                 </div>
               </div>
@@ -1902,7 +1908,7 @@
               <line x1="9" y1="12" x2="15" y2="12"></line>
               <line x1="12" y1="9" x2="12" y2="15"></line>
             </svg>
-            <span>Read Text</span>
+            <span>Pindai Teks</span>
             <span class="hotkey-badge">R</span>
           </button>
 
@@ -1911,7 +1917,7 @@
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
             </svg>
-            <span>Read Text Aloud</span>
+            <span>Bacakan Teks</span>
           </button>
 
           <button id="btnReScanOcr" class="btn btn-secondary btn-ocr-rescan" title="Pindai ulang frame kamera aktif (Scan Ulang)">
@@ -1920,14 +1926,14 @@
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
             </svg>
-            <span>Scan Ulang</span>
+            <span>Pindai Ulang</span>
           </button>
 
           <button id="btnStopOcr" class="btn btn-secondary btn-ocr-stop" title="Hentikan pembacaan teks & bersihkan overlay">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="6" y="6" width="12" height="12"></rect>
             </svg>
-            <span>Stop Reading</span>
+            <span>Hentikan</span>
           </button>
         </div>
 
@@ -2306,7 +2312,7 @@
     </div>
 
     <footer class="app-footer">
-      VisionX V1.5 Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX V2 Model
+      VisionX V2.0 Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX Model
     </footer>
     </div> <!-- .app-main-layout -->
   </div>
@@ -2424,7 +2430,7 @@
       <div class="camera-modal-footer">
         <div class="camera-modal-status-text">
           <span class="status-bullet"></span>
-          <span id="cameraModalStatusMessage">Deteksi YOLOv8 berjalan lokal di browser (7 kelas)</span>
+          <span id="cameraModalStatusMessage">Deteksi objek lokal aktif (7 kelas)</span>
         </div>
         <div class="camera-modal-actions">
           <button type="button" id="btnModalTakeSnapshot" class="btn btn-take-snapshot" disabled aria-label="Ambil Snapshot">
@@ -2432,7 +2438,7 @@
               <circle cx="12" cy="12" r="10"></circle>
               <circle cx="12" cy="12" r="4"></circle>
             </svg>
-            <span>Take Snapshot</span>
+            <span>Ambil Foto</span>
           </button>
         </div>
       </div>

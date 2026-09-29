@@ -610,7 +610,9 @@ class VisionXWebApp {
       alertCooldownVal: document.getElementById('alertCooldownVal'),
       safetyAlertsList: document.getElementById('safetyAlertsList'),
 
-      // Milestone 2 & 3 — Sidebar & Drawer Elements
+      headerBreadcrumbTitle: document.getElementById('headerBreadcrumbTitle'),
+      headerServerStatusPill: document.getElementById('headerServerStatusPill'),
+      headerServerStatusText: document.getElementById('headerServerStatusText'),
       appSidebar: document.getElementById('appSidebar'),
       mobileDrawerBackdrop: document.getElementById('mobileDrawerBackdrop') || document.getElementById('sidebarBackdrop'),
       btnToggleSidebar: document.getElementById('btnToggleSidebar') || document.getElementById('btnMobileMenu'),
@@ -1685,6 +1687,19 @@ class VisionXWebApp {
     // Close camera modal when switching modes
     if (this.cameraModal && this.cameraModal.isOpen) {
       this.cameraModal.close();
+    }
+
+    // Update header breadcrumb title
+    const breadcrumbs = {
+      home: 'Asisten AI',
+      detection: 'Deteksi Objek',
+      read_text: 'Pembaca Teks (OCR)',
+      collection: 'Koleksi Dataset',
+      manager: 'Dataset Manager',
+      identity: 'Identity Lab'
+    };
+    if (this.elements.headerBreadcrumbTitle) {
+      this.elements.headerBreadcrumbTitle.textContent = breadcrumbs[mode] || 'Asisten AI';
     }
 
     // Sembunyikan semua kontrol panel

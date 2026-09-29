@@ -6,7 +6,7 @@
 export class ThemeManager {
   constructor() {
     this.STORAGE_KEY = 'visionx_theme_preference';
-    this.currentTheme = 'dark';
+    this.currentTheme = 'light';
     this.init();
   }
 
@@ -14,10 +14,8 @@ export class ThemeManager {
     const saved = localStorage.getItem(this.STORAGE_KEY);
     if (saved) {
       this.currentTheme = saved;
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      this.currentTheme = 'light';
     } else {
-      this.currentTheme = 'dark';
+      this.currentTheme = 'light';
     }
 
     this.applyTheme(this.currentTheme);
@@ -33,11 +31,20 @@ export class ThemeManager {
   applyTheme(theme) {
     this.currentTheme = theme;
     document.documentElement.setAttribute('data-theme', theme);
+    if (document.body) {
+      document.body.classList.toggle('theme-dark', theme === 'dark');
+      document.body.classList.toggle('theme-light', theme === 'light');
+    }
     localStorage.setItem(this.STORAGE_KEY, theme);
+
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', theme === 'dark' ? '#121212' : '#F7F7F5');
+    }
 
     const iconEl = document.getElementById('themeToggleIcon');
     if (iconEl) {
-      iconEl.textContent = theme === 'light' ? '☀️' : '🌙';
+      iconEl.textContent = theme === 'light' ? '🌙' : '☀️';
     }
   }
 

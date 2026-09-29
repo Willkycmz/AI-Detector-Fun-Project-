@@ -1065,6 +1065,10 @@ export class ChatController {
    * Scroll otomatis ke pesan terbawah
    */
   scrollToBottom() {
+    const scrollArea = (typeof document !== 'undefined') ? document.getElementById('chatScrollArea') : null;
+    if (scrollArea) {
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
     const { threadContainer } = this.elements;
     if (threadContainer) {
       threadContainer.scrollTop = threadContainer.scrollHeight;
@@ -1132,16 +1136,31 @@ export class ChatController {
   /**
    * Sinkronkan status server gateway ke UI
    */
-  updateServerStatus(isOnline, label = 'Online') {
+  updateServerStatus(isOnline, label = null) {
+    const defaultLabel = isOnline ? 'Server aktif' : 'Server offline';
+    const finalLabel = label || defaultLabel;
     const { serverStatusBadge, serverStatusText, rightPanelBackendStatus } = this.elements;
     if (serverStatusBadge) {
       serverStatusBadge.className = `badge ${isOnline ? 'badge-server-online' : 'badge-server-offline'}`;
     }
     if (serverStatusText) {
-      serverStatusText.textContent = label;
+      serverStatusText.textContent = finalLabel;
     }
     if (rightPanelBackendStatus) {
-      rightPanelBackendStatus.textContent = label;
+      rightPanelBackendStatus.textContent = finalLabel;
+    }
+    if (typeof document !== 'undefined') {
+      const headerPill = document.getElementById('headerServerStatusPill');
+      const headerText = document.getElementById('headerServerStatusText');
+      if (headerText) {
+        headerText.textContent = finalLabel;
+      }
+      if (headerPill) {
+        const dot = headerPill.querySelector('.status-dot');
+        if (dot) {
+          dot.className = `status-dot ${isOnline ? 'green' : 'red'}`;
+        }
+      }
     }
   }
 
