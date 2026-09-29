@@ -54,7 +54,11 @@ export class BackendAIProvider extends AIProvider {
       ? import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '')
       : null;
 
-    this.baseUrl = config.baseUrl || envUrl || 'https://visionx.my.id';
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const defaultUrl = isLocalhost ? 'http://localhost:5000' : 'https://visionx.my.id';
+
+    this.baseUrl = config.baseUrl || envUrl || defaultUrl;
     this.endpoint = config.endpoint || `${this.baseUrl}/api/chat`;
     this.loginEndpoint = config.loginEndpoint || `${this.baseUrl}/api/login`;
     this.timeoutMs = config.timeoutMs || 35000;
@@ -159,7 +163,7 @@ export class BackendAIProvider extends AIProvider {
   /**
    * Mengirim query vision ke /api/chat dengan dukungan SSE streaming
    */
-  async askVision({ image, context, question, conversationHistory = [], onChunk = null }) {
+  async askVision({ image, context, question, detections = null, conversationHistory = [], onChunk = null, signal = null }) {
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       throw new Error('Pertanyaan tidak boleh kosong.');
     }
@@ -177,6 +181,16 @@ export class BackendAIProvider extends AIProvider {
     }
 
     const controller = new AbortController();
+    let isUserAborted = false;
+    if (signal) {
+      if (signal.aborted) {
+        throw new Error('Permintaan dibatalkan.');
+      }
+      signal.addEventListener('abort', () => {
+        isUserAborted = true;
+        controller.abort();
+      }, { once: true });
+    }
     const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
 
     // Format riwayat percakapan yang bersih
@@ -192,7 +206,7 @@ export class BackendAIProvider extends AIProvider {
       message: question.trim(),
       image: image || null,
       vision_context: context || null,
-      detections: context?.detections || null,
+      detections: (detections !== undefined && detections !== null) ? detections : (context?.detections || null),
       history: formattedHistory
     };
 
@@ -302,10 +316,13 @@ export class BackendAIProvider extends AIProvider {
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
+        if (isUserAborted) {
+          throw new Error('Permintaan dihentikan oleh pengguna.');
+        }
         throw new Error(`Permintaan ke AI Assistant timeout setelah ${this.timeoutMs / 1000} detik.`);
       }
       if (err.name === 'TypeError' && err.message && err.message.includes('fetch')) {
-        throw new Error(`Gagal menghubungi gateway VisionX (${this.endpoint}). Pastikan server Termux aktif.`);
+        throw new Error(`Gagal menghubungi gateway VisionX (${this.endpoint}). Pastikan backend server aktif.`);
       }
       throw err;
     }
@@ -337,9 +354,13 @@ export class MockAIProvider extends AIProvider {
     return 'MockAIProvider';
   }
 
-  async askVision({ image, context, question, conversationHistory = [] }) {
+  async askVision({ image, context, question, detections = null, conversationHistory = [], onChunk = null, signal = null }) {
     this.callCount++;
-    this.lastQuery = { image, context, question, conversationHistory };
+    this.lastQuery = { image, context, question, detections, conversationHistory };
+
+    if (signal && signal.aborted) {
+      throw new Error('Permintaan dibatalkan.');
+    }
 
     if (this.delayMs > 0) {
       await new Promise(res => setTimeout(res, this.delayMs));
@@ -350,6 +371,15 @@ export class MockAIProvider extends AIProvider {
     }
 
     if (this.mockAnswer) {
+      if (typeof onChunk === 'function') {
+        const words = this.mockAnswer.split(' ');
+        let acc = '';
+        for (let i = 0; i < words.length; i++) {
+          const piece = words[i] + (i < words.length - 1 ? ' ' : '');
+          acc += piece;
+          onChunk(piece, acc);
+        }
+      }
       return {
         answer: this.mockAnswer,
         provider: 'mock-ai-custom',
@@ -359,7 +389,7 @@ export class MockAIProvider extends AIProvider {
 
     // Heuristik kontekstual cerdas untuk testing tanpa mockAnswer kustom
     const qLower = (question || '').toLowerCase();
-    const detections = context?.detections || [];
+    detections = (detections && detections.length > 0) ? detections : (context?.detections || []);
     const totalObj = detections.length;
     const ocrText = context?.ocr?.text || '';
     const isDeveloper = context?.identity?.is_developer_verified || false;
@@ -494,6 +524,16 @@ export class MockAIProvider extends AIProvider {
           parts.push('dan saya mendeteksi kehadiran Anda sebagai VisionX Developer');
         }
         answer = parts.join(', ') + '.';
+      }
+    }
+
+    if (typeof onChunk === 'function') {
+      const words = answer.split(' ');
+      let acc = '';
+      for (let i = 0; i < words.length; i++) {
+        const piece = words[i] + (i < words.length - 1 ? ' ' : '');
+        acc += piece;
+        onChunk(piece, acc);
       }
     }
 

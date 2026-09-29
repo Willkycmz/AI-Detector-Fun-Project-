@@ -42,6 +42,8 @@ import { ThemeManager } from './ui/ThemeManager.js';
 import { ContextualPanelManager } from './ui/ContextualPanelManager.js';
 import { SceneHistoryEngine } from './services/SceneHistoryEngine.js';
 import { tunnelService } from './services/TunnelService.js';
+import { CameraModal } from './ui/CameraModal.js';
+import { ChatController } from './ui/ChatController.js';
 
 class VisionXWebApp {
   constructor() {
@@ -603,7 +605,52 @@ class VisionXWebApp {
       togglePersistentAlerts: document.getElementById('togglePersistentAlerts'),
       sliderAlertCooldown: document.getElementById('sliderAlertCooldown'),
       alertCooldownVal: document.getElementById('alertCooldownVal'),
-      safetyAlertsList: document.getElementById('safetyAlertsList')
+      safetyAlertsList: document.getElementById('safetyAlertsList'),
+
+      // Milestone 2 — Sidebar & Drawer Elements
+      appSidebar: document.getElementById('appSidebar'),
+      mobileDrawerBackdrop: document.getElementById('mobileDrawerBackdrop'),
+      btnToggleSidebar: document.getElementById('btnToggleSidebar'),
+      btnMobileMenuToggle: document.getElementById('btnMobileMenuToggle'),
+      btnSidebarNewChat: document.getElementById('btnSidebarNewChat'),
+      btnSidebarHome: document.getElementById('btnSidebarHome'),
+      btnSidebarDetect: document.getElementById('btnSidebarDetect'),
+      btnSidebarReadText: document.getElementById('btnSidebarReadText'),
+      btnSidebarCollection: document.getElementById('btnSidebarCollection'),
+      btnSidebarManager: document.getElementById('btnSidebarManager'),
+      btnSidebarIdentity: document.getElementById('btnSidebarIdentity'),
+      btnSidebarAuth: document.getElementById('btnSidebarAuth'),
+      sidebarAuthStatus: document.getElementById('sidebarAuthStatus'),
+      sidebarServerStatus: document.getElementById('sidebarServerStatus'),
+
+      // Milestone 2 — Camera Modal Elements
+      cameraModal: document.getElementById('cameraModal'),
+      btnModalClose: document.getElementById('btnModalClose'),
+      modalVideo: document.getElementById('modalVideo'),
+      modalCanvas: document.getElementById('modalCanvas'),
+      modalShutterFlash: document.getElementById('modalShutterFlash'),
+      btnModalCapture: document.getElementById('btnModalCapture'),
+      cameraModalStateNotice: document.getElementById('cameraModalStateNotice'),
+      cameraModalError: document.getElementById('cameraModalError'),
+      cameraModalErrorText: document.getElementById('cameraModalErrorText'),
+
+      // Milestone 2 — Chat-First Container Elements
+      chatContainer: document.getElementById('chatContainer'),
+      chatWelcomeScreen: document.getElementById('chatWelcomeScreen'),
+      chatThread: document.getElementById('chatThread'),
+      chatInputContainer: document.getElementById('chatInputContainer'),
+      chatInput: document.getElementById('chatInput'),
+      btnOpenCameraModal: document.getElementById('btnOpenCameraModal'),
+      btnChatSend: document.getElementById('btnChatSend'),
+      btnChatStop: document.getElementById('btnChatStop'),
+      chatSnapshotContainer: document.getElementById('chatSnapshotContainer'),
+      chatSnapshotThumb: document.getElementById('chatSnapshotThumb'),
+      chatSnapshotRemove: document.getElementById('chatSnapshotRemove'),
+      chatPrivacyNotice: document.getElementById('chatPrivacyNotice'),
+      chatAuthBanner: document.getElementById('chatAuthBanner'),
+      btnChatAuthLogin: document.getElementById('btnChatAuthLogin'),
+      chatStatusIndicator: document.getElementById('chatStatusIndicator'),
+      chatStatusText: document.getElementById('chatStatusText')
     };
   }
 
@@ -650,6 +697,61 @@ class VisionXWebApp {
       this.identityService.getProfile().catch(() => {});
       this.managerService.fetchStats().catch(() => {});
 
+      // Inisialisasi CameraModal & ChatController (Milestone 2 Conversational AI)
+      try {
+        this.cameraModal = new CameraModal({
+          cameraService: this.cameraService,
+          inferenceService: this.inferenceService,
+          modalElement: this.elements.cameraModal,
+          videoElement: this.elements.modalVideo,
+          canvasElement: this.elements.modalCanvas,
+          captureBtn: this.elements.btnModalCapture,
+          closeBtn: this.elements.btnModalClose,
+          shutterElement: this.elements.modalShutterFlash,
+          stateNoticeElement: this.elements.cameraModalStateNotice,
+          errorElement: this.elements.cameraModalError,
+          errorTextElement: this.elements.cameraModalErrorText,
+          onSnapshot: (snapshotData) => {
+            if (this.chatController) {
+              this.chatController.setSnapshot(snapshotData.dataUrl, snapshotData.detections);
+            }
+          }
+        });
+
+        const aiProvider = this.visionAssistant ? this.visionAssistant.aiProvider : new BackendAIProvider({
+          onAuthRequired: () => this.promptAuthModal()
+        });
+
+        this.chatController = new ChatController({
+          aiProvider: aiProvider,
+          contextFn: () => this.buildCurrentVisionContext(),
+          onAuthRequired: () => this.promptAuthModal(),
+          onCameraModalRequested: () => {
+            if (this.cameraModal) {
+              this.cameraModal.open();
+            }
+          },
+          elements: {
+            welcomeScreen: this.elements.chatWelcomeScreen,
+            threadContainer: this.elements.chatThread,
+            inputElement: this.elements.chatInput,
+            sendBtn: this.elements.btnChatSend,
+            stopBtn: this.elements.btnChatStop,
+            cameraBtn: this.elements.btnOpenCameraModal,
+            snapshotContainer: this.elements.chatSnapshotContainer,
+            snapshotThumb: this.elements.chatSnapshotThumb,
+            snapshotRemoveBtn: this.elements.chatSnapshotRemove,
+            privacyNotice: this.elements.chatPrivacyNotice,
+            authBanner: this.elements.chatAuthBanner,
+            authLoginBtn: this.elements.btnChatAuthLogin,
+            statusIndicator: this.elements.chatStatusIndicator,
+            statusText: this.elements.chatStatusText
+          }
+        });
+      } catch (chatInitErr) {
+        console.warn('[VisionX] Peringatan inisialisasi ChatController/CameraModal:', chatInitErr);
+      }
+
       // Set initial view ke Home (Landing state)
       this.setMode('home');
     } catch (fatalErr) {
@@ -673,6 +775,59 @@ class VisionXWebApp {
         if (e.target === this.elements.brandLogo && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
           this.setMode('home');
+        }
+      });
+    }
+
+    // Milestone 2 Sidebar & Drawer Events
+    if (this.elements.btnSidebarNewChat) {
+      this.elements.btnSidebarNewChat.addEventListener('click', () => {
+        this.setMode('home');
+        if (this.chatController) {
+          this.chatController.newChat();
+        }
+        this.closeMobileDrawer();
+      });
+    }
+
+    const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item[data-mode]');
+    sidebarNavItems.forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const mode = item.getAttribute('data-mode');
+        if (mode) {
+          this.setMode(mode);
+          this.closeMobileDrawer();
+        }
+      });
+    });
+
+    if (this.elements.btnMobileMenuToggle) {
+      this.elements.btnMobileMenuToggle.addEventListener('click', () => {
+        this.toggleMobileDrawer();
+      });
+    }
+
+    if (this.elements.btnToggleSidebar) {
+      this.elements.btnToggleSidebar.addEventListener('click', () => {
+        this.toggleMobileDrawer();
+      });
+    }
+
+    if (this.elements.mobileDrawerBackdrop) {
+      this.elements.mobileDrawerBackdrop.addEventListener('click', () => {
+        this.closeMobileDrawer();
+      });
+    }
+
+    if (this.elements.btnSidebarAuth) {
+      this.elements.btnSidebarAuth.addEventListener('click', () => {
+        if (this.visionAssistant?.aiProvider?.isAuthenticated?.()) {
+          this.visionAssistant.aiProvider.clearToken();
+          this.updateAuthStatusUI();
+          this.showSuccess('Sesi gateway berhasil keluar.');
+        } else {
+          this.openAuthModal();
         }
       });
     }
@@ -1343,16 +1498,33 @@ class VisionXWebApp {
    * Membuka Chat Assistant dari Home tanpa mengaktifkan kamera otomatis
    */
   openChatAssistant() {
-    this.setMode('detection', { startCamera: false });
-    if (this.contextualPanelManager) {
-      this.contextualPanelManager.openTool('ask');
+    this.setMode('home');
+    if (this.chatController) {
+      this.chatController.focusInput();
     }
-    const askInput = document.getElementById('askVisionInput');
-    if (askInput) {
-      setTimeout(() => {
-        askInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        askInput.focus();
-      }, 80);
+  }
+
+  /**
+   * Toggle off-canvas drawer sidebar untuk tampilan mobile
+   */
+  toggleMobileDrawer() {
+    if (this.elements.appSidebar) {
+      const isOpen = this.elements.appSidebar.classList.toggle('open');
+      if (this.elements.mobileDrawerBackdrop) {
+        this.elements.mobileDrawerBackdrop.classList.toggle('active', isOpen);
+      }
+    }
+  }
+
+  /**
+   * Menutup off-canvas drawer sidebar untuk tampilan mobile
+   */
+  closeMobileDrawer() {
+    if (this.elements.appSidebar) {
+      this.elements.appSidebar.classList.remove('open');
+    }
+    if (this.elements.mobileDrawerBackdrop) {
+      this.elements.mobileDrawerBackdrop.classList.remove('active');
     }
   }
 
@@ -1401,6 +1573,19 @@ class VisionXWebApp {
           btn.setAttribute('aria-selected', 'false');
         }
       });
+
+    // Update sidebar navigation active states
+    document.querySelectorAll('.sidebar-nav-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.getAttribute('data-mode') === mode) {
+        item.classList.add('active');
+      }
+    });
+
+    // Close camera modal when switching modes
+    if (this.cameraModal && this.cameraModal.isOpen) {
+      this.cameraModal.close();
+    }
 
     // Sembunyikan semua kontrol panel
     if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
@@ -3793,6 +3978,16 @@ class VisionXWebApp {
     }
     if (this.elements.btnAuthToggle) {
       this.elements.btnAuthToggle.textContent = isAuthed ? 'Keluar' : '🔑 Login PIN';
+    }
+    if (this.elements.sidebarAuthStatus) {
+      this.elements.sidebarAuthStatus.textContent = isAuthed ? 'Authenticated' : 'Login Required';
+      this.elements.sidebarAuthStatus.className = `status-value ${isAuthed ? 'online' : 'offline'}`;
+    }
+    if (this.elements.btnSidebarAuth) {
+      this.elements.btnSidebarAuth.textContent = isAuthed ? 'Logout PIN' : '🔑 Login Gateway';
+    }
+    if (this.chatController) {
+      this.chatController.updateAuthStatus();
     }
   }
 

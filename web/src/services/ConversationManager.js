@@ -24,6 +24,32 @@ export class ConversationManager {
     this.createdAt = Date.now();
   }
 
+  get history() {
+    return this.turns;
+  }
+
+  isEmpty() {
+    return this.turns.length === 0;
+  }
+
+  getLastUserMessage() {
+    for (let i = this.turns.length - 1; i >= 0; i--) {
+      if (this.turns[i].role === 'user') return this.turns[i];
+    }
+    return null;
+  }
+
+  getLastAssistantMessage() {
+    for (let i = this.turns.length - 1; i >= 0; i--) {
+      if (this.turns[i].role === 'assistant') return this.turns[i];
+    }
+    return null;
+  }
+
+  getRecentHistory(count = this.defaultWindow) {
+    return this.getRecentTurns(count);
+  }
+
   /**
    * Membuat atau me-reset sesi percakapan baru
    * @param {string|null} [customSessionId=null]
@@ -40,21 +66,30 @@ export class ConversationManager {
    * Menambahkan pesan pengguna (User Turn)
    * @param {string} content Teks pertanyaan pengguna
    * @param {Object|null} [context=null] Snapshot VisionContext saat pertanyaan diajukan
+   * @param {string|Object|null} [snapshotRef=null] Referensi snapshot (thumbnail/dataUrl/id)
    * @returns {Object} Turn yang disimpan
    */
-  appendUserMessage(content, context = null) {
+  appendUserMessage(content, context = null, snapshotRef = null) {
     const text = String(content || '').trim();
     if (!text) {
       throw new Error('Pesan pengguna tidak boleh kosong.');
     }
 
-    const contextRef = context ? ConversationManager.extractContextRef(context) : null;
+    let actualContext = context;
+    let actualSnapshot = snapshotRef;
+    if (typeof context === 'string' && !snapshotRef) {
+      actualSnapshot = context;
+      actualContext = null;
+    }
+
+    const contextRef = actualContext ? ConversationManager.extractContextRef(actualContext) : null;
     const turn = {
       id: `turn_u_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       role: 'user',
       content: text,
       timestamp: Date.now(),
-      contextRef
+      contextRef,
+      snapshotRef: actualSnapshot || null
     };
 
     this.turns.push(turn);
@@ -65,7 +100,7 @@ export class ConversationManager {
   /**
    * Menambahkan pesan asisten (Assistant Turn)
    * @param {string} content Teks jawaban asisten
-   * @param {Object} [metadata={}] Metadata pelengkap (provider, latencyMs, contextRef)
+   * @param {Object} [metadata={}] Metadata pelengkap (provider, latencyMs, contextRef, snapshotRef)
    * @returns {Object} Turn yang disimpan
    */
   appendAssistantMessage(content, metadata = {}) {
@@ -88,7 +123,8 @@ export class ConversationManager {
       timestamp: Date.now(),
       provider: metadata.provider || 'visionx-assistant',
       latencyMs: typeof metadata.latencyMs === 'number' ? metadata.latencyMs : 0,
-      contextRef
+      contextRef,
+      snapshotRef: metadata.snapshotRef || null
     };
 
     this.turns.push(turn);
@@ -169,6 +205,80 @@ export class ConversationManager {
     }
 
     return largest;
+  }
+
+  /**
+   * Menyelesaikan referensi kata ganti (seperti 'yang tadi', 'itu', 'sebelumnya', 'posisinya')
+   * secara deterministik hanya berdasarkan riwayat visual yang tersimpan.
+   * @param {string} query
+   * @param {Array<Object>} [currentDetections=[]]
+   * @returns {Object|null}
+   */
+  resolveReference(query = '', currentDetections = []) {
+    const q = String(query || '').toLowerCase();
+    const hasPronoun = q.includes('tadi') || q.includes('itu') || q.includes('sebelumnya') || q.includes('barusan') || q.includes('posisinya') || q.includes('di mana');
+    if (!hasPronoun) return null;
+
+    const safeDets = Array.isArray(currentDetections) ? currentDetections : [];
+
+    // 1. Ekstrak potensi nama objek spesifik yang ditanyakan dalam query
+    const stopWords = new Set(['yang', 'tadi', 'itu', 'sebelumnya', 'barusan', 'posisinya', 'di', 'mana', 'ada', 'apa', 'letaknya', 'letak', 'ke', 'dari']);
+    const words = q.replace(/[^a-z0-9_\s]/g, ' ').split(/\s+/).filter(w => w && !stopWords.has(w));
+
+    // Jika ada kata benda spesifik dalam query (misal: "sepeda", "laptop")
+    if (words.length > 0) {
+      for (const word of words) {
+        // Cari di detections saat ini
+        const matchedDet = safeDets.find(d => {
+          const cName = (d.class_name || d.className || '').toLowerCase();
+          return cName === word || cName.includes(word);
+        });
+        if (matchedDet) return matchedDet;
+
+        // Cari di history context visual
+        const lastWithCtx = this.getLastTurnWithContext();
+        if (lastWithCtx?.contextRef?.detections) {
+          const matchedHist = lastWithCtx.contextRef.detections.find(d => {
+            const cName = (d.className || d.class_name || '').toLowerCase();
+            return cName === word || cName.includes(word);
+          });
+          if (matchedHist) return matchedHist;
+        }
+
+        // Periksa apakah kata ini pernah disebutkan di turn sebelumnya
+        let wasMentioned = false;
+        for (const t of this.turns) {
+          if (t.content.toLowerCase().includes(word)) {
+            wasMentioned = true;
+            break;
+          }
+        }
+        // Jika user spesifik menyebut nama objek tapi TIDAK pernah ada di history atau detections,
+        // jangan memaksakan objek lain (anti-halusinasi)
+        if (!wasMentioned) {
+          return null;
+        }
+      }
+    }
+
+    // 2. Jika kata ganti murni ("yang tadi itu di mana?", "posisinya di mana?"):
+    const historicalObj = this.getReferencedObjectFromHistory();
+    if (historicalObj) return historicalObj;
+
+    // 3. Jika ada detections saat ini, periksa apakah ada nama kelas objek yang pernah dibahas di conversation
+    if (safeDets.length > 0) {
+      for (let i = this.turns.length - 1; i >= 0; i--) {
+        const turnText = this.turns[i].content.toLowerCase();
+        for (const d of safeDets) {
+          const cName = (d.class_name || d.className || '').toLowerCase();
+          if (cName && turnText.includes(cName)) {
+            return d;
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
