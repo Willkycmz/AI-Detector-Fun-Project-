@@ -10,12 +10,122 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-C7U1GLtc.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BALxx6Fo.css">
+  <script type="module" crossorigin src="./assets/index-YLjYXsFf.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DHGOuHr1.css">
 </head>
 <body>
   <div class="app-container">
-    <!-- Navbar Header -->
+    <!-- =========================================================================
+         DESKTOP SIDEBAR / MOBILE DRAWER (Milestone 2 Chat-First Architecture)
+         ========================================================================= -->
+    <aside id="appSidebar" class="app-sidebar" aria-label="Navigasi Utama VisionX">
+      <div class="sidebar-header">
+        <div class="sidebar-brand" id="sidebarBrandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
+          <svg class="brand-icon" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="#0f172a" stroke="#06b6d4" stroke-width="6"/>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#a855f7" stroke-width="5"/>
+            <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+          </svg>
+          <div class="sidebar-brand-text">
+            <span class="sidebar-title">VisionX</span>
+            <span class="sidebar-tag">AI Vision</span>
+          </div>
+        </div>
+        <button type="button" id="btnCloseSidebar" class="btn-close-sidebar mobile-only" aria-label="Tutup Menu">✕</button>
+      </div>
+
+      <!-- Action: New Chat -->
+      <div class="sidebar-action-group">
+        <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Obrolan Baru">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>＋ New Chat</span>
+        </button>
+      </div>
+
+      <!-- Chat History Section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Riwayat Percakapan</div>
+        <div id="sidebarChatHistory" class="sidebar-chat-history">
+          <div class="chat-history-item active" id="activeChatSessionItem" role="button" tabindex="0">
+            <span class="item-icon">💬</span>
+            <span class="item-label">Sesi Obrolan Aktif</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tools & Labs Menu (Legacy Feature Access Preserved) -->
+      <div class="sidebar-section sidebar-tools-section">
+        <div class="sidebar-section-title">Tools &amp; Lab</div>
+        <nav class="sidebar-nav">
+          <button type="button" id="btnSidebarChat" class="sidebar-nav-item active" data-mode="home" aria-label="Buka Chat AI">
+            <span class="item-icon">💬</span>
+            <span>Chat Assistant</span>
+          </button>
+          <button type="button" id="btnSidebarDetect" class="sidebar-nav-item" data-mode="detection" aria-label="Buka Deteksi Kamera Live">
+            <span class="item-icon">📷</span>
+            <span>Vision Live</span>
+          </button>
+          <button type="button" id="btnSidebarReadText" class="sidebar-nav-item" data-mode="read_text" aria-label="Buka OCR Read Text">
+            <span class="item-icon">🔤</span>
+            <span>Read Text</span>
+          </button>
+          <button type="button" id="btnSidebarCollect" class="sidebar-nav-item" data-mode="collection" aria-label="Buka Dataset Collection">
+            <span class="item-icon">📦</span>
+            <span>Collection</span>
+          </button>
+          <button type="button" id="btnSidebarManager" class="sidebar-nav-item" data-mode="manager" aria-label="Buka Dataset Manager">
+            <span class="item-icon">🗂️</span>
+            <span>Dataset Manager</span>
+          </button>
+          <button type="button" id="btnSidebarIdentity" class="sidebar-nav-item" data-mode="identity" aria-label="Buka Identity Lab">
+            <span class="item-icon">👤</span>
+            <span>Identity Lab</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sidebar Footer: Server & Auth Status -->
+      <div class="sidebar-footer">
+        <div class="sidebar-status-row">
+          <span class="status-title">Server Gateway:</span>
+          <span id="sidebarServerStatus" class="badge badge-server-online">Online</span>
+        </div>
+        <div class="sidebar-status-row">
+          <span class="status-title">Autentikasi:</span>
+          <span id="sidebarAuthStatus" class="badge badge-auth-active">Authenticated</span>
+        </div>
+        <div class="sidebar-footer-actions">
+          <button type="button" id="btnSidebarLogin" class="btn btn-xs btn-outline" aria-label="Login PIN Akses">🔑 Login PIN</button>
+          <button type="button" id="btnSidebarLogout" class="btn btn-xs btn-outline hidden" aria-label="Logout">Keluar</button>
+          <button type="button" id="btnSidebarTheme" class="btn btn-xs btn-icon" aria-label="Ganti Tema">🌙</button>
+        </div>
+      </div>
+    </aside>
+    <div id="sidebarBackdrop" class="sidebar-backdrop hidden" aria-hidden="true"></div>
+
+    <!-- Main Application Layout Area -->
+    <div class="app-main-layout">
+      <!-- Mobile Header Bar (< 768px) -->
+      <div class="mobile-chat-header mobile-only">
+        <button type="button" id="btnMobileMenu" class="btn btn-icon btn-hamburger" aria-label="Buka Menu Navigasi">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="mobile-brand-title">
+          <span class="brand-name">VisionX</span>
+          <span class="brand-tag">AI Vision</span>
+        </div>
+        <div class="mobile-header-status">
+          <span id="mobileStatusDot" class="status-dot green" title="Gateway Online"></span>
+          <button type="button" id="btnMobileNewChat" class="btn btn-icon btn-mobile-new" title="New Chat" aria-label="Mulai Obrolan Baru">＋</button>
+        </div>
+      </div>
     <header class="app-header">
       <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Beranda">
         <svg class="brand-icon" viewBox="0 0 100 100">
@@ -177,136 +287,230 @@
       <span id="successMessage">Operasi berhasil.</span>
     </div>
 
-    <!-- Home / Landing Page View (V1.7 Entry State) -->
-    <section id="homeView" class="home-view" aria-label="VisionX Home and Feature Directory">
-      <div class="home-hero">
-        <div class="home-badge">VisionX AI Platform &bull; V1.7</div>
-        <h2 class="home-title">Edge AI Vision &amp; Spatial Perception</h2>
-        <p class="home-description">
-          Platform visi komputer cerdas lokal dengan deteksi objek real-time, pembaca teks OCR,
-          asisten percakapan multimodal, pengenalan identitas, dan manajemen dataset.
-        </p>
-      </div>
-
-      <div class="home-grid" role="list">
-        <!-- Card 1: Detection Mode -->
-        <div class="home-card card-detection" data-nav-target="detection" role="button" tabindex="0" aria-label="Buka Detection Mode">
-          <div class="home-card-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-              <line x1="12" y1="2" x2="12" y2="5"></line>
-              <line x1="12" y1="19" x2="12" y2="22"></line>
-              <line x1="2" y1="12" x2="5" y2="12"></line>
-              <line x1="19" y1="12" x2="22" y2="12"></line>
-            </svg>
+    <!-- Home / Conversational AI View (Milestone 2 Main Experience) -->
+    <section id="homeView" class="home-view chat-first-shell" aria-label="VisionX Conversational AI Interface">
+      <!-- Main Chat Experience Container -->
+      <div class="chat-container" id="chatContainer">
+        <!-- Welcome Screen (Visible when chat thread has no messages) -->
+        <div id="chatWelcomeScreen" class="chat-welcome-screen">
+          <div class="welcome-badge">
+            <span class="badge-dot green"></span>
+            <span>VISIONX • MULTIMODAL AI AGENT</span>
           </div>
-          <div class="home-card-content">
-            <div class="home-card-header">
-              <h3 class="home-card-title">Detection Mode</h3>
-              <span class="home-card-tag camera-tag">Kamera Live</span>
+          <h2 class="welcome-title">AI Vision Assistant</h2>
+          <p class="welcome-desc">
+            Asisten percakapan cerdas yang siap berdiskusi, memahami konteks visual VisionX secara real-time,
+            menganalisis snapshot kamera dengan deteksi objek YOLOv8 lokal, serta mereferensikan teks OCR, scene temporal, dan peringatan keselamatan.
+          </p>
+
+          <!-- Quick Prompts (4 Interactive Buttons) -->
+          <div class="quick-prompts-card" aria-label="Pertanyaan Cepat">
+            <div class="quick-prompts-header">
+              <span class="quick-prompts-icon">💡</span>
+              <span class="quick-prompts-label">Mulai dengan pertanyaan cepat:</span>
             </div>
-            <p class="home-card-desc">Deteksi objek realtime YOLOv8, pelacakan spasial presisi, dan sistem peringatan keselamatan lingkungan.</p>
-            <div class="home-card-action">
-              <span class="action-btn-text">Buka Deteksi &rarr;</span>
+            <div class="quick-prompts-grid">
+              <button type="button" class="quick-prompt-btn" data-prompt="Apa yang ada di depan kamera?" aria-label="Tanyakan: Apa yang ada di depan kamera?">
+                <span class="prompt-icon">🔍</span>
+                <span class="prompt-text">Apa yang ada di depan kamera?</span>
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Jelaskan situasi di sekitar." aria-label="Tanyakan: Jelaskan situasi di sekitar.">
+                <span class="prompt-icon">🌐</span>
+                <span class="prompt-text">Jelaskan situasi di sekitar.</span>
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Apa yang berubah tadi?" aria-label="Tanyakan: Apa yang berubah tadi?">
+                <span class="prompt-icon">⏱️</span>
+                <span class="prompt-text">Apa yang berubah tadi?</span>
+              </button>
+              <button type="button" class="quick-prompt-btn" data-prompt="Apakah ada peringatan?" aria-label="Tanyakan: Apakah ada peringatan?">
+                <span class="prompt-icon">🛡️</span>
+                <span class="prompt-text">Apakah ada peringatan?</span>
+              </button>
             </div>
           </div>
         </div>
 
-        <!-- Card 2: Chat Assistant -->
-        <div class="home-card card-chat" data-nav-target="chat" role="button" tabindex="0" aria-label="Buka Chat Assistant">
-          <div class="home-card-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <div class="home-card-content">
-            <div class="home-card-header">
-              <h3 class="home-card-title">Chat Assistant</h3>
-              <span class="home-card-tag ai-tag">AI Multimodal</span>
-            </div>
-            <p class="home-card-desc">Tanyakan objek di sekitar, riwayat kejadian, atau analisis visual secara interaktif tanpa meminta izin kamera otomatis.</p>
-            <div class="home-card-action">
-              <span class="action-btn-text">Buka Chat Assistant &rarr;</span>
-            </div>
-          </div>
-        </div>
+        <!-- Message Thread -->
+        <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
 
-        <!-- Card 3: Identity Lab -->
-        <div class="home-card card-identity" data-nav-target="identity" role="button" tabindex="0" aria-label="Buka Identity Lab">
-          <div class="home-card-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
+        <!-- Chat Bottom Input Bar -->
+        <div class="chat-input-container" id="chatInputContainer">
+          <!-- Privacy Disclosure Notice -->
+          <div class="chat-privacy-disclosure" role="note" aria-label="Pemberitahuan Privasi">
+            <span class="disclosure-badge">🛡️ Privasi:</span>
+            <span class="disclosure-text">Deteksi objek YOLOv8 berjalan lokal di browser. Snapshot frame akan dikirim ke VisionX Backend &amp; provider AI terkonfigurasi.</span>
           </div>
-          <div class="home-card-content">
-            <div class="home-card-header">
-              <h3 class="home-card-title">Identity Lab</h3>
-              <span class="home-card-tag biometrics-tag">Biometrik Wajah</span>
-            </div>
-            <p class="home-card-desc">Kelola profil pengembang dan foto referensi wajah SFace. Mendukung impor foto lokal tanpa kamera atau snapshot webcam.</p>
-            <div class="home-card-action">
-              <span class="action-btn-text">Buka Identity Lab &rarr;</span>
-            </div>
-          </div>
-        </div>
 
-        <!-- Card 4: Dataset Manager -->
-        <div class="home-card card-manager" data-nav-target="manager" role="button" tabindex="0" aria-label="Buka Dataset Manager">
-          <div class="home-card-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              <line x1="12" y1="11" x2="12" y2="17"></line>
-              <line x1="9" y1="14" x2="15" y2="14"></line>
-            </svg>
-          </div>
-          <div class="home-card-content">
-            <div class="home-card-header">
-              <h3 class="home-card-title">Dataset Manager</h3>
-              <span class="home-card-tag offline-tag">Zero Camera &bull; File Murni</span>
-            </div>
-            <p class="home-card-desc">Jelajahi dataset citra disk lokal, filter kelas gambar, pencarian, dan sistem pemulihan Recycle Bin yang aman.</p>
-            <div class="home-card-action">
-              <span class="action-btn-text">Buka Dataset Manager &rarr;</span>
+          <!-- Snapshot Thumbnail Preview Container (Hidden by default) -->
+          <div id="snapshotPreviewContainer" class="snapshot-preview-container hidden" aria-live="polite">
+            <div class="snapshot-preview-card">
+              <img id="snapshotThumbnail" src="" alt="Pratinjau Snapshot Kamera" class="snapshot-thumbnail-img" />
+              <div class="snapshot-preview-info">
+                <span id="snapshotInfoText" class="snapshot-info-title">Snapshot Kamera Siap</span>
+                <span class="snapshot-info-sub">Akan dikirim bersama pesan Anda</span>
+              </div>
+              <button type="button" id="btnRemoveSnapshot" class="btn-remove-snapshot" title="Hapus snapshot ini" aria-label="Hapus snapshot">✕ Hapus</button>
             </div>
           </div>
-        </div>
 
-        <!-- Card 5: Read Text -->
-        <div class="home-card card-readtext" data-nav-target="read_text" role="button" tabindex="0" aria-label="Buka Read Text Mode">
-          <div class="home-card-icon">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-              <line x1="9" y1="7" x2="15" y2="7"></line>
-              <line x1="9" y1="11" x2="13" y2="11"></line>
-            </svg>
-          </div>
-          <div class="home-card-content">
-            <div class="home-card-header">
-              <h3 class="home-card-title">Read Text Mode</h3>
-              <span class="home-card-tag ocr-tag">OCR &amp; Suara</span>
+          <!-- Input Action Row -->
+          <div class="chat-input-row">
+            <button type="button" id="btnOpenCamModal" class="btn btn-cam-trigger" title="Buka Kamera untuk Snapshot" aria-label="Buka Kamera untuk Snapshot">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </button>
+            <div class="input-field-wrapper">
+              <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Tanyakan apa pun atau ambil snapshot kamera..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
             </div>
-            <p class="home-card-desc">Pindai teks dokumen, kemasan, atau layar dari tangkapan kamera lalu bacakan dengan sintesis suara Bahasa Indonesia.</p>
-            <div class="home-card-action">
-              <span class="action-btn-text">Buka Read Text &rarr;</span>
-            </div>
+            <button type="button" id="btnStopGeneration" class="btn btn-stop-gen hidden" title="Hentikan Jawaban AI" aria-label="Hentikan Generasi">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+              </svg>
+            </button>
+            <button type="button" id="btnSendChatMessage" class="btn btn-send-chat" title="Kirim Pesan (Enter)" aria-label="Kirim Pesan">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- Quick Platform Status Footer in Home -->
-      <div class="home-footer-status">
-        <div class="status-item">
-          <span class="status-dot green"></span>
-          <span>Vision Core: Local ONNX Runtime Web Ready</span>
+      <!-- Collapsible Legacy Tools Directory for feature preservation -->
+      <details class="home-legacy-tools-wrapper">
+        <summary class="tools-summary-toggle">🛠️ Direktori Fitur &amp; Lab Kamera...</summary>
+        <div class="home-hero">
+          <div class="home-badge">VisionX AI Platform &bull; V1.7</div>
+          <h2 class="home-title">Edge AI Vision &amp; Spatial Perception</h2>
+          <p class="home-description">
+            Platform visi komputer cerdas lokal dengan deteksi objek real-time, pembaca teks OCR,
+            asisten percakapan multimodal, pengenalan identitas, dan manajemen dataset.
+          </p>
         </div>
-        <div class="status-item">
-          <span class="status-dot cyan"></span>
-          <span>Edge Vision: Local Browser YOLO • Multimodal Gateway</span>
+
+        <div class="home-grid" role="list">
+          <!-- Card 1: Detection Mode -->
+          <div class="home-card card-detection" data-nav-target="detection" role="button" tabindex="0" aria-label="Buka Detection Mode">
+            <div class="home-card-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
+                <line x1="12" y1="2" x2="12" y2="5"></line>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+                <line x1="2" y1="12" x2="5" y2="12"></line>
+                <line x1="19" y1="12" x2="22" y2="12"></line>
+              </svg>
+            </div>
+            <div class="home-card-content">
+              <div class="home-card-header">
+                <h3 class="home-card-title">Detection Mode</h3>
+                <span class="home-card-tag camera-tag">Kamera Live</span>
+              </div>
+              <p class="home-card-desc">Deteksi objek realtime YOLOv8, pelacakan spasial presisi, dan sistem peringatan keselamatan lingkungan.</p>
+              <div class="home-card-action">
+                <span class="action-btn-text">Buka Deteksi &rarr;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Chat Assistant -->
+          <div class="home-card card-chat" data-nav-target="chat" role="button" tabindex="0" aria-label="Buka Chat Assistant">
+            <div class="home-card-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="home-card-content">
+              <div class="home-card-header">
+                <h3 class="home-card-title">Chat Assistant</h3>
+                <span class="home-card-tag ai-tag">AI Multimodal</span>
+              </div>
+              <p class="home-card-desc">Tanyakan objek di sekitar, riwayat kejadian, atau analisis visual secara interaktif tanpa meminta izin kamera otomatis.</p>
+              <div class="home-card-action">
+                <span class="action-btn-text">Buka Chat Assistant &rarr;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Identity Lab -->
+          <div class="home-card card-identity" data-nav-target="identity" role="button" tabindex="0" aria-label="Buka Identity Lab">
+            <div class="home-card-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <div class="home-card-content">
+              <div class="home-card-header">
+                <h3 class="home-card-title">Identity Lab</h3>
+                <span class="home-card-tag biometrics-tag">Biometrik Wajah</span>
+              </div>
+              <p class="home-card-desc">Kelola profil pengembang dan foto referensi wajah SFace. Mendukung impor foto lokal tanpa kamera atau snapshot webcam.</p>
+              <div class="home-card-action">
+                <span class="action-btn-text">Buka Identity Lab &rarr;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Dataset Manager -->
+          <div class="home-card card-manager" data-nav-target="manager" role="button" tabindex="0" aria-label="Buka Dataset Manager">
+            <div class="home-card-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+            </div>
+            <div class="home-card-content">
+              <div class="home-card-header">
+                <h3 class="home-card-title">Dataset Manager</h3>
+                <span class="home-card-tag offline-tag">Zero Camera &bull; File Murni</span>
+              </div>
+              <p class="home-card-desc">Jelajahi dataset citra disk lokal, filter kelas gambar, pencarian, dan sistem pemulihan Recycle Bin yang aman.</p>
+              <div class="home-card-action">
+                <span class="action-btn-text">Buka Dataset Manager &rarr;</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5: Read Text -->
+          <div class="home-card card-readtext" data-nav-target="read_text" role="button" tabindex="0" aria-label="Buka Read Text Mode">
+            <div class="home-card-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                <line x1="9" y1="7" x2="15" y2="7"></line>
+                <line x1="9" y1="11" x2="13" y2="11"></line>
+              </svg>
+            </div>
+            <div class="home-card-content">
+              <div class="home-card-header">
+                <h3 class="home-card-title">Read Text Mode</h3>
+                <span class="home-card-tag ocr-tag">OCR &amp; Suara</span>
+              </div>
+              <p class="home-card-desc">Pindai teks dokumen, kemasan, atau layar dari tangkapan kamera lalu bacakan dengan sintesis suara Bahasa Indonesia.</p>
+              <div class="home-card-action">
+                <span class="action-btn-text">Buka Read Text &rarr;</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+
+        <!-- Quick Platform Status Footer in Home -->
+        <div class="home-footer-status">
+          <div class="status-item">
+            <span class="status-dot green"></span>
+            <span>Vision Core: Local ONNX Runtime Web Ready</span>
+          </div>
+          <div class="status-item">
+            <span class="status-dot cyan"></span>
+            <span>Edge Vision: Local Browser YOLO • Multimodal Gateway</span>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- Main Stage: Video, Shutter Flash, & Canvas Overlay -->
@@ -1919,6 +2123,7 @@
     <footer class="app-footer">
       VisionX V1.5 Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX V2 Model
     </footer>
+    </div> <!-- .app-main-layout -->
   </div>
 
   <!-- Mobile Bottom Navigation Bar (V1.5 Mobile-First UX) -->
@@ -2000,6 +2205,51 @@
         <button type="button" id="btnSubmitAuthModal" class="btn btn-primary">
           <span class="btn-text">Masuk &amp; Dapatkan Token</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       VISIONX CAMERA MODAL (Milestone 2 Dedicated Lazy Camera & YOLO Overlay)
+       ========================================================================= -->
+  <div id="cameraModal" class="camera-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cameraModalTitle" aria-hidden="true">
+    <div class="camera-modal-card">
+      <!-- Modal Header -->
+      <div class="camera-modal-header">
+        <div class="modal-title-group">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <h2 id="cameraModalTitle" class="camera-modal-title">Vision Snapshot</h2>
+          <span id="cameraModalStatusBadge" class="modal-status-badge status-idle">IDLE</span>
+        </div>
+        <button type="button" id="btnCloseCameraModal" class="btn-close-modal" aria-label="Tutup Modal Kamera" title="Tutup Kamera (Esc)">✕</button>
+      </div>
+
+      <!-- Modal Live Camera Viewport -->
+      <div class="camera-modal-viewport">
+        <video id="cameraModalVideo" class="camera-modal-video" autoplay playsinline muted></video>
+        <canvas id="cameraModalCanvas" class="camera-modal-canvas"></canvas>
+        <div id="cameraModalShutterFlash" class="camera-modal-shutter-flash"></div>
+        <div id="cameraModalOverlay" class="camera-modal-overlay hidden" aria-live="polite"></div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="camera-modal-footer">
+        <div class="camera-modal-status-text">
+          <span class="status-bullet"></span>
+          <span id="cameraModalStatusMessage">Deteksi YOLOv8 berjalan lokal di browser (7 kelas)</span>
+        </div>
+        <div class="camera-modal-actions">
+          <button type="button" id="btnModalTakeSnapshot" class="btn btn-take-snapshot" disabled aria-label="Ambil Snapshot">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+            <span>Take Snapshot</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
