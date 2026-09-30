@@ -30,9 +30,10 @@ export class DatasetManagerService {
     };
   }
 
-  async fetchStats() {
+  async fetchStats(timeoutMs = 6000) {
     try {
-      const res = await fetch(ENDPOINTS.MANAGER_STATS);
+      const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+      const res = await fetch(ENDPOINTS.MANAGER_STATS, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -41,11 +42,12 @@ export class DatasetManagerService {
       }
     } catch (e) {
       console.warn('[DatasetManagerService] Gagal memuat stats:', e);
+      throw e;
     }
     return this.stats;
   }
 
-  async fetchList(options = {}) {
+  async fetchList(options = {}, timeoutMs = 6000) {
     const view = options.view || this.currentView;
     const cls = options.class || this.selectedClass;
     const src = options.source || this.selectedSource;
@@ -58,7 +60,8 @@ export class DatasetManagerService {
     if (search) params.set('search', search);
 
     try {
-      const res = await fetch(`${ENDPOINTS.MANAGER_LIST}?${params.toString()}`);
+      const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+      const res = await fetch(`${ENDPOINTS.MANAGER_LIST}?${params.toString()}`, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {

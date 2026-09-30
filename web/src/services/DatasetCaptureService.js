@@ -723,7 +723,8 @@ export class DatasetCaptureService {
   async deleteMultiple(filenames = []) {
     const items = filenames.map(fn => {
       const meta = this.sourcesMetadata.items ? this.sourcesMetadata.items[fn] : null;
-      const cls = meta ? meta.class : this.currentClass;
+      const rec = this.recentCaptures.find(c => c.filename === fn);
+      const cls = (meta && meta.class) ? meta.class : (rec ? rec.className : this.currentClass);
       return { filename: fn, className: cls };
     });
     const deleted = await this.deleteMultipleImages(items);

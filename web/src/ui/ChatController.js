@@ -51,6 +51,7 @@ export class ChatController {
     onAuthRequired = null,
     onOpenCameraModal = null,
     onCameraModalRequested = null,
+    onError = null,
     elements = null
   } = {}) {
     this.aiProvider = aiProvider;
@@ -61,6 +62,11 @@ export class ChatController {
     this.voiceEngine = voiceEngine || null;
     this.onRequireAuth = onRequireAuth || onAuthRequired || null;
     this.onOpenCameraModal = onOpenCameraModal || onCameraModalRequested || null;
+    this.onError = onError || ((msg) => {
+      if (typeof window !== 'undefined' && window.visionXApp && typeof window.visionXApp.showError === 'function') {
+        window.visionXApp.showError(msg);
+      }
+    });
 
     this.state = ChatState.IDLE;
     this.activeSnapshot = null; // { dataUrl, detections, width, height }
@@ -778,8 +784,26 @@ export class ChatController {
       const latencyMs = Math.round(performance.now() - startTime);
       console.warn('[ChatController] Error saat proses chat:', err);
 
-      let isCancelled = (err.name === 'AbortError') || (err.message && err.message.includes('dihentikan oleh pengguna'));
-      let friendlyError = this.createFriendlyError(err);
+      const isCancelled = (err.name === 'AbortError') ||
+        (err.message && (
+          err.message.includes('dihentikan oleh pengguna') ||
+          err.message.includes('dibatalkan oleh pengguna') ||
+          err.message.includes('Login dibatalkan')
+        ));
+      const friendlyError = this.createFriendlyError(err);
+
+      if (isCancelled) {
+        // Hapus bubble streaming sementara agar tidak meninggalkan pesan error ganjil di chat
+        const streamingBubble = document.getElementById(assistantTurnId);
+        if (streamingBubble) {
+          streamingBubble.remove();
+        }
+        this._setState(ChatState.IDLE);
+        if (typeof this.onError === 'function') {
+          this.onError(`Gagal — ${err.message || 'Login dibatalkan oleh pengguna.'}`);
+        }
+        return;
+      }
 
       if (err.status === 401 || (err.message && (err.message.includes('Autentikasi') || err.message.includes('401') || err.message.includes('kedaluwarsa') || err.message.includes('Unauthorized')))) {
         this.updateAuthStatus(false);
@@ -796,12 +820,10 @@ export class ChatController {
         latencyMs
       });
 
-      if (isCancelled) {
-        this._setState(ChatState.CANCELLED);
-        this._renderErrorAssistantBubble(assistantTurnId, accumulatedText + ' [Pemberhentian oleh pengguna]');
-      } else {
-        this._setState(ChatState.ERROR, friendlyError);
-        this._renderErrorAssistantBubble(assistantTurnId, friendlyError, true);
+      this._setState(ChatState.ERROR, friendlyError);
+      this._renderErrorAssistantBubble(assistantTurnId, friendlyError, true);
+      if (typeof this.onError === 'function') {
+        this.onError(`Gagal — ${friendlyError}`);
       }
     } finally {
       this.abortController = null;

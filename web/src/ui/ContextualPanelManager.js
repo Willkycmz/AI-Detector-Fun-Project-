@@ -174,6 +174,12 @@ export class ContextualPanelManager {
     const panel = this.panels.get(toolId);
     const btn = this.buttons.get(toolId);
 
+    // Ensure raw debug panel is closed to guarantee strict single-panel exclusivity
+    const debugPanel = document.getElementById('debugPanel');
+    if (debugPanel && !debugPanel.classList.contains('hidden')) {
+      debugPanel.classList.add('hidden');
+    }
+
     if (panel) {
       panel.classList.add('open');
       panel.setAttribute('aria-hidden', 'false');
@@ -189,6 +195,22 @@ export class ContextualPanelManager {
     if (typeof this.onPanelChange === 'function') {
       this.onPanelChange(toolId, true);
     }
+  }
+
+  /**
+   * Alias for openTool for backward compatibility
+   * @param {string} toolId
+   */
+  openPanel(toolId) {
+    return this.openTool(toolId);
+  }
+
+  /**
+   * Alias for closeAll for backward compatibility
+   * @param {string} [toolId]
+   */
+  closePanel(toolId) {
+    return this.closeAll();
   }
 
   /**

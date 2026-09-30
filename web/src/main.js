@@ -719,6 +719,7 @@ class VisionXWebApp {
           aiProvider: aiProvider,
           contextFn: () => this.buildCurrentVisionContext(),
           onAuthRequired: () => this.promptAuthModal(),
+          onError: (msg) => this.showError(msg),
           onCameraModalRequested: () => {
             if (this.cameraModal) {
               this.cameraModal.open();
@@ -1746,6 +1747,11 @@ class VisionXWebApp {
       this.cameraModal.close();
     }
 
+    // Reset contextual panels when switching modes to prevent lingering panels
+    if (this.contextualPanelManager && options.closeContextualPanels !== false) {
+      this.contextualPanelManager.closeAll();
+    }
+
     // Update header breadcrumb title
     const breadcrumbs = {
       home: 'Asisten AI',
@@ -1848,6 +1854,8 @@ class VisionXWebApp {
         this.elements.watermarkMode.textContent = 'DETECTION';
         this.elements.watermarkExtra.textContent = '';
       }
+
+      this.updateCameraToggleButtonVisibility();
 
       // Lazy camera start
       if (options.startCamera !== false) {
@@ -1977,6 +1985,8 @@ class VisionXWebApp {
         this.elements.watermarkExtra.textContent = '[OCR & TTS]';
       }
 
+      this.updateCameraToggleButtonVisibility();
+
       // Lazy camera start
       if (options.startCamera !== false) {
         if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
@@ -1990,29 +2000,77 @@ class VisionXWebApp {
   // MODULE 1 — DATASET MANAGER RENDERING & ACTIONS (V0.6)
   // ==========================================================================
   async loadManagerData() {
+    const container = this.elements.mgrGridContainer;
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-gallery-text" style="grid-column: 1/-1; padding: 36px 16px;">
+          <div class="spinner-small" style="margin: 0 auto 10px auto;"></div>
+          Memuat dataset dari disk...
+        </div>
+      `;
+    }
+
     try {
       const stats = await this.managerService.fetchStats();
-      this.elements.mgrStatTotalImages.textContent = stats.totalImages;
-      this.elements.mgrStatTotalSize.textContent = stats.formattedTotalSize;
-      this.elements.mgrStatTotalClasses.textContent = stats.classesCount;
-      this.elements.mgrStatTrashCount.textContent = stats.trashCount;
-      this.elements.mgrTrashBadgeCount.textContent = stats.trashCount;
+      if (stats) {
+        this.elements.mgrStatTotalImages.textContent = stats.totalImages || 0;
+        this.elements.mgrStatTotalSize.textContent = stats.formattedTotalSize || '0 MB';
+        this.elements.mgrStatTotalClasses.textContent = stats.classesCount || 0;
+        this.elements.mgrStatTrashCount.textContent = stats.trashCount || 0;
+        this.elements.mgrTrashBadgeCount.textContent = stats.trashCount || 0;
 
-      // Populate class filter dropdown
-      const selClass = this.elements.mgrSelectClass;
-      const currentVal = selClass.value;
-      let opts = '<option value="all">Semua Kelas</option>';
-      Object.keys(stats.classCounts || {}).forEach(cls => {
-        opts += `<option value="${cls}">${cls} (${stats.classCounts[cls]})</option>`;
-      });
-      selClass.innerHTML = opts;
-      if (currentVal) selClass.value = currentVal;
+        // Populate class filter dropdown
+        const selClass = this.elements.mgrSelectClass;
+        if (selClass) {
+          const currentVal = selClass.value;
+          let opts = '<option value="all">Semua Kelas</option>';
+          Object.keys(stats.classCounts || {}).forEach(cls => {
+            opts += `<option value="${cls}">${cls} (${stats.classCounts[cls]})</option>`;
+          });
+          selClass.innerHTML = opts;
+          if (currentVal) selClass.value = currentVal;
+        }
+      }
 
       await this.managerService.fetchList();
       this.renderManagerGrid();
       this.updateManagerSelectionUI();
     } catch (e) {
       console.error('[VisionX] Gagal memuat data manager:', e);
+      this.renderManagerError(e);
+    }
+  }
+
+  renderManagerError(err) {
+    const container = this.elements.mgrGridContainer;
+    if (!container) return;
+    const isTimeout = err?.name === 'TimeoutError' || err?.message?.toLowerCase().includes('timeout');
+    const msg = isTimeout 
+      ? 'Koneksi ke backend dataset timeout (waktu habis).' 
+      : (err?.message || 'Gagal memuat dataset dari disk.');
+
+    container.innerHTML = `
+      <div class="manager-error-state" style="grid-column: 1/-1;">
+        <svg class="error-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <h4 class="error-title">Gagal Memuat Dataset dari Disk</h4>
+        <p class="error-desc">${msg}</p>
+        <button type="button" id="btnMgrRetryFetch" class="btn btn-sm btn-outline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Coba Lagi
+        </button>
+      </div>
+    `;
+
+    const retryBtn = container.querySelector('#btnMgrRetryFetch');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => this.loadManagerData());
     }
   }
 
@@ -2033,9 +2091,50 @@ class VisionXWebApp {
 
     if (!items || items.length === 0) {
       const isTrash = this.managerService.currentView === 'trash';
-      container.innerHTML = `<div class="empty-gallery-text" style="grid-column: 1/-1;">
-        ${isTrash ? 'Recycle Bin kosong. Tidak ada file yang di-soft-delete.' : 'Tidak ditemukan citra dataset pada disk.'}
-      </div>`;
+      container.innerHTML = `
+        <div class="manager-empty-state" style="grid-column: 1/-1;">
+          <svg class="empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <line x1="12" y1="11" x2="12" y2="17"></line>
+            <line x1="9" y1="14" x2="15" y2="14"></line>
+          </svg>
+          <h4 class="empty-title">${isTrash ? 'Recycle Bin Kosong' : 'Belum Ada Dataset'}</h4>
+          <p class="empty-desc">
+            ${isTrash 
+              ? 'Tidak ada item yang telah di-soft delete di Recycle Bin.' 
+              : 'Belum ada dataset gambar pada disk. Impor foto dari komputer atau gunakan kamera di Collection Mode untuk memulai.'}
+          </p>
+          ${!isTrash ? `
+            <div class="empty-actions">
+              <button type="button" id="btnEmptyImportFiles" class="btn btn-sm btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                Import File
+              </button>
+              <button type="button" id="btnEmptyImportFolder" class="btn btn-sm btn-secondary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Import Folder
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      if (!isTrash) {
+        const btnFiles = container.querySelector('#btnEmptyImportFiles');
+        const btnFolder = container.querySelector('#btnEmptyImportFolder');
+        if (btnFiles && this.elements.inputMgrImportFiles) {
+          btnFiles.addEventListener('click', () => this.elements.inputMgrImportFiles.click());
+        }
+        if (btnFolder && this.elements.inputMgrImportFolder) {
+          btnFolder.addEventListener('click', () => this.elements.inputMgrImportFolder.click());
+        }
+      }
       return;
     }
 
@@ -3087,8 +3186,35 @@ class VisionXWebApp {
     }
   }
 
+  updateCameraToggleButtonVisibility(overrideStatus = null) {
+    const status = overrideStatus || this._lastCameraStatus || (this.cameraService && this.cameraService.state && this.cameraService.state.status) || 'idle';
+    const isCameraActive = status === 'connected';
+    const isConnecting = status === 'connecting';
+
+    if (this.elements.btnStart) {
+      if (isCameraActive) {
+        this.elements.btnStart.classList.add('hidden');
+        this.elements.btnStart.disabled = true;
+      } else {
+        this.elements.btnStart.classList.remove('hidden');
+        this.elements.btnStart.disabled = isConnecting;
+      }
+    }
+
+    if (this.elements.btnStop) {
+      if (isCameraActive) {
+        this.elements.btnStop.classList.remove('hidden');
+        this.elements.btnStop.disabled = false;
+      } else {
+        this.elements.btnStop.classList.add('hidden');
+        this.elements.btnStop.disabled = true;
+      }
+    }
+  }
+
   handleStopCamera() {
     this._cameraSessionId++; // Invalidate any in-flight camera start session
+    this._lastCameraStatus = 'disconnected';
     this.stopRenderLoop();
     if (this.cameraService) {
       this.cameraService.stop();
@@ -3100,40 +3226,36 @@ class VisionXWebApp {
     this.fpsSmooth = 0;
     if (this.elements.detectionCountValue) this.elements.detectionCountValue.textContent = '0';
     this.updateDebugTable([], 0, 0);
+    this.updateCameraToggleButtonVisibility('disconnected');
   }
 
   handleCameraStateChange(state) {
     const { status, resolution } = state;
+    this._lastCameraStatus = status;
     const badge = this.elements.cameraBadge;
     const text = this.elements.cameraStatusText;
 
     badge.className = 'badge';
     if (status === 'connected') {
       badge.classList.add('badge-connected');
-      text.textContent = `Camera Connected (${resolution.width}x${resolution.height})`;
+      text.textContent = `Camera Connected (${resolution?.width || 1280}x${resolution?.height || 720})`;
       this.resetCameraPlaceholder();
       this.elements.placeholder.classList.add('hidden');
-      this.elements.btnStart.disabled = true;
-      this.elements.btnStop.disabled = false;
     } else if (status === 'connecting') {
       badge.classList.add('badge-connecting');
       text.textContent = 'Meminta Akses Kamera...';
-      this.elements.btnStart.disabled = true;
-      this.elements.btnStop.disabled = true;
     } else if (status === 'error') {
       badge.classList.add('badge-error');
       text.textContent = 'Kamera Error';
       this.elements.placeholder.classList.remove('hidden');
-      this.elements.btnStart.disabled = false;
-      this.elements.btnStop.disabled = true;
     } else {
       badge.classList.add('badge-disconnected');
       text.textContent = 'Kamera Terputus';
       this.resetCameraPlaceholder();
       this.elements.placeholder.classList.remove('hidden');
-      this.elements.btnStart.disabled = false;
-      this.elements.btnStop.disabled = true;
     }
+
+    this.updateCameraToggleButtonVisibility(status);
   }
 
   handleCameraError(err) {
