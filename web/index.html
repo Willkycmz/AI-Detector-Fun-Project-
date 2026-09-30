@@ -19,8 +19,8 @@
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="/ort.min.js"></script>
 </head>
-<body class="theme-light">
-  <div class="app-container">
+<body class="theme-light" data-mode="home">
+  <div class="app-container" data-mode="home">
     <!-- =========================================================================
          DESKTOP SIDEBAR / MOBILE DRAWER (Clean Neutral AI Assistant Architecture)
          ========================================================================= -->
@@ -74,8 +74,8 @@
         </div>
       </div>
 
-      <!-- Tools Navigation Menu -->
-      <div class="sidebar-section sidebar-tools-section">
+      <!-- Tools Navigation Menu (Mobile Drawer Only, Desktop uses Header) -->
+      <div class="sidebar-section sidebar-tools-section mobile-only-section">
         <div class="sidebar-section-title">Fitur &amp; Workspaces</div>
         <nav class="sidebar-nav">
           <button type="button" id="btnSidebarChat" class="sidebar-nav-item active" data-mode="home" aria-label="Buka Chat AI">
@@ -166,8 +166,8 @@
         </nav>
       </div>
 
-      <!-- Sidebar Footer: Server & Auth Status + User Profile Card -->
-      <div class="sidebar-footer">
+      <!-- Sidebar Footer: Server & Auth Status + User Profile Card (Mobile Drawer Only) -->
+      <div class="sidebar-footer mobile-only-section">
         <div class="sidebar-status-list">
           <div class="sidebar-status-row" id="sidebarServerStatusRow">
             <span class="status-title">Status Server:</span>
@@ -239,15 +239,15 @@
           </div>
         </div>
 
-        <!-- Mode Switcher Tabs (Accessible for NavigationManager & test suite, hidden from main minimal header) -->
-        <div class="mode-switcher-container hidden" id="headerModeSwitcher" style="display: none;">
+        <!-- Mode Switcher Tabs (Primary Desktop Navigation) -->
+        <nav class="mode-switcher-container" id="headerModeSwitcher" aria-label="Navigasi Utama">
           <div class="mode-toggle-group" role="tablist">
             <button id="btnNavHome" class="mode-tab active" role="tab" aria-selected="true" title="VisionX Home / Chat">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
               </svg>
-              Home
+              <span>Home</span>
             </button>
             <button id="btnModeDetect" class="mode-tab" role="tab" aria-selected="false" title="Realtime Object Detection & Face Layer">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -258,7 +258,7 @@
                 <line x1="2" y1="12" x2="5" y2="12"></line>
                 <line x1="19" y1="12" x2="22" y2="12"></line>
               </svg>
-              Vision
+              <span>Vision</span>
             </button>
             <button id="btnModeReadText" class="mode-tab" role="tab" aria-selected="false" title="Read Text Mode: OCR Teks dari Kamera & Pembaca Suara (Shortcut: R)">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -267,14 +267,14 @@
                 <line x1="9" y1="7" x2="15" y2="7"></line>
                 <line x1="9" y1="11" x2="13" y2="11"></line>
               </svg>
-              Read Text
+              <span>Read Text</span>
             </button>
             <button id="btnModeCollect" class="mode-tab" role="tab" aria-selected="false" title="Pengambilan Dataset Kamera Bersih">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <circle cx="12" cy="13" r="4"></circle>
               </svg>
-              Dataset Collection
+              <span>Collection</span>
             </button>
             <button id="btnModeManager" class="mode-tab" role="tab" aria-selected="false" title="Manajemen Dataset Disk, Recycle Bin & Multi-Select">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -282,24 +282,51 @@
                 <line x1="12" y1="11" x2="12" y2="17"></line>
                 <line x1="9" y1="14" x2="15" y2="14"></line>
               </svg>
-              Dataset Manager
+              <span>Dataset Manager</span>
             </button>
             <button id="btnModeIdentity" class="mode-tab" role="tab" aria-selected="false" title="Identity Lab: Profil Pengembang & Pengenalan Wajah">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              Identity Lab
+              <span>Identity Lab</span>
             </button>
           </div>
-        </div>
+        </nav>
 
         <!-- Top Right Clean Actions matching visual reference -->
         <div class="header-actions">
-          <div class="header-status-pill" id="headerServerStatusPill" title="Status Server Gateway">
+          <div class="header-status-pill clickable" id="headerServerStatusPill" role="button" tabindex="0" title="Klik untuk Detail Status Sistem" aria-label="Status Server Gateway">
             <span class="status-dot green"></span>
             <span class="status-pill-text" id="headerServerStatusText">Server aktif</span>
           </div>
+
+          <!-- Contextual Floating Status Popover -->
+          <div id="headerStatusPopover" class="header-status-popover hidden" role="region" aria-label="Detail Sistem VisionX">
+            <div class="popover-header">
+              <span class="popover-title">Status Sistem VisionX</span>
+              <button type="button" id="btnCloseStatusPopover" class="popover-close-btn" aria-label="Tutup Detail Status">✕</button>
+            </div>
+            <div class="popover-content">
+              <div class="popover-row">
+                <span class="row-label">Backend Gateway:</span>
+                <span class="row-value"><span class="status-dot green"></span> visionx.my.id (Online)</span>
+              </div>
+              <div class="popover-row">
+                <span class="row-label">AI Multimodal:</span>
+                <span class="row-value"><span class="status-dot cyan"></span> Gemini Connected</span>
+              </div>
+              <div class="popover-row">
+                <span class="row-label">Vision Model:</span>
+                <span class="row-value"><span class="status-dot emerald"></span> Web ONNX Runtime (Ready)</span>
+              </div>
+              <div class="popover-row">
+                <span class="row-label">Autentikasi Gateway:</span>
+                <span class="row-value">Terhubung</span>
+              </div>
+            </div>
+          </div>
+
           <button id="btnThemeToggle" class="btn btn-icon theme-toggle-btn" title="Ganti Tema (Light/Dark)" aria-label="Ganti Tema">
             <span id="themeToggleIcon">🌙</span>
           </button>

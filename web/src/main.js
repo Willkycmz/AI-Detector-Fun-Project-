@@ -614,6 +614,8 @@ class VisionXWebApp {
       headerBreadcrumbTitle: document.getElementById('headerBreadcrumbTitle'),
       headerServerStatusPill: document.getElementById('headerServerStatusPill'),
       headerServerStatusText: document.getElementById('headerServerStatusText'),
+      headerStatusPopover: document.getElementById('headerStatusPopover'),
+      btnCloseStatusPopover: document.getElementById('btnCloseStatusPopover'),
       appSidebar: document.getElementById('appSidebar'),
       mobileDrawerBackdrop: document.getElementById('mobileDrawerBackdrop') || document.getElementById('sidebarBackdrop'),
       btnToggleSidebar: document.getElementById('btnToggleSidebar') || document.getElementById('btnMobileMenu'),
@@ -795,6 +797,27 @@ class VisionXWebApp {
    * Bind semua event listener UI
    */
   bindEvents() {
+    // Status Popover Trigger
+    if (this.elements.headerServerStatusPill && this.elements.headerStatusPopover) {
+      this.elements.headerServerStatusPill.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.elements.headerStatusPopover.classList.toggle('hidden');
+      });
+      if (this.elements.btnCloseStatusPopover) {
+        this.elements.btnCloseStatusPopover.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.elements.headerStatusPopover.classList.add('hidden');
+        });
+      }
+      document.addEventListener('click', (e) => {
+        if (!this.elements.headerStatusPopover.classList.contains('hidden')) {
+          if (!this.elements.headerStatusPopover.contains(e.target) && !this.elements.headerServerStatusPill.contains(e.target)) {
+            this.elements.headerStatusPopover.classList.add('hidden');
+          }
+        }
+      });
+    }
+
     // Home Triggers (Desktop Nav Tab & Brand Logo)
     if (this.elements.btnNavHome) {
       this.elements.btnNavHome.addEventListener('click', () => this.setMode('home'));
@@ -1736,9 +1759,15 @@ class VisionXWebApp {
       this.elements.headerBreadcrumbTitle.textContent = breadcrumbs[mode] || 'Asisten AI';
     }
 
-    // --- Header badges & mode-switcher visibility ---
+    // --- Global Mode attribute on container & body for CSS scoping ---
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+      appContainer.setAttribute('data-mode', mode);
+    }
+    document.body.setAttribute('data-mode', mode);
+
+    // --- Header badges visibility ---
     const isToolMode = mode !== 'home';
-    if (this.elements.headerModeSwitcher) this.elements.headerModeSwitcher.classList.toggle('hidden', !isToolMode);
     if (this.elements.headerBadges) this.elements.headerBadges.classList.toggle('hidden', !isToolMode);
 
     // Mode badge update

@@ -124,6 +124,13 @@ async function run() {
     // 1. Home
     await capture('audit_mode_home.png');
 
+    // 1b. Popover Open
+    await evaluate("document.getElementById('headerServerStatusPill').click();");
+    await sleep(300);
+    await capture('audit_popover_open.png');
+    await evaluate("document.getElementById('btnCloseStatusPopover').click();");
+    await sleep(200);
+
     // 2. Detection
     await evaluate(`window.visionXApp.setMode('detection', { startCamera: false });`);
     await sleep(600);
@@ -169,6 +176,27 @@ async function run() {
     await evaluate(`window.visionXApp.setMode('manager');`);
     await sleep(500);
     await capture('audit_mobile_manager.png');
+
+    // 10. Dark Mode Home Desktop (1440x900)
+    await sendCommand('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+    await evaluate(`
+      if (window.visionXApp && window.visionXApp.themeManager) {
+        window.visionXApp.themeManager.applyTheme('dark');
+      }
+      window.visionXApp.setMode('home');
+    `);
+    await sleep(500);
+    await capture('audit_dark_mode_home.png');
+
+    // 11. Dark Mode Detection Desktop (1440x900)
+    await evaluate(`window.visionXApp.setMode('detection', { startCamera: false });`);
+    await sleep(500);
+    await capture('audit_dark_mode_detection.png');
 
     console.log('ALL SCREENSHOTS CAPTURED');
   } finally {
