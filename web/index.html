@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -7,7 +7,7 @@
   <meta name="description" content="VisionX - Asisten AI Multimodal dengan integrasi Computer Vision lokal, deteksi objek real-time, OCR, dan persepsi spasial." />
   <meta name="theme-color" content="#F7F7F5" />
   <meta property="og:title" content="VisionX - AI Vision Assistant" />
-  <meta property="og:description" content="VisionX AI Conversational Platform dengan Edge Computer Vision &amp; Multimodal Perception." />
+  <meta property="og:description" content="VisionX AI Conversational Platform dengan Edge Computer Vision & Multimodal Perception." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://app.visionx.my.id" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -19,7 +19,7 @@
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="/ort.min.js"></script>
 </head>
-<body>
+<body class="theme-light">
   <div class="app-container">
     <!-- =========================================================================
          DESKTOP SIDEBAR / MOBILE DRAWER (Clean Neutral AI Assistant Architecture)
@@ -320,8 +320,11 @@
       <span id="successMessage">Operasi berhasil.</span>
     </div>
 
-    <!-- Home / Conversational AI View (Milestone 2 Main Experience) -->
-    <section id="homeView" class="home-view chat-first-shell" aria-label="VisionX Conversational AI Interface">
+    <!-- ========= WORKSPACE CONTAINER (Milestone 6 Shell Architecture) ========= -->
+    <div id="workspaceContainer" class="workspace-container" data-active-workspace="home">
+
+    <!-- WORKSPACE: Chat (Home / Conversational AI) -->
+    <section id="homeView" class="workspace-panel chat-first-shell" data-workspace="home" aria-label="VisionX Conversational AI Interface">
       <div class="chat-workspace-wrapper">
         <!-- Main Chat Experience Container -->
         <div class="chat-container" id="chatContainer">
@@ -705,8 +708,8 @@
       </details>
     </section>
 
-    <!-- Main Stage: Video, Shutter Flash, & Canvas Overlay -->
-    <main id="stageCard" class="stage-card hidden">
+    <!-- WORKSPACE: Vision/Camera Stage (Detection, ReadText, Collection, Identity) -->
+    <main id="stageCard" class="stage-card workspace-panel" data-workspace="vision-stage">
       <video id="videoElement" class="video-view" autoplay playsinline muted></video>
       <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
       
@@ -731,7 +734,7 @@
     </main>
 
     <!-- Global Camera & Vision Controls Card -->
-    <section id="controlsCard" class="controls-card hidden">
+    <section id="controlsCard" class="controls-card workspace-panel" data-workspace="vision-controls">
       <!-- 1. PRIMARY HERO ACTIONS (Always Visible, Min 48x48px Touch Targets) -->
       <div class="primary-hero-bar" aria-label="Aksi Utama Kamera dan Vision">
         <div class="hero-camera-buttons">
@@ -1456,7 +1459,7 @@
       </div>
 
       <!-- COLLECTION & MANAGEMENT CONTROLS (V0.4.1) -->
-      <div id="collectionControls" class="collection-controls-panel hidden">
+      <div id="collectionControls" class="collection-controls-panel workspace-panel" data-workspace="collection-controls">
         <div class="collection-grid">
           <!-- Kolom 1: Capture Trigger & Live Active Class Counter Card (Primary Hero Action) -->
           <div class="collection-col capture-action-col">
@@ -1621,7 +1624,7 @@
       </div>
 
       <!-- MODULE 1 — DATASET MANAGER (V0.6) -->
-      <div id="managerControls" class="manager-controls-panel hidden" role="region" aria-label="Dataset Manager Workspace">
+      <div id="managerControls" class="manager-controls-panel workspace-panel" role="region" aria-label="Dataset Manager Workspace" data-workspace="manager-controls">
         <div class="panel-section-header">
           <div class="title-with-badge">
             <h3 class="panel-title">🗂️ Dataset Manager (Disk Filesystem)</h3>
@@ -1741,7 +1744,7 @@
       </div>
 
       <!-- MODULE 2 — IDENTITY LAB (V0.6) -->
-      <div id="identityControls" class="identity-controls-panel hidden">
+      <div id="identityControls" class="identity-controls-panel workspace-panel" data-workspace="identity-controls">
         <div class="panel-section-header">
           <div class="title-with-badge">
             <h3 class="panel-title">👤 Identity Lab — Face Recognition Studio</h3>
@@ -1874,7 +1877,7 @@
       </div>
 
       <!-- READ TEXT MODE CONTROLS (V0.9 OCR) -->
-      <div id="readTextControls" class="read-text-controls-panel hidden" aria-label="Read Text Mode OCR Controls">
+      <div id="readTextControls" class="read-text-controls-panel workspace-panel" aria-label="Read Text Mode OCR Controls" data-workspace="readtext-controls">
         <div class="read-text-header-row">
           <div class="read-text-title-group">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="read-text-icon" aria-hidden="true">
@@ -2062,7 +2065,7 @@
     </section>
 
     <!-- Debug Mode Raw Output Panel (Hanya di Detection Mode) -->
-    <section id="debugPanel" class="debug-card hidden">
+    <section id="debugPanel" class="debug-card workspace-panel" data-workspace="debug">
       <div class="debug-header">
         <h3>🔍 Raw Detection Debug Inspector</h3>
         <div class="debug-meta">
@@ -2315,6 +2318,7 @@
     <footer class="app-footer hidden" style="display: none;" aria-hidden="true">
       VisionX <span class="version-tag">v2.0.0</span> Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX Model
     </footer>
+    </div> <!-- /#workspaceContainer -->
     </div> <!-- .app-main-layout -->
   </div>
 

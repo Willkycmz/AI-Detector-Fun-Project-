@@ -6819,7 +6819,7 @@ button, input, select, .mode-tab, .bottom-nav-item {
 /* Dedicated independently scrollable chat area */
 .chat-scroll-area {
   min-height: 0;
-  height: 100%;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -6827,8 +6827,19 @@ button, input, select, .mode-tab, .bottom-nav-item {
   align-items: center;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
-  padding: 24px 20px 16px;
+  padding: 24px 20px 48px;
   box-sizing: border-box;
+}
+
+.chat-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
 }
 
 /* Welcome Screen (In normal document flow, no clipping or overlap) */
@@ -6843,6 +6854,7 @@ button, input, select, .mode-tab, .bottom-nav-item {
   align-items: center;
   gap: 16px;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .welcome-hero-logo {
@@ -7007,6 +7019,7 @@ button, input, select, .mode-tab, .bottom-nav-item {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .chat-message-item {
@@ -7788,13 +7801,9 @@ button, input, select, .mode-tab, .bottom-nav-item {
   cursor: not-allowed;
 }
 
-/* Collapsible legacy tools directory */
+/* Collapsible legacy tools directory (hidden from clean Chat layout) */
 .home-legacy-tools-wrapper {
-  margin: 12px 16px 20px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 14px;
-  background: var(--surface);
+  display: none !important;
 }
 
 .tools-summary-toggle {
@@ -7817,81 +7826,82 @@ button, input, select, .mode-tab, .bottom-nav-item {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 767px) {
   .chat-scroll-area {
-    padding: 12px 10px 8px;
+    padding: 16px 14px 48px;
   }
 
   .chat-welcome-screen {
-    padding: 4px 0 10px;
-    gap: 10px;
+    padding: 8px 0 16px;
+    gap: 12px;
   }
 
   .welcome-brand-icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .welcome-title {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
   }
 
   .welcome-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
   .welcome-desc {
-    font-size: 0.78rem;
-    line-height: 1.35;
-    max-width: 320px;
-    margin: 2px 0 6px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    max-width: 380px;
+    margin: 2px 0 10px;
   }
 
   .capability-cards-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 12px;
   }
 
   .capability-card {
-    padding: 6px 8px;
-    border-radius: 8px;
-    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    gap: 8px;
+    min-height: 44px;
   }
 
   .capability-icon-wrap {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
   }
 
   .capability-name {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
   }
 
   .capability-sub {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
   }
 
   .quick-prompts-header {
-    margin-bottom: 6px;
-    font-size: 0.75rem;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
   }
 
   .quick-prompts-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+    gap: 8px;
   }
 
   .quick-prompt-btn {
-    padding: 6px 8px;
-    min-height: 38px;
-    font-size: 0.74rem;
-    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 44px;
+    font-size: 0.78rem;
+    border-radius: 10px;
   }
 
   .chat-input-container {
-    padding: 6px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    padding: 8px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   .chat-thread {
@@ -7899,5 +7909,206 @@ button, input, select, .mode-tab, .bottom-nav-item {
   }
 }
 
+@media (max-width: 540px) {
+  /* On compact mobile, show quick prompts in 1 full-width column to prevent text truncation */
+  .quick-prompts-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .quick-prompt-btn {
+    padding: 9px 12px;
+    min-height: 42px;
+    font-size: 0.82rem;
+  }
+
+  /* Mobile Composer layout: [ Camera ] [ Message input................... ] [ Send ] */
+  .dock-actions-right #btnAttachDoc,
+  .dock-actions-right #btnAttachImage {
+    display: none !important;
+  }
+
+  .btn-cam-dock {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .btn-send-dock {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .chat-message-input {
+    font-size: 0.95rem;
+  }
+}
+
+/* ==========================================================================
+   MILESTONE 6: WORKSPACE ARCHITECTURE CSS
+   Data-driven workspace visibility + Legacy isolation
+   ========================================================================== */
+
+/* --- Workspace Container: fills the remaining grid area in app-main-layout --- */
+.workspace-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* --- All workspace panels are hidden by default --- */
+.workspace-panel {
+  display: none !important;
+}
+
+/* --- Active workspace panels are shown via data attribute --- */
+.workspace-container[data-active-workspace="home"] > [data-workspace="home"] {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-container[data-active-workspace="detection"] > [data-workspace="vision-stage"],
+.workspace-container[data-active-workspace="read_text"] > [data-workspace="vision-stage"],
+.workspace-container[data-active-workspace="collection"] > [data-workspace="vision-stage"],
+.workspace-container[data-active-workspace="identity"] > [data-workspace="vision-stage"] {
+  display: block !important;
+}
+
+.workspace-container[data-active-workspace="detection"] > section > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="read_text"] > section > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="collection"] > section > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="identity"] > section > [data-workspace="vision-controls"] {
+  display: block !important;
+}
+
+/* Direct children controlsCard visible for camera modes */
+.workspace-container[data-active-workspace="detection"] > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="read_text"] > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="collection"] > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="identity"] > [data-workspace="vision-controls"] {
+  display: block !important;
+}
+
+/* Mode-specific control panels */
+.workspace-container[data-active-workspace="collection"] [data-workspace="collection-controls"] {
+  display: block !important;
+}
+
+.workspace-container[data-active-workspace="manager"] > section > [data-workspace="manager-controls"],
+.workspace-container[data-active-workspace="manager"] [data-workspace="manager-controls"] {
+  display: block !important;
+}
+
+.workspace-container[data-active-workspace="identity"] [data-workspace="identity-controls"] {
+  display: block !important;
+}
+
+.workspace-container[data-active-workspace="read_text"] [data-workspace="readtext-controls"] {
+  display: block !important;
+}
+
+.workspace-container[data-active-workspace="detection"] > [data-workspace="debug"] {
+  display: block !important;
+}
+
+/* Manager workspace: show the controlsCard section as a container but hide camera-specific elements */
+.workspace-container[data-active-workspace="manager"] > section[id="controlsCard"] {
+  display: block !important;
+}
+
+/* --- Remove old bottom-nav-bar completely (Milestone 6: sidebar handles all navigation) --- */
+.bottom-nav-bar {
+  display: none !important;
+}
+
+/* --- Remove bottom-nav padding from app-container since bottom-nav is gone --- */
+.app-container {
+  padding-bottom: 0 !important;
+}
+
+/* --- workspace-container inside app-main-layout grid rows --- */
+.app-main-layout {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+@media (max-width: 767px) {
+  .app-main-layout {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+}
+
+/* --- Chat workspace proper grid layout --- */
+.chat-first-shell.workspace-panel {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Only show when active */
+.workspace-panel.chat-first-shell {
+  display: none !important;
+}
+
+.workspace-container[data-active-workspace="home"] > .workspace-panel.chat-first-shell {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Chat right panel hidden on mobile, shown at >= 1200px --- */
+.chat-right-panel {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .chat-right-panel {
+    display: flex;
+    flex-direction: column;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+    padding: 16px;
+    gap: 12px;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+  }
+}
+
+/* --- Manager workspace: only controls, no camera stage --- */
+.workspace-container[data-active-workspace="manager"] > [data-workspace="vision-stage"] {
+  display: none !important;
+}
+
+/* --- Home workspace: absolutely NO camera stage or controls --- */
+.workspace-container[data-active-workspace="home"] > [data-workspace="vision-stage"],
+.workspace-container[data-active-workspace="home"] > [data-workspace="vision-controls"],
+.workspace-container[data-active-workspace="home"] > [data-workspace="debug"] {
+  display: none !important;
+}
+
+/* --- Ensure workspace-container scrolls its vision workspace properly --- */
+.workspace-container[data-active-workspace="detection"],
+.workspace-container[data-active-workspace="read_text"],
+.workspace-container[data-active-workspace="collection"],
+.workspace-container[data-active-workspace="identity"] {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
 

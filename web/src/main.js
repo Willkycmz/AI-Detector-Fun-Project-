@@ -1671,6 +1671,7 @@ class VisionXWebApp {
 
   /**
    * Mengganti Mode aplikasi: 'home' | 'detection' | 'collection' | 'manager' | 'identity' | 'read_text'
+   * Milestone 6: Uses data-active-workspace attribute on #workspaceContainer for clean workspace switching.
    */
   setMode(mode, options = {}) {
     if (!['home', 'detection', 'collection', 'manager', 'identity', 'read_text'].includes(mode)) return;
@@ -1679,6 +1680,12 @@ class VisionXWebApp {
 
     if (this.navigationManager && this.navigationManager.getActiveMode() !== mode) {
       this.navigationManager.setActiveMode(mode, { triggerCallback: false });
+    }
+
+    // --- Milestone 6: Set workspace via data attribute (CSS handles all visibility) ---
+    const workspaceContainer = document.getElementById('workspaceContainer');
+    if (workspaceContainer) {
+      workspaceContainer.setAttribute('data-active-workspace', mode);
     }
 
     // Reset tab styles
@@ -1716,66 +1723,56 @@ class VisionXWebApp {
       this.elements.headerBreadcrumbTitle.textContent = breadcrumbs[mode] || 'Asisten AI';
     }
 
-    // Sembunyikan semua kontrol panel
-    if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
-    if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
-    if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
-    if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
-    if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
-    if (this.elements.debugPanel) this.elements.debugPanel.classList.add('hidden');
-    if (this.elements.ocrBadge) this.elements.ocrBadge.classList.add('hidden');
+    // --- Header badges & mode-switcher visibility ---
+    const isToolMode = mode !== 'home';
+    if (this.elements.headerModeSwitcher) this.elements.headerModeSwitcher.classList.toggle('hidden', !isToolMode);
+    if (this.elements.headerBadges) this.elements.headerBadges.classList.toggle('hidden', !isToolMode);
 
-    // Sinkronkan bilah kamera global (sembunyikan di Manager dan Home, pulihkan di mode kamera)
-    this.syncModeUIBars(mode);
+    // Mode badge update
+    if (this.elements.modeBadge) {
+      const modeClasses = {
+        home: 'badge badge-mode-home',
+        detection: 'badge badge-mode-detect',
+        collection: 'badge badge-mode-collect',
+        manager: 'badge badge-mode-manager',
+        identity: 'badge badge-mode-identity',
+        read_text: 'badge badge-mode-readtext'
+      };
+      this.elements.modeBadge.className = modeClasses[mode] || 'badge badge-mode-home';
+      if (this.elements.modeStatusText) {
+        this.elements.modeStatusText.textContent = breadcrumbs[mode] || 'Home';
+      }
+    }
 
+    // --- Mode-specific logic ---
     if (mode === 'home') {
       this._cameraSessionId++;
-      // Pastikan kamera dihentikan saat di Home
+      // Stop camera when going to Home/Chat
       if (this.cameraService && (this.cameraService.state.status === 'connected' || this.cameraService.state.status === 'connecting' || this.isStartingCamera)) {
         this.handleStopCamera();
       }
-
-      // Tampilkan Home view, sembunyikan Stage kamera dan Controls card
-      if (this.elements.homeView) this.elements.homeView.classList.remove('hidden');
-      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
-      if (this.elements.controlsCard) this.elements.controlsCard.classList.add('hidden');
 
       if (this.elements.btnNavHome) {
         this.elements.btnNavHome.classList.add('active');
         this.elements.btnNavHome.setAttribute('aria-selected', 'true');
       }
 
-      if (this.elements.modeBadge) {
-        this.elements.modeBadge.className = 'badge badge-mode-home';
-        this.elements.modeStatusText.textContent = 'Home';
-      }
-
+      // Hide technical badges in Chat workspace
       if (this.elements.activeModelBadge) this.elements.activeModelBadge.classList.add('hidden');
       if (this.elements.inferenceBadge) this.elements.inferenceBadge.classList.add('hidden');
       if (this.elements.detectionCountBadge) this.elements.detectionCountBadge.classList.add('hidden');
       if (this.elements.classBadge) this.elements.classBadge.classList.add('hidden');
       if (this.elements.countBadge) this.elements.countBadge.classList.add('hidden');
-      if (this.elements.headerModeSwitcher) this.elements.headerModeSwitcher.classList.add('hidden');
-      if (this.elements.headerBadges) this.elements.headerBadges.classList.add('hidden');
+      if (this.elements.ocrBadge) this.elements.ocrBadge.classList.add('hidden');
       return;
     }
 
-    // Untuk semua mode fitur (selain home): sembunyikan Home view dan tampilkan Controls card
-    if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
-    if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
-    if (this.elements.headerModeSwitcher) this.elements.headerModeSwitcher.classList.remove('hidden');
-    if (this.elements.headerBadges) this.elements.headerBadges.classList.remove('hidden');
-
+    // --- Tool workspace modes ---
     if (mode === 'detection') {
       if (this.elements.btnModeDetect) {
         this.elements.btnModeDetect.classList.add('active');
         this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
       }
-      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      this.syncModeUIBars('detection');
-
-      this.elements.modeBadge.className = 'badge badge-mode-detect';
-      this.elements.modeStatusText.textContent = 'Detection Mode';
 
       this.elements.activeModelBadge.classList.remove('hidden');
       this.elements.inferenceBadge.classList.remove('hidden');
@@ -1783,14 +1780,13 @@ class VisionXWebApp {
       this.elements.classBadge.classList.add('hidden');
       this.elements.countBadge.classList.add('hidden');
 
-      this.elements.detectionControls.classList.remove('hidden');
-      if (this.isDebugVisible) this.elements.debugPanel.classList.remove('hidden');
+      if (this.elements.stageWatermark) {
+        this.elements.stageWatermark.className = 'stage-watermark';
+        this.elements.watermarkMode.textContent = 'DETECTION';
+        this.elements.watermarkExtra.textContent = '';
+      }
 
-      this.elements.stageWatermark.className = 'stage-watermark';
-      this.elements.watermarkMode.textContent = 'DETECTION';
-      this.elements.watermarkExtra.textContent = '';
-
-      // Lazy camera start saat masuk ke Detection (kecuali jika opsi startCamera dimatikan seperti untuk Chat)
+      // Lazy camera start
       if (options.startCamera !== false) {
         if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
           this.handleStartCamera();
@@ -1801,11 +1797,6 @@ class VisionXWebApp {
         this.elements.btnModeCollect.classList.add('active');
         this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
       }
-      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      this.syncModeUIBars('collection');
-
-      this.elements.modeBadge.className = 'badge badge-mode-collect';
-      this.elements.modeStatusText.textContent = 'Collection Mode';
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1813,37 +1804,30 @@ class VisionXWebApp {
       this.elements.classBadge.classList.remove('hidden');
       this.elements.countBadge.classList.remove('hidden');
 
-      this.elements.collectionControls.classList.remove('hidden');
       if (this.renderer) this.renderer.clear();
 
-      this.elements.stageWatermark.className = 'stage-watermark collect-mode';
-      this.elements.watermarkMode.textContent = 'COLLECTION';
-      this.elements.watermarkExtra.textContent = `[${this.captureService.currentClass}]`;
+      if (this.elements.stageWatermark) {
+        this.elements.stageWatermark.className = 'stage-watermark collect-mode';
+        this.elements.watermarkMode.textContent = 'COLLECTION';
+        this.elements.watermarkExtra.textContent = `[${this.captureService.currentClass}]`;
+      }
       this.updateCollectionUI();
 
-      // Lazy camera start untuk collection
+      // Lazy camera start
       if (options.startCamera !== false) {
         if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
           this.handleStartCamera();
         }
       }
     } else if (mode === 'manager') {
-      // Invalidate any in-flight camera start session
       this._cameraSessionId++;
 
-      // Hentikan kamera jika sedang aktif atau connecting
       if (this.cameraService && (this.cameraService.state.status === 'connected' || this.cameraService.state.status === 'connecting' || this.isStartingCamera)) {
         this.handleStopCamera();
       }
 
-      // Sembunyikan panggung kamera dan kontrol hero/secondary kamera di Dataset Manager
-      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
-      this.syncModeUIBars('manager');
-
       this.elements.btnModeManager.classList.add('active');
       this.elements.btnModeManager.setAttribute('aria-selected', 'true');
-      this.elements.modeBadge.className = 'badge badge-mode-manager';
-      this.elements.modeStatusText.textContent = 'Dataset Manager';
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1851,18 +1835,11 @@ class VisionXWebApp {
       this.elements.classBadge.classList.add('hidden');
       this.elements.countBadge.classList.add('hidden');
 
-      this.elements.managerControls.classList.remove('hidden');
       if (this.renderer) this.renderer.clear();
-
       this.loadManagerData();
     } else if (mode === 'identity') {
       this.elements.btnModeIdentity.classList.add('active');
       this.elements.btnModeIdentity.setAttribute('aria-selected', 'true');
-      this.elements.modeBadge.className = 'badge badge-mode-identity';
-      this.elements.modeStatusText.textContent = 'Identity Lab';
-
-      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      this.syncModeUIBars('identity');
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1870,24 +1847,19 @@ class VisionXWebApp {
       this.elements.classBadge.classList.add('hidden');
       this.elements.countBadge.classList.add('hidden');
 
-      this.elements.identityControls.classList.remove('hidden');
       if (this.renderer) this.renderer.clear();
 
-      this.elements.stageWatermark.className = 'stage-watermark';
-      this.elements.watermarkMode.textContent = 'IDENTITY';
-      this.elements.watermarkExtra.textContent = '[VisionX Developer]';
+      if (this.elements.stageWatermark) {
+        this.elements.stageWatermark.className = 'stage-watermark';
+        this.elements.watermarkMode.textContent = 'IDENTITY';
+        this.elements.watermarkExtra.textContent = '[VisionX Developer]';
+      }
       this.loadIdentityData();
-      // TIDAK otomatis menyalakan kamera saat masuk Identity Lab!
     } else if (mode === 'read_text') {
       if (this.elements.btnModeReadText) {
         this.elements.btnModeReadText.classList.add('active');
         this.elements.btnModeReadText.setAttribute('aria-selected', 'true');
       }
-      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
-      this.syncModeUIBars('read_text');
-
-      this.elements.modeBadge.className = 'badge badge-mode-readtext';
-      this.elements.modeStatusText.textContent = 'Read Text Mode';
 
       this.elements.activeModelBadge.classList.remove('hidden');
       this.elements.inferenceBadge.classList.remove('hidden');
@@ -1896,13 +1868,13 @@ class VisionXWebApp {
       this.elements.countBadge.classList.add('hidden');
       if (this.elements.ocrBadge) this.elements.ocrBadge.classList.remove('hidden');
 
-      if (this.elements.readTextControls) this.elements.readTextControls.classList.remove('hidden');
+      if (this.elements.stageWatermark) {
+        this.elements.stageWatermark.className = 'stage-watermark';
+        this.elements.watermarkMode.textContent = 'READ TEXT';
+        this.elements.watermarkExtra.textContent = '[OCR & TTS]';
+      }
 
-      this.elements.stageWatermark.className = 'stage-watermark';
-      this.elements.watermarkMode.textContent = 'READ TEXT';
-      this.elements.watermarkExtra.textContent = '[OCR & TTS]';
-
-      // Lazy camera start untuk read_text
+      // Lazy camera start
       if (options.startCamera !== false) {
         if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
           this.handleStartCamera();
