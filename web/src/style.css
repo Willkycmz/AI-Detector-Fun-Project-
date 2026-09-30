@@ -7981,7 +7981,8 @@ button, input, select, .mode-tab, .bottom-nav-item {
 .workspace-container[data-active-workspace="read_text"] > [data-workspace="vision-stage"],
 .workspace-container[data-active-workspace="collection"] > [data-workspace="vision-stage"],
 .workspace-container[data-active-workspace="identity"] > [data-workspace="vision-stage"] {
-  display: block !important;
+  display: flex !important;
+  flex-shrink: 0;
 }
 
 .workspace-container[data-active-workspace="detection"] > section > [data-workspace="vision-controls"],
@@ -7997,6 +7998,7 @@ button, input, select, .mode-tab, .bottom-nav-item {
 .workspace-container[data-active-workspace="collection"] > [data-workspace="vision-controls"],
 .workspace-container[data-active-workspace="identity"] > [data-workspace="vision-controls"] {
   display: block !important;
+  flex-shrink: 0;
 }
 
 /* Mode-specific control panels */

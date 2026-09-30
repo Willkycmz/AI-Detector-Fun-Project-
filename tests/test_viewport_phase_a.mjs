@@ -49,6 +49,8 @@ async function run() {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-gpu',
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
     'about:blank'
   ], { stdio: 'ignore' });
 
@@ -142,6 +144,9 @@ async function run() {
       // Evaluate responsive metrics
       const evalMetrics = await send('Runtime.evaluate', {
         expression: `(() => {
+          if (window.visionXApp && window.visionXApp.currentMode !== 'detection') {
+            window.visionXApp.setMode('detection', { startCamera: false });
+          }
           const docEl = document.documentElement;
           const body = document.body;
           const container = document.querySelector('.app-container');

@@ -165,6 +165,15 @@ export class ChatController {
     });
   }
 
+  /**
+   * Memberikan fokus kursor ke input chat
+   */
+  focusInput() {
+    if (this.elements && this.elements.inputElement && typeof this.elements.inputElement.focus === 'function') {
+      this.elements.inputElement.focus();
+    }
+  }
+
   _bindEvents() {
     const {
       inputElement,

@@ -779,8 +779,10 @@ class VisionXWebApp {
       this.identityService.getProfile().catch(() => {});
       this.managerService.fetchStats().catch(() => {});
 
-      // Set initial view ke Home (Landing state)
-      this.setMode('home');
+      // Set initial view ke Home (Landing state) hanya jika belum berpindah mode
+      if (this.currentMode === 'home') {
+        this.setMode('home');
+      }
     } catch (fatalErr) {
       console.error('[VisionX Fatal] Peringatan inisialisasi background:', fatalErr);
       this.updateInferenceUI('error', 'Init Error: ' + fatalErr.message);
@@ -1605,7 +1607,17 @@ class VisionXWebApp {
    * Membuka Chat Assistant dari Home tanpa mengaktifkan kamera otomatis
    */
   openChatAssistant() {
-    this.setMode('home');
+    this.setMode('detection', { startCamera: false });
+    if (this.contextualPanelManager) {
+      this.contextualPanelManager.openTool('ask');
+    }
+    const askInput = document.getElementById('askVisionInput');
+    if (askInput) {
+      setTimeout(() => {
+        askInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        askInput.focus();
+      }, 80);
+    }
     if (this.chatController) {
       this.chatController.focusInput();
     }
@@ -1757,6 +1769,16 @@ class VisionXWebApp {
         this.elements.btnNavHome.setAttribute('aria-selected', 'true');
       }
 
+      if (this.elements.homeView) this.elements.homeView.classList.remove('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.add('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+      this.syncModeUIBars('home');
+
       // Hide technical badges in Chat workspace
       if (this.elements.activeModelBadge) this.elements.activeModelBadge.classList.add('hidden');
       if (this.elements.inferenceBadge) this.elements.inferenceBadge.classList.add('hidden');
@@ -1773,6 +1795,17 @@ class VisionXWebApp {
         this.elements.btnModeDetect.classList.add('active');
         this.elements.btnModeDetect.setAttribute('aria-selected', 'true');
       }
+
+      if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.remove('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+      if (this.isDebugVisible && this.elements.debugPanel) this.elements.debugPanel.classList.remove('hidden');
+      this.syncModeUIBars('detection');
 
       this.elements.activeModelBadge.classList.remove('hidden');
       this.elements.inferenceBadge.classList.remove('hidden');
@@ -1797,6 +1830,16 @@ class VisionXWebApp {
         this.elements.btnModeCollect.classList.add('active');
         this.elements.btnModeCollect.setAttribute('aria-selected', 'true');
       }
+
+      if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.remove('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+      this.syncModeUIBars('collection');
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1829,6 +1872,16 @@ class VisionXWebApp {
       this.elements.btnModeManager.classList.add('active');
       this.elements.btnModeManager.setAttribute('aria-selected', 'true');
 
+      if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.add('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.remove('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+      this.syncModeUIBars('manager');
+
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
       this.elements.detectionCountBadge.classList.add('hidden');
@@ -1840,6 +1893,16 @@ class VisionXWebApp {
     } else if (mode === 'identity') {
       this.elements.btnModeIdentity.classList.add('active');
       this.elements.btnModeIdentity.setAttribute('aria-selected', 'true');
+
+      if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.remove('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.add('hidden');
+      this.syncModeUIBars('identity');
 
       this.elements.activeModelBadge.classList.add('hidden');
       this.elements.inferenceBadge.classList.add('hidden');
@@ -1860,6 +1923,16 @@ class VisionXWebApp {
         this.elements.btnModeReadText.classList.add('active');
         this.elements.btnModeReadText.setAttribute('aria-selected', 'true');
       }
+
+      if (this.elements.homeView) this.elements.homeView.classList.add('hidden');
+      if (this.elements.stageCard) this.elements.stageCard.classList.remove('hidden');
+      if (this.elements.controlsCard) this.elements.controlsCard.classList.remove('hidden');
+      if (this.elements.readTextControls) this.elements.readTextControls.classList.remove('hidden');
+      if (this.elements.detectionControls) this.elements.detectionControls.classList.add('hidden');
+      if (this.elements.collectionControls) this.elements.collectionControls.classList.add('hidden');
+      if (this.elements.managerControls) this.elements.managerControls.classList.add('hidden');
+      if (this.elements.identityControls) this.elements.identityControls.classList.add('hidden');
+      this.syncModeUIBars('read_text');
 
       this.elements.activeModelBadge.classList.remove('hidden');
       this.elements.inferenceBadge.classList.remove('hidden');

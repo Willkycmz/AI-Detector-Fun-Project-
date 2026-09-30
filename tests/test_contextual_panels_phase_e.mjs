@@ -79,6 +79,8 @@ async function runPhaseETests() {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-gpu',
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
     'about:blank'
   ], { stdio: 'ignore' });
 

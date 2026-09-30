@@ -101,7 +101,7 @@ export class DetectionFusion {
 
         if (isMatched) {
           const scoreStr = activeIdentity.score_percent || `${Math.round((activeIdentity.similarity || 0.91) * 100)}%`;
-          label = `Person — Developer VisionX (${scoreStr})`.trim();
+          label = activeIdentity.label || `Person — Developer VisionX (${scoreStr})`.trim();
           faceConf = activeIdentity.similarity || faceConf;
 
           // Asosiasikan dengan objek YOLO 'person' bila bounding box beririsan/mencakup wajah
@@ -116,7 +116,7 @@ export class DetectionFusion {
             }
           }
         } else {
-          label = 'Person';
+          label = activeIdentity.label || 'Person';
         }
 
         unified.push({
