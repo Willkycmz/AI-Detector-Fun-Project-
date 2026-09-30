@@ -218,6 +218,28 @@ export class CameraModal {
    * - Simpan JPEG quality 0.85
    * - Sertakan deteksi YOLO terverifikasi (7-class)
    */
+  /**
+   * Menghitung dimensi skala proporsional dengan batas maksimum maxDim (default 768px)
+   * @param {number} rawWidth
+   * @param {number} rawHeight
+   * @param {number} [maxDim=768]
+   * @returns {{ width: number, height: number }}
+   */
+  _calcMaxDimensions(rawWidth, rawHeight, maxDim = 768) {
+    let width = rawWidth;
+    let height = rawHeight;
+    if (rawWidth > maxDim || rawHeight > maxDim) {
+      if (rawWidth >= rawHeight) {
+        width = maxDim;
+        height = Math.round((rawHeight * maxDim) / rawWidth);
+      } else {
+        height = maxDim;
+        width = Math.round((rawWidth * maxDim) / rawHeight);
+      }
+    }
+    return { width, height };
+  }
+
   async takeSnapshot() {
     if (this.state === CameraModalState.IDLE || this.state === CameraModalState.CLOSED || !this.isOpen) {
       console.warn('[CameraModal] takeSnapshot dipanggil saat modal tertutup:', this.state);
@@ -236,20 +258,7 @@ export class CameraModal {
       const rawWidth = (video && video.videoWidth) ? video.videoWidth : 640;
       const rawHeight = (video && video.videoHeight) ? video.videoHeight : 480;
 
-      // Resize client-side ke max 768px menjaga aspect ratio
-      const maxDim = 768;
-      let targetWidth = rawWidth;
-      let targetHeight = rawHeight;
-
-      if (rawWidth > maxDim || rawHeight > maxDim) {
-        if (rawWidth >= rawHeight) {
-          targetWidth = maxDim;
-          targetHeight = Math.round((rawHeight * maxDim) / rawWidth);
-        } else {
-          targetHeight = maxDim;
-          targetWidth = Math.round((rawWidth * maxDim) / rawHeight);
-        }
-      }
+      const { width: targetWidth, height: targetHeight } = this._calcMaxDimensions(rawWidth, rawHeight, 768);
 
       const offscreen = document.createElement('canvas');
       offscreen.width = targetWidth;
@@ -567,7 +576,17 @@ export class CameraModal {
     const captureBtn = this.captureBtn || ((typeof this.modalEl.querySelector === 'function') ? this.modalEl.querySelector('#btnModalTakeSnapshot') : null);
 
     if (statusBadge) {
-      statusBadge.textContent = this.state;
+      const stateLabels = {
+        [CameraModalState.IDLE]: 'Siap',
+        [CameraModalState.OPENING]: 'Membuka...',
+        [CameraModalState.READY]: 'Live',
+        [CameraModalState.CAPTURING]: 'Mengambil...',
+        [CameraModalState.CAPTURED]: 'Tersimpan',
+        [CameraModalState.PERMISSION_DENIED]: 'Izin Ditolak',
+        [CameraModalState.ERROR]: 'Error',
+        [CameraModalState.CLOSED]: 'Tertutup'
+      };
+      statusBadge.textContent = stateLabels[this.state] || this.state;
       statusBadge.className = `modal-status-badge status-${this.state.toLowerCase()}`;
     }
 

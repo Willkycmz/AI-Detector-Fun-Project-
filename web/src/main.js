@@ -682,6 +682,11 @@ class VisionXWebApp {
       });
       this.contextualPanelManager = new ContextualPanelManager();
 
+      // Synchronize APP_VERSION across all version tags in UI
+      document.querySelectorAll('.version-tag, .badge-v1-tag, [data-version]').forEach(el => {
+        el.textContent = `v${APP_VERSION}`;
+      });
+
       // Inisialisasi CameraModal & ChatController SEGERA (Chat-First UI instan tanpa menunggu model ONNX)
       try {
         this.cameraModal = new CameraModal({
@@ -1611,9 +1616,11 @@ class VisionXWebApp {
    */
   toggleMobileDrawer() {
     if (this.elements.appSidebar) {
-      const isOpen = this.elements.appSidebar.classList.toggle('open');
+      const isOpen = this.elements.appSidebar.classList.toggle('drawer-open');
+      this.elements.appSidebar.classList.toggle('open', isOpen);
       if (this.elements.mobileDrawerBackdrop) {
         this.elements.mobileDrawerBackdrop.classList.toggle('active', isOpen);
+        this.elements.mobileDrawerBackdrop.classList.toggle('hidden', !isOpen);
       }
     }
   }
@@ -1624,9 +1631,16 @@ class VisionXWebApp {
   closeMobileDrawer() {
     if (this.elements.appSidebar) {
       this.elements.appSidebar.classList.remove('open');
+      this.elements.appSidebar.classList.remove('drawer-open');
     }
     if (this.elements.mobileDrawerBackdrop) {
       this.elements.mobileDrawerBackdrop.classList.remove('active');
+      this.elements.mobileDrawerBackdrop.classList.add('hidden');
+    }
+    // Focus restoration to hamburger button (Requirement)
+    const hamburger = document.getElementById('btnMobileMenu') || this.elements.btnMobileMenuToggle;
+    if (hamburger && typeof hamburger.focus === 'function') {
+      hamburger.focus();
     }
   }
 
@@ -1808,8 +1822,10 @@ class VisionXWebApp {
       this.updateCollectionUI();
 
       // Lazy camera start untuk collection
-      if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
-        this.handleStartCamera();
+      if (options.startCamera !== false) {
+        if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
+          this.handleStartCamera();
+        }
       }
     } else if (mode === 'manager') {
       // Invalidate any in-flight camera start session
@@ -1887,8 +1903,10 @@ class VisionXWebApp {
       this.elements.watermarkExtra.textContent = '[OCR & TTS]';
 
       // Lazy camera start untuk read_text
-      if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
-        this.handleStartCamera();
+      if (options.startCamera !== false) {
+        if (this.cameraService && this.cameraService.state.status !== 'connected' && this.cameraService.state.status !== 'connecting') {
+          this.handleStartCamera();
+        }
       }
     }
   }
@@ -3024,18 +3042,18 @@ class VisionXWebApp {
       this.elements.btnStop.disabled = false;
     } else if (status === 'connecting') {
       badge.classList.add('badge-connecting');
-      text.textContent = 'Requesting Camera Access...';
+      text.textContent = 'Meminta Akses Kamera...';
       this.elements.btnStart.disabled = true;
       this.elements.btnStop.disabled = true;
     } else if (status === 'error') {
       badge.classList.add('badge-error');
-      text.textContent = 'Camera Error';
+      text.textContent = 'Kamera Error';
       this.elements.placeholder.classList.remove('hidden');
       this.elements.btnStart.disabled = false;
       this.elements.btnStop.disabled = true;
     } else {
       badge.classList.add('badge-disconnected');
-      text.textContent = 'Camera Disconnected';
+      text.textContent = 'Kamera Terputus';
       this.resetCameraPlaceholder();
       this.elements.placeholder.classList.remove('hidden');
       this.elements.btnStart.disabled = false;
@@ -3382,19 +3400,19 @@ class VisionXWebApp {
     if (this.elements.voiceBadge && this.elements.voiceBadgeText) {
       if (!vState.isAvailable) {
         this.elements.voiceBadge.className = 'badge badge-error';
-        this.elements.voiceBadgeText.textContent = 'Voice Unavailable';
+        this.elements.voiceBadgeText.textContent = 'Voice: Tidak Tersedia';
       } else if (!vState.enabled || vState.mode === 'OFF') {
         this.elements.voiceBadge.className = 'badge badge-disconnected';
-        this.elements.voiceBadgeText.textContent = 'Voice: Off';
+        this.elements.voiceBadgeText.textContent = 'Voice: Nonaktif';
       } else if (vState.state === 'SPEAKING') {
         this.elements.voiceBadge.className = 'badge badge-speaking ready';
-        this.elements.voiceBadgeText.textContent = 'Voice: Speaking';
+        this.elements.voiceBadgeText.textContent = 'Voice: Berbicara';
       } else if (vState.state === 'PAUSED') {
         this.elements.voiceBadge.className = 'badge badge-paused';
-        this.elements.voiceBadgeText.textContent = 'Voice: Paused';
+        this.elements.voiceBadgeText.textContent = 'Voice: Dijeda';
       } else {
         this.elements.voiceBadge.className = 'badge badge-ready';
-        this.elements.voiceBadgeText.textContent = 'Voice: Ready';
+        this.elements.voiceBadgeText.textContent = 'Voice: Siap';
       }
     }
 
@@ -3402,19 +3420,19 @@ class VisionXWebApp {
     if (this.elements.voiceStatusBadge && this.elements.voiceStatusText) {
       if (!vState.isAvailable) {
         this.elements.voiceStatusBadge.className = 'badge badge-error';
-        this.elements.voiceStatusText.textContent = 'Voice unavailable';
+        this.elements.voiceStatusText.textContent = 'Tidak Tersedia';
       } else if (!vState.enabled || vState.mode === 'OFF') {
         this.elements.voiceStatusBadge.className = 'badge badge-disconnected';
-        this.elements.voiceStatusText.textContent = 'Disabled';
+        this.elements.voiceStatusText.textContent = 'Nonaktif';
       } else if (vState.state === 'SPEAKING') {
         this.elements.voiceStatusBadge.className = 'badge badge-speaking ready';
-        this.elements.voiceStatusText.textContent = 'Speaking...';
+        this.elements.voiceStatusText.textContent = 'Berbicara...';
       } else if (vState.state === 'PAUSED') {
         this.elements.voiceStatusBadge.className = 'badge badge-paused';
-        this.elements.voiceStatusText.textContent = 'Paused';
+        this.elements.voiceStatusText.textContent = 'Dijeda';
       } else {
         this.elements.voiceStatusBadge.className = 'badge badge-ready';
-        this.elements.voiceStatusText.textContent = 'Ready';
+        this.elements.voiceStatusText.textContent = 'Siap';
       }
     }
 
@@ -3464,7 +3482,15 @@ class VisionXWebApp {
     }
 
     if (this.elements.ocrBadge && this.elements.ocrBadgeText) {
-      this.elements.ocrBadgeText.textContent = `OCR: ${status}`;
+      const ocrStatusLabel = {
+        'READY': 'Siap',
+        'DONE': 'Selesai',
+        'PROCESSING': 'Memproses',
+        'LOADING': 'Memuat',
+        'ERROR': 'Error',
+        'OFF': 'Nonaktif'
+      }[status] || status;
+      this.elements.ocrBadgeText.textContent = `OCR: ${ocrStatusLabel}`;
       this.elements.ocrBadge.className = 'badge ' + (
         status === 'READY' || status === 'DONE' ? 'badge-ready' :
         status === 'PROCESSING' || status === 'LOADING' ? 'badge-connecting' :
@@ -4099,11 +4125,11 @@ class VisionXWebApp {
       this.elements.btnAuthToggle.textContent = isAuthed ? 'Keluar' : '🔑 Login PIN';
     }
     if (this.elements.sidebarAuthStatus) {
-      this.elements.sidebarAuthStatus.textContent = isAuthed ? 'Authenticated' : 'Login Required';
+      this.elements.sidebarAuthStatus.textContent = isAuthed ? 'Terautentikasi' : 'Login Diperlukan';
       this.elements.sidebarAuthStatus.className = `status-value ${isAuthed ? 'online' : 'offline'}`;
     }
     if (this.elements.btnSidebarAuth) {
-      this.elements.btnSidebarAuth.textContent = isAuthed ? 'Logout PIN' : '🔑 Login Gateway';
+      this.elements.btnSidebarAuth.textContent = isAuthed ? 'Keluar PIN' : '🔑 Login Gateway';
     }
     if (this.chatController) {
       this.chatController.updateAuthStatus();

@@ -70,10 +70,10 @@ export class ChatController {
     this.activeSessionId = this.conversationManager.sessionId || `sess_${Date.now()}`;
     this.activeSessionTitle = 'Percakapan Baru';
     this.recentActivities = [
-      { id: 'act_1', icon: '💬', desc: 'New chat started', time: '2 menit lalu' },
-      { id: 'act_2', icon: '📷', desc: 'Camera snapshot', time: '5 menit lalu' },
-      { id: 'act_3', icon: '🔍', desc: 'Object detection', time: '6 menit lalu' },
-      { id: 'act_4', icon: '🤖', desc: 'Chat response', time: '8 menit lalu' }
+      { id: 'act_1', icon: '💬', desc: 'Percakapan baru dimulai', time: '2 menit lalu' },
+      { id: 'act_2', icon: '📷', desc: 'Snapshot kamera diambil', time: '5 menit lalu' },
+      { id: 'act_3', icon: '🔍', desc: 'Deteksi objek aktif', time: '6 menit lalu' },
+      { id: 'act_4', icon: '🤖', desc: 'Respon asisten AI', time: '8 menit lalu' }
     ];
 
     // DOM Elements Cache
@@ -454,12 +454,13 @@ export class ChatController {
       inputElement
     } = this.elements;
 
-    const container = snapshotPreviewContainer || document.getElementById('snapshotPreviewContainer');
+    const doc = typeof document !== 'undefined' ? document : null;
+    const container = snapshotPreviewContainer || doc?.getElementById('snapshotPreviewContainer');
     if (container) {
       container.classList.remove('hidden');
     }
 
-    const thumb = snapshotThumbnail || document.getElementById('snapshotThumbnail');
+    const thumb = snapshotThumbnail || doc?.getElementById('snapshotThumbnail');
     if (thumb) {
       thumb.src = dataUrl;
     }
@@ -488,11 +489,12 @@ export class ChatController {
     this.activeSnapshot = null;
     const { snapshotPreviewContainer, snapshotThumbnail, snapshotInfoText, privacyNotice } = this.elements;
 
-    const container = snapshotPreviewContainer || document.getElementById('snapshotPreviewContainer');
+    const doc = typeof document !== 'undefined' ? document : null;
+    const container = snapshotPreviewContainer || doc?.getElementById('snapshotPreviewContainer');
     if (container) {
       container.classList.add('hidden');
     }
-    const thumb = snapshotThumbnail || document.getElementById('snapshotThumbnail');
+    const thumb = snapshotThumbnail || doc?.getElementById('snapshotThumbnail');
     if (thumb) {
       thumb.src = '';
     }
@@ -502,6 +504,13 @@ export class ChatController {
     if (snapshotInfoText) {
       snapshotInfoText.textContent = '';
     }
+  }
+
+  /**
+   * Alias untuk removeSnapshot
+   */
+  clearSnapshot() {
+    this.removeSnapshot();
   }
 
   /**
@@ -1129,7 +1138,7 @@ export class ChatController {
       authStatusBadge.className = `badge ${active ? 'badge-auth-active' : 'badge-auth-inactive'}`;
     }
     if (authStatusText) {
-      authStatusText.textContent = active ? 'Authenticated' : 'Login Required';
+      authStatusText.textContent = active ? 'Terautentikasi' : 'Login Diperlukan';
     }
   }
 

@@ -64,6 +64,7 @@ export class BackendAIProvider extends AIProvider {
     this.timeoutMs = config.timeoutMs || 35000;
     this.onAuthRequired = config.onAuthRequired || null;
     this.sessionStorageKey = 'visionx_session_token';
+    this._memoryToken = null;
   }
 
   get name() {
@@ -77,10 +78,10 @@ export class BackendAIProvider extends AIProvider {
   getToken() {
     try {
       if (typeof sessionStorage !== 'undefined') {
-        return sessionStorage.getItem(this.sessionStorageKey);
+        return sessionStorage.getItem(this.sessionStorageKey) || this._memoryToken;
       }
     } catch (_) {}
-    return null;
+    return this._memoryToken || null;
   }
 
   /**
@@ -88,6 +89,7 @@ export class BackendAIProvider extends AIProvider {
    * @param {string} token
    */
   setToken(token) {
+    this._memoryToken = token;
     try {
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem(this.sessionStorageKey, token);
@@ -99,6 +101,7 @@ export class BackendAIProvider extends AIProvider {
    * Menghapus token sesi dari sessionStorage
    */
   clearToken() {
+    this._memoryToken = null;
     try {
       if (typeof sessionStorage !== 'undefined') {
         sessionStorage.removeItem(this.sessionStorageKey);

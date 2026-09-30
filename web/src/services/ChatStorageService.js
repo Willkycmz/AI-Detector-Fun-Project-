@@ -105,6 +105,20 @@ export class ChatStorageService {
   }
 
   /**
+   * Sanitasi pesan untuk penyimpanan IndexedDB: hapus raw full-size snapshot
+   * @param {Object} msg
+   * @returns {Object}
+   */
+  _sanitizeMessage(msg) {
+    if (!msg || typeof msg !== 'object') return msg;
+    const { snapshot, ...rest } = msg;
+    return {
+      ...rest,
+      snapshotThumbnail: this.sanitizeThumbnail(msg.snapshotThumbnail || null)
+    };
+  }
+
+  /**
    * Mengambil semua sesi obrolan terurut dari yang terbaru
    * @returns {Promise<Array<Object>>}
    */
