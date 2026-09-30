@@ -9,6 +9,8 @@
  * - Statistik dataset komprehensif
  */
 
+import { ENDPOINTS, apiUrl } from './apiConfig.js';
+
 export class DatasetManagerService {
   constructor() {
     this.currentView = 'active'; // 'active' | 'trash'
@@ -30,7 +32,7 @@ export class DatasetManagerService {
 
   async fetchStats() {
     try {
-      const res = await fetch('/api/manager/stats');
+      const res = await fetch(ENDPOINTS.MANAGER_STATS);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -56,7 +58,7 @@ export class DatasetManagerService {
     if (search) params.set('search', search);
 
     try {
-      const res = await fetch(`/api/manager/list?${params.toString()}`);
+      const res = await fetch(`${ENDPOINTS.MANAGER_LIST}?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -106,7 +108,7 @@ export class DatasetManagerService {
       }))
     };
 
-    const res = await fetch('/api/manager/trash', {
+    const res = await fetch(ENDPOINTS.MANAGER_TRASH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -133,7 +135,7 @@ export class DatasetManagerService {
       }))
     };
 
-    const res = await fetch('/api/manager/restore', {
+    const res = await fetch(ENDPOINTS.MANAGER_RESTORE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -162,7 +164,7 @@ export class DatasetManagerService {
       }))
     };
 
-    const res = await fetch('/api/manager/delete-permanent', {
+    const res = await fetch(ENDPOINTS.MANAGER_DELETE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -206,7 +208,7 @@ export class DatasetManagerService {
       });
     }
 
-    const res = await fetch('/api/manager/import', {
+    const res = await fetch(ENDPOINTS.MANAGER_IMPORT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ files: payloadFiles })

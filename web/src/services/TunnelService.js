@@ -7,10 +7,9 @@
  * - Data field: 'info' (string keterangan deteksi/label)
  */
 
-export const DEFAULT_ENDPOINT_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_ENDPOINT_URL)
-    ? import.meta.env.VITE_ENDPOINT_URL
-    : 'https://visionx.my.id/api/upload';
+import { ENDPOINTS } from './apiConfig.js';
+
+export const DEFAULT_ENDPOINT_URL = ENDPOINTS.UPLOAD;
 
 class TunnelService {
   constructor() {

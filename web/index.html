@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -27,10 +27,11 @@
     <aside id="appSidebar" class="app-sidebar" aria-label="Navigasi Utama VisionX">
       <div class="sidebar-header">
         <div class="sidebar-brand" id="sidebarBrandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
-          <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="45" fill="#171717" stroke="#06b6d4" stroke-width="5"/>
-            <circle cx="50" cy="50" r="25" fill="none" stroke="#7c3aed" stroke-width="4.5"/>
-            <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+          <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#18181B"/>
+            <circle cx="16" cy="16" r="6" stroke="#FFFFFF" stroke-width="2"/>
+            <path d="M16 6V8M16 24V26M6 16H8M24 16H26" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="16" cy="16" r="2.5" fill="#38BDF8"/>
           </svg>
           <div class="sidebar-brand-text">
             <span class="sidebar-title">VisionX</span>
@@ -43,7 +44,7 @@
       <!-- Action: New Chat -->
       <div class="sidebar-action-group">
         <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Percakapan Baru">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -63,7 +64,11 @@
         <div id="sidebarChatHistory" class="sidebar-chat-history">
           <!-- Diisi secara dinamis oleh ChatController dari IndexedDB -->
           <div class="chat-history-item active" id="activeChatSessionItem" role="button" tabindex="0">
-            <span class="item-icon">💬</span>
+            <span class="item-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </span>
             <span class="item-label">Sesi Obrolan Aktif</span>
           </div>
         </div>
@@ -71,42 +76,91 @@
 
       <!-- Tools Navigation Menu -->
       <div class="sidebar-section sidebar-tools-section">
-        <div class="sidebar-section-title">Tools</div>
+        <div class="sidebar-section-title">Fitur &amp; Workspaces</div>
         <nav class="sidebar-nav">
           <button type="button" id="btnSidebarChat" class="sidebar-nav-item active" data-mode="home" aria-label="Buka Chat AI">
-            <span class="item-icon">💬</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </span>
             <span>Chat Assistant</span>
           </button>
           <button type="button" id="btnSidebarDetect" class="sidebar-nav-item" data-mode="detection" aria-label="Buka Deteksi Objek">
-            <span class="item-icon">🎯</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="22" y1="12" x2="18" y2="12"/>
+                <line x1="6" y1="12" x2="2" y2="12"/>
+                <line x1="12" y1="6" x2="12" y2="2"/>
+                <line x1="12" y1="22" x2="12" y2="18"/>
+              </svg>
+            </span>
             <span>Detection</span>
           </button>
           <button type="button" id="btnSidebarReadText" class="sidebar-nav-item" data-mode="read_text" aria-label="Buka Pembaca Teks OCR">
-            <span class="item-icon">📄</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                <line x1="9" y1="7" x2="15" y2="7"/>
+                <line x1="9" y1="11" x2="13" y2="11"/>
+              </svg>
+            </span>
             <span>Read Text</span>
           </button>
           <button type="button" id="btnSidebarCollect" class="sidebar-nav-item" data-mode="collection" aria-label="Buka Koleksi Dataset">
-            <span class="item-icon">🗄️</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </span>
             <span>Collection</span>
           </button>
           <button type="button" id="btnSidebarManager" class="sidebar-nav-item" data-mode="manager" aria-label="Buka Dataset Manager">
-            <span class="item-icon">📁</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                <line x1="12" y1="11" x2="12" y2="17"/>
+                <line x1="9" y1="14" x2="15" y2="14"/>
+              </svg>
+            </span>
             <span>Dataset Manager</span>
           </button>
           <button type="button" id="btnSidebarIdentity" class="sidebar-nav-item" data-mode="identity" aria-label="Buka Identity Lab">
-            <span class="item-icon">👤</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
             <span>Identity Lab</span>
           </button>
           <button type="button" id="btnSidebarSafety" class="sidebar-nav-item" data-mode="safety" aria-label="Buka Panel Safety">
-            <span class="item-icon">🛡️</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </span>
             <span>Safety</span>
           </button>
           <button type="button" id="btnSidebarMemory" class="sidebar-nav-item" data-mode="memory" aria-label="Buka Object Memory">
-            <span class="item-icon">🧠</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </span>
             <span>Memory</span>
           </button>
           <button type="button" id="btnSidebarPersonal" class="sidebar-nav-item" data-mode="personal" aria-label="Buka Personal Objects">
-            <span class="item-icon">📦</span>
+            <span class="item-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                <line x1="7" y1="7" x2="7.01" y2="7"/>
+              </svg>
+            </span>
             <span>Personal Objects</span>
           </button>
         </nav>
@@ -124,7 +178,11 @@
           <div class="sidebar-status-row clickable" id="sidebarAuthStatusRow" role="button" tabindex="0" title="Status Autentikasi / Klik untuk Login PIN" aria-label="Status Autentikasi">
             <span class="status-title">Autentikasi:</span>
             <span id="sidebarAuthStatus" class="badge badge-auth-active">
-              <span class="lock-icon">🔒</span> Terhubung &rsaquo;
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Terhubung &rsaquo;</span>
             </span>
           </div>
         </div>
@@ -134,7 +192,12 @@
             <span class="user-name">Pengguna VisionX</span>
             <span class="user-email">user@visionx.my.id</span>
           </div>
-          <button type="button" class="btn-user-settings" id="btnUserSettings" aria-label="Pengaturan Pengguna" title="Pengaturan">⚙️</button>
+          <button type="button" class="btn-user-settings" id="btnUserSettings" aria-label="Pengaturan Pengguna" title="Pengaturan">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
         </div>
       </div>
     </aside>
@@ -163,10 +226,11 @@
     <header class="app-header" id="mainAppHeader">
       <div class="header-main-bar">
         <div class="brand" id="brandLogo" role="button" tabindex="0" title="VisionX Home / Chat">
-          <svg class="brand-icon" viewBox="0 0 100 100" aria-hidden="true">
-            <circle cx="50" cy="50" r="45" fill="#171717" stroke="#06b6d4" stroke-width="5"/>
-            <circle cx="50" cy="50" r="25" fill="none" stroke="#7c3aed" stroke-width="4.5"/>
-            <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
+          <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#18181B"/>
+            <circle cx="16" cy="16" r="6" stroke="#FFFFFF" stroke-width="2"/>
+            <path d="M16 6V8M16 24V26M6 16H8M24 16H26" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="16" cy="16" r="2.5" fill="#38BDF8"/>
           </svg>
           <div class="brand-title-wrap">
             <h1 class="brand-title">VisionX <span class="version-tag" id="appVersionTag">v2.0.0</span></h1>
@@ -332,17 +396,18 @@
             <!-- Welcome Screen (Visible when chat thread has no messages) -->
             <div id="chatWelcomeScreen" class="chat-welcome-screen">
               <div class="welcome-hero-logo" aria-hidden="true">
-                <svg class="welcome-brand-icon" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="44" fill="#171717" stroke="#06b6d4" stroke-width="4.5" class="outer-ring"/>
-                  <circle cx="50" cy="50" r="27" fill="none" stroke="#7c3aed" stroke-width="4" class="middle-ring"/>
-                  <circle cx="50" cy="50" r="11" fill="#06b6d4" class="inner-dot"/>
+                <svg class="welcome-brand-icon" viewBox="0 0 48 48" fill="none">
+                  <rect width="48" height="48" rx="12" fill="#18181B"/>
+                  <circle cx="24" cy="24" r="9" stroke="#FFFFFF" stroke-width="2.5"/>
+                  <path d="M24 9V12M24 36V39M9 24H12M36 24H39" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="24" cy="24" r="3.5" fill="#38BDF8"/>
                 </svg>
               </div>
 
               <h1 class="welcome-title">VisionX</h1>
-              <div class="welcome-subtitle">AI Vision Assistant</div>
+              <div class="welcome-subtitle">AI Vision Assistant &bull; Edge Workspace</div>
               <p class="welcome-desc">
-                Saya adalah VisionX, asisten AI yang terhubung dengan sistem computer vision lokal. Saya dapat membantu Anda menganalisis citra visual, membaca teks, mendeteksi objek, dan memantau lingkungan.
+                Platform computer vision lokal dengan asisten AI multimodal, deteksi objek real-time, pembaca teks OCR, dan manajemen dataset citra.
               </p>
 
               <!-- 4 Capability Cards in a horizontal row -->
@@ -787,9 +852,9 @@
         <div class="model-select-group">
           <label for="modelSelect" class="field-label-sm">Model Vision:</label>
           <select id="modelSelect" class="select-control model-select-sm">
-            <option value="visionx_v2" selected>🚀 VisionX V2 (Real-World Improved)</option>
-            <option value="visionx_v1">🎯 VisionX V1 (Custom 7 Classes)</option>
-            <option value="pretrained">🌐 Pretrained Vision Model (COCO 80 Classes)</option>
+            <option value="visionx_v2" selected>VisionX V2 (Real-World Improved)</option>
+            <option value="visionx_v1">VisionX V1 (Custom 7 Classes)</option>
+            <option value="pretrained">Pretrained Vision Model (COCO 80 Classes)</option>
           </select>
         </div>
 
@@ -832,27 +897,57 @@
           </div>
           <div class="contextual-tools-nav" role="tablist" aria-label="Vision Contextual Tools">
             <button type="button" class="btn-contextual-tool" id="toolBtnAsk" data-tool="ask" role="tab" aria-selected="false" aria-controls="askVisionPanel" title="Buka AI Vision Assistant">
-              <span class="tool-icon">🤖</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM4 11h16a1 1 0 0 1 1 1v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-6a1 1 0 0 1 1-1z"/>
+                  <circle cx="9" cy="16" r="1" fill="currentColor"/>
+                  <circle cx="15" cy="16" r="1" fill="currentColor"/>
+                </svg>
+              </span>
               <span class="tool-name">Ask AI</span>
             </button>
             <button type="button" class="btn-contextual-tool" id="toolBtnVoice" data-tool="voice" role="tab" aria-selected="false" aria-controls="voicePanel" title="Buka Voice Assistant Controls">
-              <span class="tool-icon">🔊</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                </svg>
+              </span>
               <span class="tool-name">Voice</span>
             </button>
             <button type="button" class="btn-contextual-tool" id="toolBtnMemory" data-tool="memory" role="tab" aria-selected="false" aria-controls="objectMemoryPanel" title="Buka Object Memory Tracker">
-              <span class="tool-icon">🧠</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </span>
               <span class="tool-name">Memory</span>
             </button>
             <button type="button" class="btn-contextual-tool" id="toolBtnPersonal" data-tool="personal" role="tab" aria-selected="false" aria-controls="personalObjectsPanel" title="Buka Personal Objects Registry">
-              <span class="tool-icon">🏷️</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                  <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+              </span>
               <span class="tool-name">Personal</span>
             </button>
             <button type="button" class="btn-contextual-tool" id="toolBtnSafety" data-tool="safety" role="tab" aria-selected="false" aria-controls="safetyAlertsPanel" title="Buka Safety Alerts System">
-              <span class="tool-icon">⚠️</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </span>
               <span class="tool-name">Safety</span>
             </button>
             <button type="button" class="btn-contextual-tool" id="toolBtnSettings" data-tool="settings" role="tab" aria-selected="false" aria-controls="settingsPanel" title="Buka Settings &amp; Diagnostics">
-              <span class="tool-icon">⚙️</span>
+              <span class="tool-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </span>
               <span class="tool-name">Settings</span>
             </button>
           </div>
@@ -872,7 +967,7 @@
                   </svg>
                 </div>
                 <div class="ask-vision-title-texts">
-                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="version-tag">v2.0.0</span></h3>
+                  <h3 class="ask-vision-title">Ask VisionX <span class="version-tag">v2.0.0</span></h3>
                   <span class="ask-vision-subtitle">Asisten multimodal cerdas &bull; Menjawab pertanyaan dari snapshot kamera &amp; konteks visual</span>
                 </div>
               </div>
@@ -1423,7 +1518,7 @@
                   <label class="toggle-group debug-toggle">
                     <span class="field-label">Debug Mode:</span>
                     <span class="switch">
-                      <input type="checkbox" id="toggleDebug" checked />
+                      <input type="checkbox" id="toggleDebug" />
                       <span class="slider"></span>
                     </span>
                   </label>
@@ -2065,9 +2160,9 @@
     </section>
 
     <!-- Debug Mode Raw Output Panel (Hanya di Detection Mode) -->
-    <section id="debugPanel" class="debug-card workspace-panel" data-workspace="debug">
+    <section id="debugPanel" class="debug-card workspace-panel hidden" data-workspace="debug">
       <div class="debug-header">
-        <h3>🔍 Raw Detection Debug Inspector</h3>
+        <h3>Raw Detection Debug Inspector</h3>
         <div class="debug-meta">
           <span>Active Model: <strong id="debugModelName">VisionX V1 Custom (7 Classes)</strong></span>
           <span>Load Time: <strong id="debugLoadTime">-- ms</strong></span>

@@ -45,6 +45,7 @@ import { tunnelService } from './services/TunnelService.js';
 import { CameraModal } from './ui/CameraModal.js';
 import { ChatController } from './ui/ChatController.js';
 import { APP_VERSION } from './version.js';
+import { ENDPOINTS } from './services/apiConfig.js';
 
 class VisionXWebApp {
   constructor() {
@@ -61,7 +62,7 @@ class VisionXWebApp {
     this.fpsSmooth = 0;
     this.alphaFps = 0.9;
     this.isProcessingFrame = false;
-    this.isDebugVisible = true;
+    this.isDebugVisible = false;
 
     // Face Recognition Layer State (V0.6.2 Unified Vision)
     this.isProcessingFace = false;
@@ -2078,7 +2079,7 @@ class VisionXWebApp {
         const item = this.managerService.items.find(i => i.id === id);
         if (item) {
           try {
-            await fetch('/api/manager/trash', {
+            await fetch(ENDPOINTS.MANAGER_TRASH, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items: [item] })
@@ -2098,7 +2099,7 @@ class VisionXWebApp {
         const item = this.managerService.items.find(i => i.id === id);
         if (item) {
           try {
-            await fetch('/api/manager/restore', {
+            await fetch(ENDPOINTS.MANAGER_RESTORE, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items: [item] })
@@ -2119,7 +2120,7 @@ class VisionXWebApp {
         if (item) {
           if (!confirm(`Hapus permanen "${item.filename}" dari disk?`)) return;
           try {
-            await fetch('/api/manager/delete-permanent', {
+            await fetch(ENDPOINTS.MANAGER_DELETE, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ items: [item] })

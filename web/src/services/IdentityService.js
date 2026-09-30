@@ -8,6 +8,8 @@
  * - Safety & Privacy: hanya mencocokkan profil terdaftar, lainnya diberi label "PERSON • UNKNOWN"
  */
 
+import { ENDPOINTS } from './apiConfig.js';
+
 export class IdentityService {
   constructor() {
     this.profileName = 'VisionX Developer';
@@ -21,7 +23,7 @@ export class IdentityService {
 
   async getProfile() {
     try {
-      const res = await fetch('/api/identity/profile');
+      const res = await fetch(ENDPOINTS.IDENTITY_PROFILE);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -38,7 +40,7 @@ export class IdentityService {
 
   async registerProfile(name) {
     if (!name || !name.trim()) throw new Error('Nama profil tidak boleh kosong.');
-    const res = await fetch('/api/identity/register', {
+    const res = await fetch(ENDPOINTS.IDENTITY_REGISTER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim() })
@@ -51,7 +53,7 @@ export class IdentityService {
 
   async getReferences() {
     try {
-      const res = await fetch('/api/identity/references');
+      const res = await fetch(ENDPOINTS.IDENTITY_REFERENCES);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -68,7 +70,7 @@ export class IdentityService {
 
   async addReference(dataUrl, filename = null) {
     if (!dataUrl) throw new Error('Citra wajah tidak boleh kosong.');
-    const res = await fetch('/api/identity/add-reference', {
+    const res = await fetch(ENDPOINTS.IDENTITY_ADD_REF, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dataUrl, filename })
@@ -82,7 +84,7 @@ export class IdentityService {
 
   async deleteReference(filename) {
     if (!filename) throw new Error('Nama file referensi harus disertakan.');
-    const res = await fetch('/api/identity/delete-reference', {
+    const res = await fetch(ENDPOINTS.IDENTITY_DEL_REF, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename })
@@ -97,7 +99,7 @@ export class IdentityService {
   async detectFaces(dataUrl) {
     if (!dataUrl) return null;
     try {
-      const res = await fetch('/api/identity/detect', {
+      const res = await fetch(ENDPOINTS.IDENTITY_DETECT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl })
@@ -117,7 +119,7 @@ export class IdentityService {
     if (!dataUrl) return null;
     const thresh = customThreshold !== null ? customThreshold : this.threshold;
     try {
-      const res = await fetch('/api/identity/match', {
+      const res = await fetch(ENDPOINTS.IDENTITY_MATCH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl, threshold: thresh })

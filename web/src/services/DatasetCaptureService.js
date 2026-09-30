@@ -6,6 +6,8 @@
  * impor citra & folder, pencegahan duplikasi (SHA-256), serta metadata presisi.
  */
 
+import { ENDPOINTS } from './apiConfig.js';
+
 // Daftar nama reserved Windows yang dilarang (kompatibel dengan app/collector.py)
 export const WINDOWS_RESERVED_NAMES = new Set([
   'CON', 'PRN', 'AUX', 'NUL',
@@ -271,8 +273,11 @@ export class DatasetCaptureService {
    */
   async loadExistingDataset() {
     try {
-      const response = await fetch('/api/dataset/list');
-      if (!response.ok) return;
+      const response = await fetch(ENDPOINTS.DATASET_LIST);
+      if (!response.ok) {
+        console.info('[DatasetCaptureService] /api/dataset/list tidak tersedia di backend production — memuat dari cache lokal.');
+        return;
+      }
       const data = await response.json();
       if (!data.success || !Array.isArray(data.items)) return;
 
@@ -369,35 +374,39 @@ export class DatasetCaptureService {
     const captureClass = this.currentClass;
     const filename = this.generateFilename(captureClass, 'own_capture', 'jpg');
 
-    // 5. Simpan ke disk secara persisten melalui API server lokal
+    // 5. Upload ke backend production via multipart/form-data
     let saveResult = null;
     let storageType = 'disk';
 
     try {
-      const apiRes = await fetch('/api/dataset/save', {
+      const formData = new FormData();
+      formData.append('image', blob, filename);
+      formData.append('info', JSON.stringify({
+        filename,
+        className: captureClass,
+        source: 'own_capture',
+        width: vw,
+        height: vh
+      }));
+
+      const apiRes = await fetch(ENDPOINTS.UPLOAD, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filename,
-          className: captureClass,
-          source: 'own_capture',
-          width: vw,
-          height: vh,
-          dataUrl
-        })
+        body: formData
+        // Note: NO 'Content-Type' header — browser sets multipart boundary automatically
       });
 
       if (!apiRes.ok) {
         const errorText = await apiRes.text();
-        throw new Error(`Server API save gagal (${apiRes.status}): ${errorText}`);
+        throw new Error(`Server API upload gagal (${apiRes.status}): ${errorText}`);
       }
 
-      saveResult = await apiRes.json();
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Server gagal menyimpan citra.');
+      const uploadResult = await apiRes.json();
+      if (uploadResult.status !== 'success') {
+        throw new Error(uploadResult.message || 'Server gagal menyimpan citra.');
       }
+      saveResult = { success: true, url: null, ...uploadResult };
     } catch (saveErr) {
-      console.error('[DatasetCaptureService] Gagal menyimpan ke disk API:', saveErr);
+      console.error('[DatasetCaptureService] Gagal upload ke backend:', saveErr);
       throw new Error(`Penyimpanan dataset gagal: ${saveErr.message}`);
     }
 
@@ -481,7 +490,7 @@ export class DatasetCaptureService {
 
     // 1. Hapus dari disk via server API
     try {
-      const res = await fetch('/api/dataset/delete', {
+      const res = await fetch(ENDPOINTS.DATASET_DELETE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -614,21 +623,23 @@ export class DatasetCaptureService {
         });
         const dataUrl = await dataUrlPromise;
 
-        // Simpan via API dev server
-        const apiRes = await fetch('/api/dataset/save', {
+        // Upload via production backend (multipart/form-data)
+        const formData = new FormData();
+        formData.append('image', blob, filename);
+        formData.append('info', JSON.stringify({
+          filename,
+          className: validClass,
+          source,
+          width,
+          height
+        }));
+
+        const apiRes = await fetch(ENDPOINTS.UPLOAD, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename,
-            className: validClass,
-            source,
-            width,
-            height,
-            dataUrl
-          })
+          body: formData
         });
 
-        const saveRes = await apiRes.json();
+        const saveRes = (apiRes.ok) ? await apiRes.json() : null;
         const formattedSize = `${(file.size / 1024).toFixed(1)} KB`;
 
         this.knownHashes.add(hash);

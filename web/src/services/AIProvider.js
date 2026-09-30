@@ -3,6 +3,7 @@
  *
  * Mengabstraksikan layer penyedia kecerdasan buatan (Vision LLM / Multimodal AI).
  * UI dan controller VisionAssistant TIDAK bergantung pada satu provider tertentu.
+
  *
  * Implementasi:
  * - AIProvider (Base abstract class)
@@ -32,6 +33,8 @@ export class AIProvider {
   }
 }
 
+import { API_BASE_URL, ENDPOINTS } from './apiConfig.js';
+
 /**
  * BackendAIProvider - Menghubungi backend gateway produksi VisionX (https://visionx.my.id/api/chat)
  * Fitur:
@@ -42,7 +45,7 @@ export class AIProvider {
 export class BackendAIProvider extends AIProvider {
   /**
    * @param {Object} [config={}]
-   * @param {string} [config.baseUrl] URL backend (default: https://visionx.my.id)
+   * @param {string} [config.baseUrl] URL backend (default: from apiConfig.js)
    * @param {string} [config.endpoint] Endpoint chat (default: {baseUrl}/api/chat)
    * @param {string} [config.loginEndpoint] Endpoint login (default: {baseUrl}/api/login)
    * @param {number} [config.timeoutMs=35000] Timeout permintaan (ms)
@@ -50,17 +53,9 @@ export class BackendAIProvider extends AIProvider {
    */
   constructor(config = {}) {
     super();
-    const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
-      ? import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '')
-      : null;
-
-    const isLocalhost = typeof window !== 'undefined' && 
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const defaultUrl = isLocalhost ? 'http://localhost:5000' : 'https://visionx.my.id';
-
-    this.baseUrl = config.baseUrl || envUrl || defaultUrl;
-    this.endpoint = config.endpoint || `${this.baseUrl}/api/chat`;
-    this.loginEndpoint = config.loginEndpoint || `${this.baseUrl}/api/login`;
+    this.baseUrl = config.baseUrl || API_BASE_URL;
+    this.endpoint = config.endpoint || ENDPOINTS.CHAT;
+    this.loginEndpoint = config.loginEndpoint || ENDPOINTS.LOGIN;
     this.timeoutMs = config.timeoutMs || 35000;
     this.onAuthRequired = config.onAuthRequired || null;
     this.sessionStorageKey = 'visionx_session_token';
