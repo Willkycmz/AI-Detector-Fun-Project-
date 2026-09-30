@@ -17,8 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DbebWl39.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-CrzV9Skh.css">
+  <script type="module" crossorigin src="./assets/index-tXX34Wva.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-jUf5a1ws.css">
 </head>
 <body>
   <div class="app-container">
@@ -48,7 +48,7 @@
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          <span>＋ Percakapan Baru</span>
+          <span>Percakapan Baru</span>
         </button>
       </div>
 
@@ -170,13 +170,14 @@
             <circle cx="50" cy="50" r="10" fill="#06b6d4"/>
           </svg>
           <div class="brand-title-wrap">
-            <h1 class="brand-title">VisionX <span class="version-tag">V2.0</span></h1>
+            <h1 class="brand-title">VisionX <span class="version-tag" id="appVersionTag">v2.0.0</span></h1>
+            <span class="brand-divider">•</span>
             <span class="brand-subtitle" id="headerBreadcrumbTitle">Asisten AI</span>
           </div>
         </div>
 
-        <!-- Mode Switcher Tabs (Preserved for NavigationManager & tool mode switching) -->
-        <div class="mode-switcher-container">
+        <!-- Mode Switcher Tabs (Accessible for NavigationManager & test suite, hidden from main minimal header) -->
+        <div class="mode-switcher-container hidden" id="headerModeSwitcher" style="display: none;">
           <div class="mode-toggle-group" role="tablist">
             <button id="btnNavHome" class="mode-tab active" role="tab" aria-selected="true" title="VisionX Home / Chat">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -252,15 +253,15 @@
         </div>
       </div>
 
-      <!-- Header Tool Badges (Visible in Vision/Collection/Tool Modes) -->
-      <div class="header-badges">
+      <!-- Header Tool Badges (Visible only in tool modes when needed, minimal) -->
+      <div class="header-badges hidden" id="headerBadges">
         <div id="modeBadge" class="badge badge-mode-home">
           <span class="badge-dot"></span>
           <span id="modeStatusText">Home</span>
         </div>
         <div id="cameraBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
-          <span id="cameraStatusText">Camera Disconnected</span>
+          <span id="cameraStatusText">Kamera Terputus</span>
         </div>
         <div id="activeModelBadge" class="badge badge-model-custom">
           <span class="badge-dot"></span>
@@ -268,18 +269,18 @@
         </div>
         <div id="voiceBadge" class="badge badge-ready" title="Status Voice Assistant Engine (Shortcut: V)">
           <span class="badge-dot"></span>
-          <span id="voiceBadgeText">Voice: Ready</span>
+          <span id="voiceBadgeText">Voice: Siap</span>
         </div>
         <div id="ocrBadge" class="badge badge-ready hidden" title="Status OCR Engine">
           <span class="badge-dot"></span>
-          <span id="ocrBadgeText">OCR: Ready</span>
+          <span id="ocrBadgeText">OCR: Siap</span>
         </div>
         <div id="inferenceBadge" class="badge badge-disconnected">
           <span class="badge-dot"></span>
           <span id="inferenceStatusText">Loading Model...</span>
         </div>
         <div id="detectionCountBadge" class="badge badge-count">
-          <span>Objects:</span>
+          <span>Objek:</span>
           <strong id="detectionCountValue">0</strong>
         </div>
         <div id="trackedCountBadge" class="badge badge-count">
@@ -287,11 +288,11 @@
           <strong id="trackedCountValue">0</strong>
         </div>
         <div id="classBadge" class="badge badge-class hidden">
-          <span>Class:</span>
+          <span>Kelas:</span>
           <strong id="badgeClassName">object</strong>
         </div>
         <div id="countBadge" class="badge badge-count hidden">
-          <span>Images:</span>
+          <span>Gambar:</span>
           <strong id="badgeImageCount">0</strong>
         </div>
         <div id="fpsBadge" class="badge badge-fps">
@@ -460,7 +461,7 @@
               </button>
 
               <div class="input-field-dock-wrapper input-field-wrapper">
-                <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Ketik pesan Anda..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
+                <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Ketik pesan..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
               </div>
 
               <div class="dock-actions-right">
@@ -571,11 +572,11 @@
         </aside>
       </div>
 
-      <!-- Collapsible Legacy Tools Directory for feature preservation -->
-      <details class="home-legacy-tools-wrapper">
+      <!-- Collapsible Legacy Tools Directory for feature preservation (hidden from clean Chat UI) -->
+      <details class="home-legacy-tools-wrapper hidden" style="display: none;" aria-hidden="true">
         <summary class="tools-summary-toggle">🛠️ Direktori Fitur &amp; Lab Kamera...</summary>
         <div class="home-hero">
-          <div class="home-badge">VisionX AI Platform &bull; V2.0</div>
+          <div class="home-badge">VisionX AI Platform &bull; <span class="version-tag">v2.0.0</span></div>
           <h2 class="home-title">Edge AI Vision &amp; Spatial Perception</h2>
           <p class="home-description">
             Platform visi komputer cerdas lokal dengan deteksi objek real-time, pembaca teks OCR,
@@ -869,7 +870,7 @@
                   </svg>
                 </div>
                 <div class="ask-vision-title-texts">
-                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="badge-v1-tag">V2.0</span></h3>
+                  <h3 class="ask-vision-title">🤖 ASK VISIONX <span class="version-tag">v2.0.0</span></h3>
                   <span class="ask-vision-subtitle">Asisten multimodal cerdas &bull; Menjawab pertanyaan dari snapshot kamera &amp; konteks visual</span>
                 </div>
               </div>
@@ -1102,7 +1103,7 @@
                   </svg>
                 </div>
                 <div class="memory-title-texts">
-                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="badge-v1-tag">V2.0</span></h3>
+                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="version-tag">v2.0.0</span></h3>
                   <span class="memory-subtitle">Memori temporal &amp; spasial objek lokal &bull; Melacak riwayat kemunculan &amp; posisi</span>
                 </div>
               </div>
@@ -1164,7 +1165,7 @@
                   </svg>
                 </div>
                 <div class="personal-title-texts">
-                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="badge-v1-tag">V2.0</span></h3>
+                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="version-tag">v2.0.0</span></h3>
                   <span class="personal-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
                 </div>
               </div>
@@ -1275,7 +1276,7 @@
                   </svg>
                 </div>
                 <div class="safety-alerts-title-texts">
-                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="badge-v1-tag">V2.0</span></h3>
+                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="version-tag">v2.0.0</span></h3>
                   <span class="safety-alerts-subtitle">Sistem peringatan keselamatan objek &amp; anomali pelacakan &bull; Terintegrasi VoiceEngine</span>
                 </div>
               </div>
@@ -2062,7 +2063,7 @@
     </section>
 
     <!-- Debug Mode Raw Output Panel (Hanya di Detection Mode) -->
-    <section id="debugPanel" class="debug-card">
+    <section id="debugPanel" class="debug-card hidden">
       <div class="debug-header">
         <h3>🔍 Raw Detection Debug Inspector</h3>
         <div class="debug-meta">
@@ -2312,8 +2313,8 @@
       </div>
     </div>
 
-    <footer class="app-footer">
-      VisionX V2.0 Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX Model
+    <footer class="app-footer hidden" style="display: none;" aria-hidden="true">
+      VisionX <span class="version-tag">v2.0.0</span> Realtime AI Vision Assistant &bull; Mobile-First UX &bull; Voice Assistant &bull; Persistent Tracking &bull; ONNX Model
     </footer>
     </div> <!-- .app-main-layout -->
   </div>
