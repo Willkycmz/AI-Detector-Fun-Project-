@@ -1034,10 +1034,12 @@ body.theme-dark {
 .mode-switcher-container {
   display: flex;
   align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  max-width: 100%;
+  padding: 2px 0;
 }
 
 .mode-switcher-container::-webkit-scrollbar {
@@ -1045,7 +1047,7 @@ body.theme-dark {
 }
 
 .mode-toggle-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 2px;
   background: var(--surface-subtle);
@@ -1053,12 +1055,13 @@ body.theme-dark {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   flex-shrink: 0;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .mode-tab {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 5px 11px;
   border-radius: var(--radius-sm);
@@ -1081,6 +1084,8 @@ body.theme-dark {
 
 .mode-tab svg {
   flex-shrink: 0;
+  width: 15px;
+  height: 15px;
 }
 
 .mode-tab:hover {
@@ -1096,12 +1101,39 @@ body.theme-dark {
   box-shadow: var(--shadow-xs);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1280px) {
+  .brand-subtitle,
+  .brand-divider {
+    display: none;
+  }
+  .mode-tab {
+    padding: 5px 7px;
+    gap: 4px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 1100px) {
   .mode-tab span {
     display: none;
   }
   .mode-tab {
     padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-main-bar {
+    gap: 6px;
+  }
+  .header-status-pill .status-text {
+    display: none;
+  }
+  .header-status-pill {
+    padding: 4px 6px;
+  }
+  .mode-tab {
+    padding: 5px 6px;
   }
 }
 
@@ -1706,12 +1738,15 @@ body.theme-dark .user-avatar-circle {
   flex-shrink: 0;
 }
 
+/* Vision workspace active control card layouts */
 .workspace-container[data-active-workspace="detection"] > [data-workspace="vision-controls"],
 .workspace-container[data-active-workspace="read_text"] > [data-workspace="vision-controls"],
 .workspace-container[data-active-workspace="collection"] > [data-workspace="vision-controls"],
 .workspace-container[data-active-workspace="identity"] > [data-workspace="vision-controls"],
-#controlsCard,
-.controls-card {
+.workspace-container[data-active-workspace="detection"] > #controlsCard,
+.workspace-container[data-active-workspace="read_text"] > #controlsCard,
+.workspace-container[data-active-workspace="collection"] > #controlsCard,
+.workspace-container[data-active-workspace="identity"] > #controlsCard {
   display: flex !important;
   flex-direction: column !important;
   gap: 24px !important;
@@ -1719,6 +1754,17 @@ body.theme-dark .user-avatar-circle {
   width: 100% !important;
   max-width: 880px !important;
   margin: 0 auto !important;
+}
+
+/* Strict non-active isolation: ensure hidden attribute & class ALWAYS take precedence */
+[hidden],
+.hidden {
+  display: none !important;
+}
+
+#controlsCard.hidden,
+#controlsCard[hidden] {
+  display: none !important;
 }
 
 /* Mode-specific control views */
@@ -1763,7 +1809,19 @@ body.theme-dark .user-avatar-circle {
 .workspace-container[data-active-workspace="manager"] > #homeView,
 .workspace-container[data-active-workspace="home"] > [data-workspace="vision-stage"],
 .workspace-container[data-active-workspace="home"] > [data-workspace="vision-controls"],
-.workspace-container[data-active-workspace="home"] > [data-workspace="debug"] {
+.workspace-container[data-active-workspace="home"] > [data-workspace="debug"],
+.workspace-container[data-active-workspace="home"] #controlsCard,
+.workspace-container[data-active-workspace="home"] > #controlsCard,
+.workspace-container[data-active-workspace="home"] .controls-card,
+.workspace-container[data-active-workspace="home"] .primary-hero-bar,
+.workspace-container[data-active-workspace="home"] .current-result-summary-bar,
+.workspace-container[data-active-workspace="home"] .secondary-controls-bar,
+.workspace-container[data-active-workspace="home"] .contextual-tools-bar,
+.workspace-container[data-active-workspace="home"] #detectionControls,
+.workspace-container[data-active-workspace="home"] #readTextControls,
+.workspace-container[data-active-workspace="home"] #collectionControls,
+.workspace-container[data-active-workspace="home"] #identityControls,
+.workspace-container[data-active-workspace="home"] #managerControls {
   display: none !important;
 }
 
@@ -2270,16 +2328,28 @@ body.theme-dark .message-error-bubble .message-content {
   z-index: 10;
 }
 
+/* H5: Privacy Disclosure as single inline paragraph */
 .chat-privacy-disclosure {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-  max-width: 760px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  pointer-events: auto;
+  font-size: 0.75rem !important;
+  line-height: 1.45 !important;
+  color: var(--text-muted) !important;
+  margin-bottom: 8px !important;
+  max-width: 760px !important;
+  width: 100% !important;
+  display: block !important;
+  text-align: left !important;
+  pointer-events: auto !important;
+}
+
+.chat-privacy-disclosure .disclosure-badge {
+  display: inline !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  margin-right: 4px !important;
+}
+
+.chat-privacy-disclosure .disclosure-text {
+  display: inline !important;
 }
 
 .chat-input-dock {
@@ -2302,30 +2372,63 @@ body.theme-dark .message-error-bubble .message-content {
   box-shadow: var(--shadow-lg);
 }
 
+/* H3: Chat Input Buttons - Fixed 20px SVG, High Contrast */
+.chat-input-dock button,
+.btn-cam-dock,
+.btn-dock-icon,
+.btn-send-dock {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--radius-md) !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.chat-input-dock svg,
+.btn-cam-dock svg,
+.btn-dock-icon svg,
+.btn-send-dock svg {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+
+/* H3: Left Camera Button (Secondary = Gelap + Ikon Terang) */
 .btn-cam-dock {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-subtle);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
+  background: #18181B !important;
+  color: #F4F4F5 !important;
+  border: 1px solid #27272A !important;
+  box-shadow: var(--shadow-xs) !important;
 }
 
 .btn-cam-dock:hover {
-  background: var(--surface-hover);
-  color: var(--text-primary);
+  background: #27272A !important;
+  color: #FFFFFF !important;
+  border-color: #3F3F46 !important;
+}
+
+.btn-cam-dock svg {
+  stroke: #F4F4F5 !important;
 }
 
 .input-field-dock-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .chat-message-input {
@@ -2343,45 +2446,43 @@ body.theme-dark .message-error-bubble .message-content {
 .dock-actions-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
+/* H3: Secondary Action Buttons (Gelap + Ikon Terang) */
 .btn-dock-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  background: #27272A !important;
+  color: #F4F4F5 !important;
+  border: 1px solid #3F3F46 !important;
 }
 
 .btn-dock-icon:hover {
-  color: var(--text-primary);
-  background: var(--surface-hover);
+  background: #3F3F46 !important;
+  color: #FFFFFF !important;
+  border-color: #52525B !important;
 }
 
+.btn-dock-icon svg {
+  stroke: #F4F4F5 !important;
+}
+
+/* H3: Primary Send Button (Warna Aksen + Ikon Putih) */
 .btn-send-dock {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: var(--primary);
-  color: var(--primary-text);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4338CA !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.35) !important;
 }
 
-.btn-send-dock:hover {
-  background: var(--primary-hover);
+.btn-send-dock:hover:not(:disabled) {
+  background: #4338CA !important;
+  border-color: #3730A3 !important;
+}
+
+.btn-send-dock svg {
+  stroke: #FFFFFF !important;
+  fill: none !important;
 }
 
 .dock-footnote {
@@ -2559,6 +2660,67 @@ body.theme-dark .message-error-bubble .message-content {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+/* H4: Recent Activity Panel */
+.recent-activity-card {
+  max-height: 280px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.activity-items-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow-y: auto !important;
+  max-height: 210px !important;
+  padding-right: 4px !important;
+}
+
+.activity-item-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border-subtle) !important;
+  transition: background 0.15s ease !important;
+}
+
+.activity-item-row:hover {
+  background: var(--surface-hover) !important;
+}
+
+.activity-icon {
+  font-size: 1.1rem !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  margin-top: 2px !important;
+}
+
+.activity-details {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.activity-desc {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 1.35 !important;
+  color: var(--text-primary) !important;
+  word-break: break-word !important;
+}
+
+.activity-time {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
 }
 
 .privacy-card-body {
