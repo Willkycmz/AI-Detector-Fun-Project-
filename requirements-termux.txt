@@ -1,0 +1,13 @@
+# VisionX Termux Backend Dependencies (Lightweight Gateway for Android)
+# Jalankan di Termux: pip install -r requirements-termux.txt
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.28.0
+PyJWT>=2.8.0
+cryptography>=41.0.0
+python-dotenv>=1.0.0
+
+# Catatan Tambahan untuk Modul Wajah (Identity Lab) di Termux:
+# numpy dan opencv bersifat opsional. Jika ingin mengaktifkan Identity Lab di Termux:
+# Jalankan: pkg install python-numpy
+# Dan pasang opencv via TUR repo atau wheel ARM: pkg install tur-repo && pkg install python-opencv

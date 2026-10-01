@@ -38,6 +38,7 @@ from server import app, generate_token, verify_token, login_security_tracker, ch
 class TestBackendGateway(unittest.TestCase):
 
     def setUp(self):
+        server.VISIONX_LEGACY_PIN = True
         self.client = app.test_client()
         # Reset security trackers for clean test state
         login_security_tracker.clear()

@@ -72,6 +72,17 @@ VISIONX_ADMIN_PIN = os.environ.get("VISIONX_ADMIN_PIN", "visionx2026")
 VISIONX_AUTH_SECRET = os.environ.get("VISIONX_AUTH_SECRET", "visionx-auth-secret-key-prod-2026")
 VISIONX_LEGACY_PIN = os.environ.get("VISIONX_LEGACY_PIN", "0").lower() in ("1", "true", "yes")
 
+# Optional dotenv loading for Termux / local environment
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parent / ".env"
+    if _env_path.exists():
+        load_dotenv(dotenv_path=_env_path)
+    else:
+        load_dotenv()
+except Exception:
+    pass
+
 # Supabase Auth Configuration
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnwaniiuflsuemyambuy.supabase.co").rstrip("/")
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
@@ -80,8 +91,8 @@ SUPABASE_AUDIENCE = os.environ.get("SUPABASE_AUDIENCE", "authenticated")
 # Rate Limiting Configuration
 VISIONX_USER_DAILY_CHAT_LIMIT = int(os.environ.get("VISIONX_USER_DAILY_CHAT_LIMIT", 30))
 
-# Gemini LLM Configuration
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# Gemini LLM Configuration (supports both GEMINI_API_KEY and GOOGLE_API_KEY)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
 
 # Maximum payload size: 10 MB (allows image dataset uploads and imports)
@@ -324,6 +335,10 @@ def verify_legacy_token(token_str: str) -> Optional[Dict[str, Any]]:
         return payload
     except Exception:
         return None
+
+
+# Backward compatibility alias for legacy tests
+verify_token = verify_legacy_token
 
 
 def extract_auth_token() -> Tuple[Optional[str], Optional[str]]:
@@ -735,7 +750,11 @@ def build_grounded_system_prompt(vision_context: Optional[Dict[str, Any]] = None
         for d in all_dets:
             if isinstance(d, dict):
                 cname = d.get("class_name") or d.get("className") or "unknown"
-                conf = d.get("confidence", 0.0)
+                conf_raw = d.get("confidence")
+                try:
+                    conf = float(conf_raw) if conf_raw is not None else 0.0
+                except (ValueError, TypeError):
+                    conf = 0.0
                 pos = d.get("relative_position") or d.get("position") or "frame"
                 det_lines.append(f"- {cname} (confidence: {conf:.2f}, position: {pos})")
         prompt += "Detected Objects:\n" + ("\n".join(det_lines) if det_lines else "None") + "\n"
@@ -919,11 +938,17 @@ def api_chat():
         if isinstance(history, list):
             for turn in history[-6:]:
                 if isinstance(turn, dict) and "text" in turn:
+                    t_text = str(turn["text"]).strip()
+                    if not t_text:
+                        continue
                     role = "model" if turn.get("role") in ["assistant", "model"] else "user"
-                    contents.append({
-                        "role": role,
-                        "parts": [{"text": str(turn["text"])}]
-                    })
+                    if contents and contents[-1]["role"] == role:
+                        contents[-1]["parts"][0]["text"] += f"\n{t_text}"
+                    else:
+                        contents.append({
+                            "role": role,
+                            "parts": [{"text": t_text}]
+                        })
         
         user_parts = [{"text": message}]
         if image_b64:
@@ -934,10 +959,13 @@ def api_chat():
                 }
             })
             
-        contents.append({
-            "role": "user",
-            "parts": user_parts
-        })
+        if contents and contents[-1]["role"] == "user":
+            contents[-1]["parts"].extend(user_parts)
+        else:
+            contents.append({
+                "role": "user",
+                "parts": user_parts
+            })
         
         payload = {
             "system_instruction": {
@@ -953,7 +981,8 @@ def api_chat():
         try:
             with requests.post(endpoint, json=payload, stream=True, timeout=30) as resp:
                 if resp.status_code != 200:
-                    logger.error(f"Gemini API returned HTTP {resp.status_code}")
+                    err_snippet = resp.text[:300] if hasattr(resp, "text") else ""
+                    logger.error(f"Gemini API returned HTTP {resp.status_code}: {err_snippet}")
                     yield f"data: {json.dumps({'error': f'AI provider error (HTTP {resp.status_code})'})}\n\n"
                     yield "data: [DONE]\n\n"
                     return
@@ -987,14 +1016,18 @@ def api_chat():
             yield f"data: {json.dumps({'error': 'AI provider stream error'})}\n\n"
             yield "data: [DONE]\n\n"
 
-    return Response(
-        stream_with_context(generate_chat_stream()),
-        mimetype="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no"
-        }
-    )
+    try:
+        return Response(
+            stream_with_context(generate_chat_stream()),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no"
+            }
+        )
+    except Exception as stream_err:
+        logger.exception(f"Error initializing chat stream: {stream_err}")
+        return jsonify({"error": f"Failed to start chat stream: {str(stream_err)}"}), 500
 
 
 # -----------------------------------------------------------------------------
