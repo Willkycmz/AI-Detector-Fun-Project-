@@ -44,7 +44,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple, Union
 from functools import wraps
 
-from flask import Flask, request, Response, jsonify, stream_with_context
+from flask import Flask, request, Response, jsonify, stream_with_context, send_from_directory, send_file
 from flask_cors import CORS
 from werkzeug.exceptions import RequestEntityTooLarge
 import requests
@@ -533,24 +533,28 @@ def get_identity_manager():
     """Lazily load IdentityManager instance pointing to FACES_DATASET_ROOT."""
     global _identity_manager_instance
     if not HAVE_IDENTITY_MODULE or IdentityManager is None:
-        raise RuntimeError("OpenCV or Identity module is not available on this server.")
+        return None
     
     if _identity_manager_instance is None:
-        _identity_manager_instance = IdentityManager(faces_dir=Path(FACES_DATASET_ROOT))
+        try:
+            _identity_manager_instance = IdentityManager(faces_dir=Path(FACES_DATASET_ROOT))
+        except Exception as _mgr_err:
+            logger.warning(f"Could not initialize IdentityManager: {_mgr_err}")
+            return None
     return _identity_manager_instance
 
 
 def decode_base64_image(base64_str: str):
-    """Decode dataUrl base64 string to BGR OpenCV image."""
-    if not HAVE_IDENTITY_MODULE or cv2 is None or np is None:
-        raise RuntimeError("OpenCV is not available to decode images.")
+    """Decode dataUrl base64 string to BGR OpenCV image, or raw bytes if OpenCV missing."""
     if "," in base64_str:
         base64_str = base64_str.split(",", 1)[1]
     img_bytes = base64.b64decode(base64_str)
+    if not HAVE_IDENTITY_MODULE or cv2 is None or np is None:
+        return img_bytes
     nparr = np.frombuffer(img_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError("Failed to decode image from base64 string")
+        return img_bytes
     return img
 
 
@@ -1147,34 +1151,47 @@ def manager_list():
                             "formattedSize": f"{(st.st_size / 1024):.1f} KB",
                             "timestamp": info.get("trashedAt") or time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
                             "trashedAt": info.get("trashedAt"),
-                            "url": f"/datasets/.trash/{f}",
+                            "url": f"/api/dataset/file/.trash/{f}",
                             "isTrash": True
                         })
         else:
-            def scan_category(cat_dir: str, source_name: str):
-                if not os.path.exists(cat_dir):
-                    return
-                for entry in os.scandir(cat_dir):
-                    if entry.is_dir():
-                        cls = entry.name
-                        for f in os.scandir(entry.path):
-                            if f.is_file() and os.path.splitext(f.name)[1].lower() in ALLOWED_IMAGE_EXTS:
-                                st = f.stat()
-                                items.append({
-                                    "id": f.name,
-                                    "filename": f.name,
-                                    "className": cls,
-                                    "source": source_name,
-                                    "sizeBytes": st.st_size,
-                                    "formattedSize": f"{(st.st_size / 1024):.1f} KB",
-                                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
-                                    "mtime": st.st_mtime * 1000,
-                                    "url": f"/datasets/raw/{'own' if source_name.startswith('own') else 'external'}/{cls}/{f.name}",
-                                    "isTrash": False
-                                })
+            if os.path.exists(RAW_DATASET_ROOT):
+                for root, _, files in os.walk(RAW_DATASET_ROOT):
+                    if ".trash" in root:
+                        continue
+                    for f in files:
+                        if os.path.splitext(f)[1].lower() in ALLOWED_IMAGE_EXTS:
+                            full_path = os.path.join(root, f)
+                            rel_path = os.path.relpath(full_path, RAW_DATASET_ROOT)
+                            parts = Path(rel_path).parts
+                            
+                            if len(parts) >= 3 and parts[0] == "own":
+                                cls = parts[1]
+                                source_name = "own_capture"
+                            elif len(parts) >= 4 and parts[0] == "external":
+                                cls = parts[2]
+                                source_name = f"external/{parts[1]}"
+                            elif len(parts) >= 2:
+                                cls = parts[0]
+                                source_name = "own_capture"
+                            else:
+                                cls = "general"
+                                source_name = "own_capture"
 
-            scan_category(os.path.join(RAW_DATASET_ROOT, "own"), "own_capture")
-            scan_category(os.path.join(RAW_DATASET_ROOT, "external"), "external")
+                            st = os.stat(full_path)
+                            url_rel = rel_path.replace(os.sep, "/")
+                            items.append({
+                                "id": f,
+                                "filename": f,
+                                "className": cls,
+                                "source": source_name,
+                                "sizeBytes": st.st_size,
+                                "formattedSize": f"{(st.st_size / 1024):.1f} KB",
+                                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
+                                "mtime": st.st_mtime * 1000,
+                                "url": f"/api/dataset/file/{url_rel}",
+                                "isTrash": False
+                            })
 
         filtered = items
         if class_filter and class_filter != "all":
@@ -1455,36 +1472,389 @@ def dataset_save():
 @app.route("/api/dataset/list", methods=["GET"])
 @require_role("developer")
 def dataset_list():
-    """B6: List captured dataset images for a given class."""
+    """B6: Comprehensive scan of all dataset images stored on disk, separating active and trash."""
     try:
-        requested_class = request.args.get("className")
-        items = []
-        own_dir = os.path.join(RAW_DATASET_ROOT, "own")
+        requested_class = request.args.get("className") or request.args.get("class")
+        requested_source = request.args.get("source")
+        search = (request.args.get("search") or "").lower().strip()
+        view = (request.args.get("view") or "active").lower().strip()
+        
+        active_items = []
+        trash_items = []
 
-        if os.path.exists(own_dir):
-            for entry in os.scandir(own_dir):
-                if entry.is_dir():
-                    cls = entry.name
-                    if requested_class and requested_class != cls:
+        # 1. Scan active items in RAW_DATASET_ROOT
+        if os.path.exists(RAW_DATASET_ROOT):
+            for root, dirs, files in os.walk(RAW_DATASET_ROOT):
+                if ".trash" in root:
+                    continue
+                for f_name in files:
+                    ext = os.path.splitext(f_name)[1].lower()
+                    if ext in ALLOWED_IMAGE_EXTS:
+                        full_path = os.path.join(root, f_name)
+                        rel_path = os.path.relpath(full_path, RAW_DATASET_ROOT)
+                        parts = Path(rel_path).parts
+                        
+                        if len(parts) >= 3 and parts[0] == "own":
+                            cls = parts[1]
+                            source = "own_capture"
+                        elif len(parts) >= 4 and parts[0] == "external":
+                            cls = parts[2]
+                            source = f"external/{parts[1]}"
+                        elif len(parts) >= 2:
+                            cls = parts[0]
+                            source = "own_capture"
+                        else:
+                            cls = "general"
+                            source = "own_capture"
+
+                        if requested_class and requested_class != "all" and requested_class != cls:
+                            continue
+                        if requested_source and requested_source != "all" and requested_source != source:
+                            continue
+                        if search and (search not in f_name.lower() and search not in cls.lower()):
+                            continue
+
+                        st = os.stat(full_path)
+                        url_path = rel_path.replace(os.sep, "/")
+                        active_items.append({
+                            "id": f_name,
+                            "filename": f_name,
+                            "className": cls,
+                            "source": source,
+                            "sizeBytes": st.st_size,
+                            "formattedSize": f"{(st.st_size / 1024):.1f} KB",
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
+                            "mtime": st.st_mtime * 1000,
+                            "url": f"/api/dataset/image/{url_path}",
+                            "isTrash": False
+                        })
+
+        # 2. Scan trash items in TRASH_DATASET_ROOT
+        trash_meta = get_trash_meta()
+        meta_items = trash_meta.get("items", {})
+        if os.path.exists(TRASH_DATASET_ROOT):
+            for f_name in os.listdir(TRASH_DATASET_ROOT):
+                if f_name == ".trash_meta.json":
+                    continue
+                full_path = os.path.join(TRASH_DATASET_ROOT, f_name)
+                if os.path.isfile(full_path) and os.path.splitext(f_name)[1].lower() in ALLOWED_IMAGE_EXTS:
+                    info = meta_items.get(f_name, {})
+                    orig_fname = info.get("originalFilename") or f_name
+                    orig_cls = info.get("originalClass") or "unknown"
+                    orig_src = info.get("originalSource") or "own_capture"
+
+                    if requested_class and requested_class != "all" and requested_class != orig_cls:
                         continue
-                    for f in os.scandir(entry.path):
-                        if f.is_file() and os.path.splitext(f.name)[1].lower() in ALLOWED_IMAGE_EXTS:
-                            st = f.stat()
-                            items.append({
-                                "filename": f.name,
-                                "className": cls,
-                                "source": "own_capture",
-                                "sizeBytes": st.st_size,
-                                "formattedSize": f"{(st.st_size / 1024):.1f} KB",
-                                "timestamp": time.strftime("%H:%M:%S", time.localtime(st.st_mtime)),
-                                "mtime": st.st_mtime * 1000,
-                                "url": f"/datasets/raw/own/{cls}/{f.name}"
-                            })
+                    if requested_source and requested_source != "all" and requested_source != orig_src:
+                        continue
+                    if search and (search not in orig_fname.lower() and search not in orig_cls.lower()):
+                        continue
 
-        items.sort(key=lambda x: x.get("mtime", 0), reverse=True)
-        return jsonify({"success": True, "items": items}), 200
+                    st = os.stat(full_path)
+                    trash_items.append({
+                        "id": f_name,
+                        "trashFilename": f_name,
+                        "filename": orig_fname,
+                        "className": orig_cls,
+                        "source": orig_src,
+                        "sizeBytes": st.st_size,
+                        "formattedSize": f"{(st.st_size / 1024):.1f} KB",
+                        "timestamp": info.get("trashedAt") or time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(st.st_mtime)),
+                        "mtime": st.st_mtime * 1000,
+                        "url": f"/api/dataset/image/.trash/{f_name}",
+                        "isTrash": True
+                    })
+
+        active_items.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+        trash_items.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+
+        selected_items = trash_items if view == "trash" else active_items
+
+        return jsonify({
+            "success": True,
+            "items": selected_items,
+            "active": active_items,
+            "trash": trash_items,
+            "active_count": len(active_items),
+            "trash_count": len(trash_items),
+            "count": len(selected_items),
+            "total": len(active_items)
+        }), 200
     except Exception as e:
         logger.error(f"Error in /api/dataset/list: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dataset/image/<path:filename>", methods=["GET"])
+@app.route("/api/dataset/file/<path:filename>", methods=["GET"])
+def dataset_file(filename):
+    """Serve dataset and face images statically so thumbnails do not 404/broken."""
+    try:
+        clean_path = os.path.normpath(filename).lstrip(os.sep).lstrip("/").lstrip("\\")
+        if ".." in clean_path:
+            return jsonify({"success": False, "error": "Invalid path"}), 400
+
+        mimetypes_map = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+            ".bmp": "image/bmp"
+        }
+
+        def _send(fpath):
+            ext = os.path.splitext(fpath)[1].lower()
+            mt = mimetypes_map.get(ext, "image/jpeg")
+            return send_file(fpath, mimetype=mt)
+
+        # 1. Direct in RAW_DATASET_ROOT
+        cand = os.path.join(RAW_DATASET_ROOT, clean_path)
+        if os.path.isfile(cand):
+            return _send(cand)
+
+        # 2. Check in TRASH_DATASET_ROOT
+        if clean_path.startswith(".trash") or clean_path.startswith("trash"):
+            sub_name = clean_path.split(os.sep, 1)[-1].split("/", 1)[-1]
+            cand = os.path.join(TRASH_DATASET_ROOT, sub_name)
+            if os.path.isfile(cand):
+                return _send(cand)
+        cand = os.path.join(TRASH_DATASET_ROOT, clean_path)
+        if os.path.isfile(cand):
+            return _send(cand)
+
+        # 3. Check in FACES_DATASET_ROOT
+        if "faces" in clean_path:
+            sub_name = os.path.basename(clean_path)
+            cand = os.path.join(FACES_DATASET_ROOT, sub_name)
+            if os.path.isfile(cand):
+                return _send(cand)
+        cand = os.path.join(FACES_DATASET_ROOT, clean_path)
+        if os.path.isfile(cand):
+            return _send(cand)
+
+        # 4. Check directly in STORAGE_BASE_DIR
+        cand = os.path.join(STORAGE_BASE_DIR, clean_path)
+        if os.path.isfile(cand):
+            return _send(cand)
+
+        # 5. Search by basename across STORAGE_BASE_DIR and TRASH_DATASET_ROOT
+        target_name = os.path.basename(clean_path)
+        for root, _, files in os.walk(STORAGE_BASE_DIR):
+            if target_name in files:
+                return _send(os.path.join(root, target_name))
+
+        if os.path.exists(TRASH_DATASET_ROOT):
+            cand = os.path.join(TRASH_DATASET_ROOT, target_name)
+            if os.path.isfile(cand):
+                return _send(cand)
+
+        return jsonify({"success": False, "error": f"Image '{filename}' not found"}), 404
+    except Exception as e:
+        logger.error(f"Error serving dataset file '{filename}': {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/datasets/<path:filename>", methods=["GET"])
+def dataset_legacy_file(filename):
+    """Legacy static route for /datasets/raw/... or /datasets/faces/..."""
+    return dataset_file(filename)
+
+
+@app.route("/api/dataset/trash", methods=["POST", "OPTIONS"])
+@require_role("developer")
+def dataset_trash():
+    """Soft delete dataset items: move from active dataset folder to .trash."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filenames = data.get("filenames")
+        if filenames is None:
+            items = data.get("items", [])
+            if isinstance(items, list):
+                filenames = [it.get("filename") if isinstance(it, dict) else it for it in items]
+            elif "filename" in data:
+                filenames = [data["filename"]]
+            else:
+                filenames = []
+
+        if not filenames:
+            return jsonify({"success": False, "error": "Parameter filenames kosong."}), 400
+
+        os.makedirs(TRASH_DATASET_ROOT, exist_ok=True)
+        trash_meta = get_trash_meta()
+        if "items" not in trash_meta:
+            trash_meta["items"] = {}
+
+        moved = []
+        for raw_name in filenames:
+            if not raw_name:
+                continue
+            fname = os.path.basename(str(raw_name))
+
+            found_src = None
+            found_rel = None
+            found_cls = "unknown"
+            found_src_type = "own_capture"
+
+            for root, dirs, files in os.walk(RAW_DATASET_ROOT):
+                if ".trash" in root:
+                    continue
+                if fname in files:
+                    found_src = os.path.join(root, fname)
+                    found_rel = os.path.relpath(found_src, RAW_DATASET_ROOT)
+                    parts = Path(found_rel).parts
+                    if len(parts) >= 3 and parts[0] == "own":
+                        found_cls = parts[1]
+                    elif len(parts) >= 4 and parts[0] == "external":
+                        found_cls = parts[2]
+                        found_src_type = f"external/{parts[1]}"
+                    elif len(parts) >= 2:
+                        found_cls = parts[0]
+                    break
+
+            if found_src and os.path.isfile(found_src):
+                assert_safe_path(found_src, RAW_DATASET_ROOT)
+                dest_file_path = os.path.join(TRASH_DATASET_ROOT, fname)
+                assert_safe_path(dest_file_path, TRASH_DATASET_ROOT)
+
+                shutil.move(found_src, dest_file_path)
+                trash_meta["items"][fname] = {
+                    "originalFilename": fname,
+                    "originalRelPath": found_rel,
+                    "originalClass": found_cls,
+                    "originalSource": found_src_type,
+                    "trashedAt": time.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                moved.append(fname)
+
+        save_trash_meta(trash_meta)
+        return jsonify({
+            "success": True,
+            "moved": moved,
+            "count": len(moved)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in /api/dataset/trash: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dataset/permanent", methods=["DELETE", "POST"])
+@require_role("developer")
+def dataset_permanent():
+    """Permanently delete files from disk using os.remove()."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filenames = data.get("filenames")
+        if filenames is None:
+            items = data.get("items", [])
+            if isinstance(items, list):
+                filenames = [it.get("trashFilename") or it.get("filename") if isinstance(it, dict) else it for it in items]
+            elif "filename" in data:
+                filenames = [data["filename"]]
+            else:
+                filenames = []
+
+        if not filenames:
+            return jsonify({"success": False, "error": "Parameter filenames kosong."}), 400
+
+        trash_meta = get_trash_meta()
+        meta_items = trash_meta.get("items", {})
+        deleted = []
+
+        for raw_name in filenames:
+            if not raw_name:
+                continue
+            fname = os.path.basename(str(raw_name))
+
+            # 1. Check in TRASH_DATASET_ROOT
+            target = os.path.join(TRASH_DATASET_ROOT, fname)
+            if os.path.isfile(target):
+                assert_safe_path(target, TRASH_DATASET_ROOT)
+                os.remove(target)
+                deleted.append(fname)
+                if fname in meta_items:
+                    del meta_items[fname]
+                continue
+
+            # 2. Check across RAW_DATASET_ROOT
+            for root, _, files in os.walk(RAW_DATASET_ROOT):
+                if fname in files:
+                    fpath = os.path.join(root, fname)
+                    assert_safe_path(fpath, RAW_DATASET_ROOT)
+                    os.remove(fpath)
+                    deleted.append(fname)
+                    break
+
+        trash_meta["items"] = meta_items
+        save_trash_meta(trash_meta)
+
+        return jsonify({
+            "success": True,
+            "deleted": deleted,
+            "count": len(deleted)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in /api/dataset/permanent: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dataset/restore", methods=["POST"])
+@require_role("developer")
+def dataset_restore():
+    """Restore dataset items from .trash back to their original folder."""
+    try:
+        data = request.get_json(silent=True) or {}
+        filenames = data.get("filenames")
+        if filenames is None:
+            items = data.get("items", [])
+            if isinstance(items, list):
+                filenames = [it.get("trashFilename") or it.get("filename") if isinstance(it, dict) else it for it in items]
+            elif "filename" in data:
+                filenames = [data["filename"]]
+            else:
+                filenames = []
+
+        if not filenames:
+            return jsonify({"success": False, "error": "Parameter filenames kosong."}), 400
+
+        trash_meta = get_trash_meta()
+        meta_items = trash_meta.get("items", {})
+        restored = []
+
+        for raw_name in filenames:
+            if not raw_name:
+                continue
+            fname = os.path.basename(str(raw_name))
+            src_path = os.path.join(TRASH_DATASET_ROOT, fname)
+
+            if os.path.isfile(src_path):
+                assert_safe_path(src_path, TRASH_DATASET_ROOT)
+                info = meta_items.get(fname, {})
+                orig_rel = info.get("originalRelPath")
+                orig_cls = info.get("originalClass") or "object"
+
+                if orig_rel:
+                    dest_path = os.path.join(RAW_DATASET_ROOT, orig_rel)
+                else:
+                    dest_path = os.path.join(RAW_DATASET_ROOT, "own", orig_cls, fname)
+
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                assert_safe_path(dest_path, RAW_DATASET_ROOT)
+                shutil.move(src_path, dest_path)
+                restored.append(fname)
+                if fname in meta_items:
+                    del meta_items[fname]
+
+        trash_meta["items"] = meta_items
+        save_trash_meta(trash_meta)
+
+        return jsonify({
+            "success": True,
+            "restored": restored,
+            "count": len(restored)
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in /api/dataset/restore: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1515,6 +1885,12 @@ def dataset_delete():
         if os.path.exists(target_path):
             os.remove(target_path)
             deleted = True
+        else:
+            for root, _, files in os.walk(RAW_DATASET_ROOT):
+                if fname in files:
+                    os.remove(os.path.join(root, fname))
+                    deleted = True
+                    break
 
         return jsonify({
             "success": True,
@@ -1539,15 +1915,46 @@ def identity_profile():
     """B6: Get developer face profile information."""
     try:
         mgr = get_identity_manager()
-        refs = mgr.list_reference_images()
+        profile_name = "VisionX Developer"
+        threshold = 0.60
+        enrolled_count = 0
+
+        profile_json = os.path.join(FACES_DATASET_ROOT, "developer_profile.json")
+        if os.path.isfile(profile_json):
+            try:
+                with open(profile_json, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                    profile_name = meta.get("profile_name", profile_name)
+                    threshold = meta.get("threshold", threshold)
+            except Exception:
+                pass
+
+        if mgr is not None:
+            refs = mgr.list_reference_images()
+            ref_count = len(refs)
+            profile_name = mgr.profile_name
+            threshold = mgr.threshold
+            enrolled_count = len(mgr.metadata.get("enrolled_references", []))
+        else:
+            disk_files = []
+            if os.path.exists(FACES_DATASET_ROOT):
+                disk_files = [
+                    f for f in os.listdir(FACES_DATASET_ROOT)
+                    if os.path.isfile(os.path.join(FACES_DATASET_ROOT, f))
+                    and os.path.splitext(f)[1].lower() in ALLOWED_IMAGE_EXTS
+                ]
+            ref_count = len(disk_files)
+            enrolled_count = ref_count
+
         return jsonify({
             "success": True,
-            "profile_id": mgr.profile_id,
-            "profile_name": mgr.profile_name,
+            "profile_id": "developer",
+            "profile_name": profile_name,
             "registered": True,
-            "reference_count": len(refs),
-            "threshold": mgr.threshold,
-            "enrolled_count": len(mgr.metadata.get("enrolled_references", []))
+            "reference_count": ref_count,
+            "threshold": threshold,
+            "enrolled_count": enrolled_count,
+            "opencv_available": (mgr is not None)
         }), 200
     except Exception as e:
         logger.error(f"Error in /api/identity/profile: {e}")
@@ -1560,9 +1967,27 @@ def identity_references():
     """B6: List reference images enrolled for the developer profile."""
     try:
         mgr = get_identity_manager()
-        refs = mgr.list_reference_images()
-        for r in refs:
-            r["url"] = f"/datasets/faces/developer/{r['filename']}"
+        refs = []
+        if mgr is not None:
+            refs = mgr.list_reference_images()
+            for r in refs:
+                r["url"] = f"/api/dataset/file/faces/{r['filename']}"
+        else:
+            if os.path.exists(FACES_DATASET_ROOT):
+                for f in os.listdir(FACES_DATASET_ROOT):
+                    ext = os.path.splitext(f)[1].lower()
+                    if ext in ALLOWED_IMAGE_EXTS:
+                        f_path = os.path.join(FACES_DATASET_ROOT, f)
+                        st = os.stat(f_path)
+                        refs.append({
+                            "filename": f,
+                            "size_bytes": st.st_size,
+                            "formatted_size": f"{(st.st_size / 1024):.1f} KB",
+                            "mtime": st.st_mtime * 1000,
+                            "url": f"/api/dataset/file/faces/{f}"
+                        })
+            refs.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+
         return jsonify({"success": True, "references": refs, "count": len(refs)}), 200
     except Exception as e:
         logger.error(f"Error in /api/identity/references: {e}")
@@ -1574,10 +1999,19 @@ def identity_references():
 def identity_register():
     """B6: Register or update developer profile name."""
     try:
-        mgr = get_identity_manager()
         data = request.get_json(silent=True) or {}
-        name = data.get("name", "VisionX Developer")
-        res = mgr.register_profile(name)
+        name = (data.get("name") or "VisionX Developer").strip()
+        mgr = get_identity_manager()
+        if mgr is not None:
+            res = mgr.register_profile(name)
+        else:
+            os.makedirs(FACES_DATASET_ROOT, exist_ok=True)
+            profile_json = os.path.join(FACES_DATASET_ROOT, "developer_profile.json")
+            meta = {"profile_id": "developer", "profile_name": name, "threshold": 0.60}
+            with open(profile_json, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+            res = meta
+
         return jsonify({"success": True, "profile": res}), 200
     except Exception as e:
         logger.error(f"Error in /api/identity/register: {e}")
@@ -1589,7 +2023,6 @@ def identity_register():
 def identity_add_reference():
     """B6: Enroll new reference image for developer identity."""
     try:
-        mgr = get_identity_manager()
         data = request.get_json(silent=True) or {}
         data_url = data.get("dataUrl")
         filename = data.get("filename")
@@ -1597,12 +2030,48 @@ def identity_add_reference():
         if not data_url:
             return jsonify({"success": False, "error": "Parameter dataUrl wajib diberikan."}), 400
 
-        if filename:
-            filename = sanitize_filename(filename)
+        if not filename:
+            filename = f"developer_ref_{int(time.time() * 1000)}.jpg"
+        filename = sanitize_filename(filename)
 
-        img = decode_base64_image(data_url)
-        res = mgr.add_reference_image(img, filename)
-        return jsonify(res), 200
+        os.makedirs(FACES_DATASET_ROOT, exist_ok=True)
+        mgr = get_identity_manager()
+
+        if mgr is not None:
+            img = decode_base64_image(data_url)
+            res = mgr.add_reference_image(img, filename)
+            return jsonify(res), 200
+        else:
+            # Fallback: OpenCV/cv2 tidak tersedia (Termux mode)
+            # Simpan foto referensi fisik ke disk tanpa ekstraksi embedding
+            if "," in data_url:
+                raw_b64 = data_url.split(",", 1)[1]
+            else:
+                raw_b64 = data_url
+            img_bytes = base64.b64decode(raw_b64)
+            save_path = os.path.join(FACES_DATASET_ROOT, filename)
+            assert_safe_path(save_path, STORAGE_BASE_DIR)
+            with open(save_path, "wb") as f_out:
+                f_out.write(img_bytes)
+
+            # Hitung jumlah foto referensi yang tersimpan di disk
+            ref_count = 0
+            if os.path.exists(FACES_DATASET_ROOT):
+                ref_count = len([
+                    f for f in os.listdir(FACES_DATASET_ROOT)
+                    if os.path.isfile(os.path.join(FACES_DATASET_ROOT, f))
+                    and os.path.splitext(f)[1].lower() in ALLOWED_IMAGE_EXTS
+                ])
+
+            return jsonify({
+                "success": True,
+                "filename": filename,
+                "saved": True,
+                "enrolled": True,
+                "message": "Foto tersimpan di disk (Mode fallback: OpenCV offline di Termux)",
+                "embedding_status": "offline_fallback",
+                "reference_count": ref_count
+            }), 200
     except ValueError as val_err:
         return jsonify({"success": False, "error": str(val_err)}), 400
     except Exception as e:
@@ -1615,7 +2084,6 @@ def identity_add_reference():
 def identity_delete_reference():
     """B6: Remove an enrolled face reference image."""
     try:
-        mgr = get_identity_manager()
         data = request.get_json(silent=True) or {}
         raw_fname = data.get("filename")
 
@@ -1623,7 +2091,17 @@ def identity_delete_reference():
             return jsonify({"success": False, "error": "Parameter filename wajib diberikan."}), 400
 
         fname = sanitize_filename(raw_fname)
-        ok = mgr.delete_reference_image(fname)
+        mgr = get_identity_manager()
+        if mgr is not None:
+            ok = mgr.delete_reference_image(fname)
+        else:
+            target_path = os.path.join(FACES_DATASET_ROOT, fname)
+            assert_safe_path(target_path, STORAGE_BASE_DIR)
+            ok = False
+            if os.path.exists(target_path):
+                os.remove(target_path)
+                ok = True
+
         return jsonify({"success": True, "deleted": ok, "filename": fname}), 200
     except ValueError as val_err:
         return jsonify({"success": False, "error": str(val_err)}), 400
@@ -1644,9 +2122,16 @@ def identity_detect():
         if not data_url:
             return jsonify({"success": False, "error": "Parameter dataUrl wajib diberikan."}), 400
 
-        img = decode_base64_image(data_url)
-        res = mgr.detect_faces(img)
-        return jsonify(res), 200
+        if mgr is not None:
+            img = decode_base64_image(data_url)
+            res = mgr.detect_faces(img)
+            return jsonify(res), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Modul OpenCV belum terpasang di backend Termux. Deteksi wajah lokal berjalan via ONNX di browser.",
+                "faces": []
+            }), 200
     except Exception as e:
         logger.error(f"Error in /api/identity/detect: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1665,9 +2150,16 @@ def identity_match():
         if not data_url:
             return jsonify({"success": False, "error": "Parameter dataUrl wajib diberikan."}), 400
 
-        img = decode_base64_image(data_url)
-        res = mgr.match_face(img, threshold=float(thresh))
-        return jsonify({"success": True, **res}), 200
+        if mgr is not None:
+            img = decode_base64_image(data_url)
+            res = mgr.match_face(img, threshold=float(thresh))
+            return jsonify({"success": True, **res}), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Modul OpenCV belum terpasang di backend Termux. Pengenalan identitas berjalan via ONNX di browser.",
+                "matched": False
+            }), 200
     except Exception as e:
         logger.error(f"Error in /api/identity/match: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
