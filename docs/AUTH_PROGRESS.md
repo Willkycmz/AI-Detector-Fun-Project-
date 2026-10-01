@@ -63,5 +63,15 @@
 | **5** | **Multi-Akun & Isolasi Chat** | - Setiap sesi obrolan di IndexedDB disimpan dengan tag `userId`.<br>- Tamu menggunakan namespace `"guest"`, pengguna terdaftar menggunakan UUID `sub` dari JWT Supabase.<br>- Riwayat obrolan antar-pengguna terisolasi sempurna: akun A tidak dapat melihat atau menghapus riwayat obrolan akun B. | - Isolasi penuh di layer browser storage client IndexedDB tanpa saling menimpa data (*zero cross-account leakage*). | **TERVERIFIKASI (PASSED)** |
 
 ---
-**STATUS KESELURUHAN: PROYEK AUTENTIKASI VISIONX (FASE 1, FASE 2, FASE 3) TELAH SELESAI LENGKAP & TERVERIFIKASI PENUH.**
+
+## Fase 4: Post-Deployment Hotfix (server.py)
+
+| ID | Tugas | Status | File yang Diubah | Catatan |
+|---|---|---|---|---|
+| **H1** | Validasi JWT Asimetris (ES256/RS256) | **DONE** | [`server.py`](file:///c:/Users/advan/Documents/VisionX/server.py), [`tests/test_backend_auth_phase1.py`](file:///c:/Users/advan/Documents/VisionX/tests/test_backend_auth_phase1.py) | Supabase beralih ke algoritma ES256. Mengimplementasikan `PyJWKClient` untuk fetch JWKS dan validasi asimetris. Mempertahankan fallback HS256 untuk backward compatibility. |
+| **H2** | Perbaikan URL Endpoint Gemini API | **REPLACED** | [`server.py`](file:///c:/Users/advan/Documents/VisionX/server.py) | Digantikan oleh H3 (migrasi ke OpenAI-compatible proxy). |
+| **H3** | Migrasi AI Provider ke OpenAI-compatible (9Router Proxy) | **DONE** | [`server.py`](file:///c:/Users/advan/Documents/VisionX/server.py), [`.env.example`](file:///c:/Users/advan/Documents/VisionX/.env.example) | Mengganti integrasi Google Gemini dengan endpoint OpenAI-compatible `/chat/completions`. Variabel baru: `AI_BASE_URL` (default `http://localhost:20128/v1`), `AI_API_KEY`, `AI_MODEL` (default `VisionX`). Mendukung streaming SSE standar OpenAI dengan parsing `choices[0].delta.content`. Multimodal image via format `image_url` (base64 data URI). Timeout dinaikkan ke 60 detik. |
+
+---
+**STATUS KESELURUHAN: PROYEK AUTENTIKASI VISIONX (FASE 1–4) TELAH SELESAI LENGKAP & TERVERIFIKASI PENUH.**
 

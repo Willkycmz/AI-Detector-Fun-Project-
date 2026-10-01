@@ -96,9 +96,10 @@ jwks_client = PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=3600)
 # Rate Limiting Configuration
 VISIONX_USER_DAILY_CHAT_LIMIT = int(os.environ.get("VISIONX_USER_DAILY_CHAT_LIMIT", 30))
 
-# Gemini LLM Configuration (supports both GEMINI_API_KEY and GOOGLE_API_KEY)
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+# AI Provider Configuration (OpenAI-compatible / 9Router Proxy)
+AI_BASE_URL = os.environ.get("AI_BASE_URL", "http://localhost:20128/v1").rstrip("/")
+AI_API_KEY = os.environ.get("AI_API_KEY", "")
+AI_MODEL = os.environ.get("AI_MODEL", "VisionX")
 
 # Maximum payload size: 10 MB (allows image dataset uploads and imports)
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024
@@ -948,60 +949,75 @@ def api_chat():
     system_instruction = build_grounded_system_prompt(vision_context, detections)
     
     def generate_chat_stream():
-        if not GEMINI_API_KEY:
+        if not AI_API_KEY:
             yield from stream_local_grounded_response(message, vision_context, detections)
             return
         
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:streamGenerateContent?alt=sse&key={GEMINI_API_KEY}"
-        contents = []
+        endpoint = f"{AI_BASE_URL}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {AI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Build OpenAI-compatible messages array
+        messages = [
+            {"role": "system", "content": system_instruction}
+        ]
+        
+        # Append conversation history (last 6 turns)
         if isinstance(history, list):
             for turn in history[-6:]:
                 if isinstance(turn, dict) and "text" in turn:
                     t_text = str(turn["text"]).strip()
                     if not t_text:
                         continue
-                    role = "model" if turn.get("role") in ["assistant", "model"] else "user"
-                    if contents and contents[-1]["role"] == role:
-                        contents[-1]["parts"][0]["text"] += f"\n{t_text}"
+                    role = "assistant" if turn.get("role") in ["assistant", "model"] else "user"
+                    # Merge consecutive same-role messages
+                    if messages and messages[-1]["role"] == role:
+                        messages[-1]["content"] += f"\n{t_text}"
                     else:
-                        contents.append({
-                            "role": role,
-                            "parts": [{"text": t_text}]
-                        })
+                        messages.append({"role": role, "content": t_text})
         
-        user_parts = [{"text": message}]
+        # Build current user message content
         if image_b64:
-            user_parts.append({
-                "inlineData": {
-                    "mimeType": "image/jpeg",
-                    "data": image_b64
+            # Multimodal: use content array with text + image_url (vision format)
+            user_content = [
+                {"type": "text", "text": message},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_b64}"
+                    }
                 }
-            })
-            
-        if contents and contents[-1]["role"] == "user":
-            contents[-1]["parts"].extend(user_parts)
+            ]
         else:
-            contents.append({
-                "role": "user",
-                "parts": user_parts
-            })
+            user_content = message
+        
+        # Merge or append user message
+        if messages and messages[-1]["role"] == "user":
+            # Merge with previous user message
+            prev = messages[-1]["content"]
+            if isinstance(prev, str) and isinstance(user_content, str):
+                messages[-1]["content"] = f"{prev}\n{user_content}"
+            else:
+                # Convert to list format for multimodal merge
+                prev_list = [{"type": "text", "text": prev}] if isinstance(prev, str) else prev
+                curr_list = [{"type": "text", "text": user_content}] if isinstance(user_content, str) else user_content
+                messages[-1]["content"] = prev_list + curr_list
+        else:
+            messages.append({"role": "user", "content": user_content})
         
         payload = {
-            "system_instruction": {
-                "parts": [{"text": system_instruction}]
-            },
-            "contents": contents,
-            "generationConfig": {
-                "temperature": 0.2,
-                "maxOutputTokens": 1024
-            }
+            "model": AI_MODEL,
+            "messages": messages,
+            "stream": True
         }
         
         try:
-            with requests.post(endpoint, json=payload, stream=True, timeout=30) as resp:
+            with requests.post(endpoint, json=payload, headers=headers, stream=True, timeout=60) as resp:
                 if resp.status_code != 200:
-                    err_snippet = resp.text[:300] if hasattr(resp, "text") else ""
-                    logger.error(f"Gemini API returned HTTP {resp.status_code}: {err_snippet}")
+                    err_body = resp.text if hasattr(resp, "text") else "(no body)"
+                    logger.error(f"AI provider returned HTTP {resp.status_code}: {err_body}")
                     yield f"data: {json.dumps({'error': f'AI provider error (HTTP {resp.status_code})'})}\n\n"
                     yield "data: [DONE]\n\n"
                     return
@@ -1010,24 +1026,23 @@ def api_chat():
                     if line:
                         decoded_line = line.decode("utf-8")
                         if decoded_line.startswith("data: "):
-                            raw_json = decoded_line[6:].strip()
-                            if raw_json == "[DONE]":
+                            raw_data = decoded_line[6:].strip()
+                            if raw_data == "[DONE]":
                                 break
                             try:
-                                chunk_data = json.loads(raw_json)
-                                candidates = chunk_data.get("candidates", [])
-                                if candidates:
-                                    parts = candidates[0].get("content", {}).get("parts", [])
-                                    for p in parts:
-                                        text_chunk = p.get("text", "")
-                                        if text_chunk:
-                                            yield f"data: {json.dumps({'text': text_chunk})}\n\n"
+                                chunk_data = json.loads(raw_data)
+                                choices = chunk_data.get("choices", [])
+                                if choices:
+                                    delta = choices[0].get("delta", {})
+                                    text_chunk = delta.get("content", "")
+                                    if text_chunk:
+                                        yield f"data: {json.dumps({'text': text_chunk})}\n\n"
                             except Exception:
                                 continue
                                 
             yield "data: [DONE]\n\n"
         except requests.Timeout:
-            logger.error("Gemini API request timed out (30s)")
+            logger.error("AI provider request timed out (60s)")
             yield f"data: {json.dumps({'error': 'AI provider request timed out'})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as err:
