@@ -607,10 +607,6 @@ class VisionXWebApp {
       authModalLinksRow: document.getElementById('authModalLinksRow'),
       btnAuthForgotPassword: document.getElementById('btnAuthForgotPassword'),
       btnAuthBackToLogin: document.getElementById('btnAuthBackToLogin'),
-      legacyPinSection: document.getElementById('legacyPinSection'),
-      btnToggleLegacyPin: document.getElementById('btnToggleLegacyPin'),
-      legacyPinContainer: document.getElementById('legacyPinContainer'),
-      authModalPinInput: document.getElementById('authModalPinInput'),
       authModalNotice: document.getElementById('authModalNotice'),
       authModalNoticeMessage: document.getElementById('authModalNoticeMessage'),
       authModalError: document.getElementById('authModalError'),
@@ -1179,11 +1175,6 @@ class VisionXWebApp {
     if (this.elements.btnAuthBackToLogin) {
       this.elements.btnAuthBackToLogin.addEventListener('click', () => this.switchAuthTab('login'));
     }
-    if (this.elements.btnToggleLegacyPin) {
-      this.elements.btnToggleLegacyPin.addEventListener('click', () => {
-        this.elements.legacyPinContainer?.classList.toggle('hidden');
-      });
-    }
 
     // Inputs Enter Key Handling
     if (this.elements.authModalEmailInput) {
@@ -1200,14 +1191,6 @@ class VisionXWebApp {
     }
     if (this.elements.authModalPasswordInput) {
       this.elements.authModalPasswordInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          this.handleAuthSubmit();
-        }
-      });
-    }
-    if (this.elements.authModalPinInput) {
-      this.elements.authModalPinInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           this.handleAuthSubmit();
@@ -4694,14 +4677,6 @@ class VisionXWebApp {
   }
 
   async handleAuthSubmit() {
-    // Check if legacy PIN is visible and has value
-    const legacyPin = this.elements.authModalPinInput?.value?.trim() || '';
-    const isLegacyPinVisible = this.elements.legacyPinContainer && !this.elements.legacyPinContainer.classList.contains('hidden');
-
-    if (isLegacyPinVisible && legacyPin) {
-      return this._handleLegacyPinSubmit(legacyPin);
-    }
-
     const email = this.elements.authModalEmailInput?.value?.trim() || '';
     const password = this.elements.authModalPasswordInput?.value || '';
 
@@ -4780,40 +4755,6 @@ class VisionXWebApp {
           this.elements.authSubmitBtnText.textContent =
             this.authTabMode === 'login' ? 'Masuk' :
             this.authTabMode === 'register' ? 'Daftar Akun' : 'Kirim Tautan Reset';
-        }
-      }
-    }
-  }
-
-  async _handleLegacyPinSubmit(pin) {
-    if (this.elements.btnSubmitAuthModal) {
-      this.elements.btnSubmitAuthModal.disabled = true;
-      if (this.elements.authSubmitBtnText) {
-        this.elements.authSubmitBtnText.textContent = 'Memverifikasi PIN...';
-      }
-    }
-
-    try {
-      if (this.visionAssistant?.aiProvider?.login) {
-        await this.visionAssistant.aiProvider.login(pin);
-      }
-      this.updateAuthStatusUI();
-      if (this.elements.visionxAuthModal) {
-        this.elements.visionxAuthModal.classList.add('hidden');
-      }
-      this.showSuccess('Login gateway dengan PIN berhasil!');
-      if (this.pendingAuthResolve) {
-        this.pendingAuthResolve(true);
-        this.pendingAuthResolve = null;
-        this.pendingAuthReject = null;
-      }
-    } catch (err) {
-      this._showAuthError(err.message || 'PIN salah atau server menolak.');
-    } finally {
-      if (this.elements.btnSubmitAuthModal) {
-        this.elements.btnSubmitAuthModal.disabled = false;
-        if (this.elements.authSubmitBtnText) {
-          this.elements.authSubmitBtnText.textContent = 'Masuk';
         }
       }
     }

@@ -173,6 +173,70 @@ Output terminal:
 
 ---
 
+### C. Menjalankan Backend Gateway & Auth Server (server.py)
+
+Backend Flask bertindak sebagai API gateway untuk inferensi AI (`/api/chat`), penyimpanan dataset lokal di Android/Termux (`/sdcard/AI-Detector`), dan modul pengembang (`/api/manager/*`, `/api/dataset/*`, `/api/identity/*`).
+
+```bash
+# Menjalankan server gateway di PC atau Termux:
+python server.py
+```
+
+---
+
+## 🔐 Konfigurasi Supabase Authentication & Role Management
+
+VisionX mengadopsi Supabase Auth sebagai Identity Provider & JWT Gatekeeper tanpa mengubah arsitektur penyimpanan fisik lokal di device Android (`/sdcard/AI-Detector`).
+
+### 1. Daftar Variabel Lingkungan (Environment Variables)
+
+#### Backend (`server.py` / `.env` root):
+| Variabel | Wajib | Default | Deskripsi |
+|---|---|---|---|
+| `SUPABASE_URL` | Ya | `https://wnwaniiuflsuemyambuy.supabase.co` | URL Project Supabase |
+| `SUPABASE_JWT_SECRET` | Ya | `""` | JWT Secret dari Dashboard Supabase (Project Settings -> API -> JWT Secret) |
+| `SUPABASE_AUDIENCE` | Tidak | `authenticated` | Klaim audience JWT Supabase |
+| `VISIONX_USER_DAILY_CHAT_LIMIT` | Tidak | `30` | Kuota pesan chat harian untuk role `user` |
+| `VISIONX_LEGACY_PIN` | Tidak | `0` | `0` = Non-aktif (murni Supabase), `1` = Aktifkan fallback PIN lama |
+| `VISIONX_DATASET_DIR` | Tidak | `/sdcard/AI-Detector` | Folder penyimpanan dataset fisik di device |
+| `PORT` | Tidak | `5000` | Port listen server Flask |
+
+#### Frontend (`web/.env.local`):
+| Variabel | Wajib | Deskripsi |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Ya | URL project Supabase untuk frontend client |
+| `VITE_SUPABASE_ANON_KEY` | Ya | Public Anonymous Key Supabase (aman untuk browser) |
+| `VITE_ENDPOINT_URL` | Tidak | Endpoint upload backend (default: `https://visionx.my.id/api/upload`) |
+
+---
+
+### 2. Panduan SQL Promosi Role Developer di Supabase
+
+Secara default, pengguna yang mendaftar melalui form registrasi web akan mendapatkan role **"user"**. Untuk memberikan hak akses pengembang (**"developer"**) ke akun tertentu, jalankan perintah SQL berikut di **SQL Editor** pada Dashboard Supabase Anda:
+
+```sql
+-- 1. Promosi akun menjadi role 'developer'
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"role": "developer"}'::jsonb
+WHERE email = 'developer@yourdomain.com';
+
+-- 2. Verifikasi status role akun
+SELECT id, email, raw_app_meta_data->>'role' AS active_role, created_at
+FROM auth.users
+WHERE email = 'developer@yourdomain.com';
+
+-- 3. (Opsional) Mengembalikan akun ke role 'user' biasa
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"role": "user"}'::jsonb
+WHERE email = 'developer@yourdomain.com';
+```
+
+> **Keamanan:** Klaim role pengembang disimpan secara eksklusif di dalam `app_metadata` (`raw_app_meta_data`), **BUKAN** `user_metadata`. Pengguna tidak dapat memodifikasi `app_metadata` dari browser, sehingga aman dari potensi *privilege escalation*.
+
+---
+
+---
+
 ## 🧪 Automated Testing
 
 Menjalankan pengujian unit test modul Python (26 automated test cases):

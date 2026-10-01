@@ -70,7 +70,7 @@ except Exception as _e:
 APP_PORT = int(os.environ.get("PORT", 5000))
 VISIONX_ADMIN_PIN = os.environ.get("VISIONX_ADMIN_PIN", "visionx2026")
 VISIONX_AUTH_SECRET = os.environ.get("VISIONX_AUTH_SECRET", "visionx-auth-secret-key-prod-2026")
-VISIONX_LEGACY_PIN = os.environ.get("VISIONX_LEGACY_PIN", "1").lower() in ("1", "true", "yes")
+VISIONX_LEGACY_PIN = os.environ.get("VISIONX_LEGACY_PIN", "0").lower() in ("1", "true", "yes")
 
 # Supabase Auth Configuration
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnwaniiuflsuemyambuy.supabase.co").rstrip("/")
