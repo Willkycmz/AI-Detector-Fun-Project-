@@ -13,11 +13,21 @@ const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env && imp
   : null;
 
 /**
- * Base URL for all API calls.
- * Defaults to production backend at https://visionx.my.id
- * Can be overridden via VITE_API_BASE_URL env variable.
+ * Detect if we're running on a local Vite dev server.
+ * When local, use empty string so fetch('/api/...') hits the Vite middleware
+ * instead of going to the production URL across the network.
  */
-export const API_BASE_URL = envBaseUrl || 'https://visionx.my.id';
+const isLocalDev = typeof window !== 'undefined'
+  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+/**
+ * Base URL for all API calls.
+ * Priority:
+ *   1. VITE_API_BASE_URL env variable (explicit override)
+ *   2. '' (empty) when running on localhost (Vite dev middleware handles /api/*)
+ *   3. Production backend at https://visionx.my.id (deployed builds)
+ */
+export const API_BASE_URL = envBaseUrl ?? (isLocalDev ? '' : 'https://visionx.my.id');
 
 /**
  * Helper: build a full API URL from a relative path.
