@@ -685,6 +685,11 @@ class VisionXWebApp {
       });
       this.contextualPanelManager = new ContextualPanelManager();
 
+      // M9: Insecure Context Warning check
+      if (typeof window !== 'undefined' && window.isSecureContext === false) {
+        this.showCameraInsecureWarning('Kamera butuh HTTPS. Buka lewat alamat HTTPS atau localhost.');
+      }
+
       // Synchronize APP_VERSION across all version tags in UI
       document.querySelectorAll('.version-tag, .badge-v1-tag, [data-version]').forEach(el => {
         el.textContent = `v${APP_VERSION}`;
@@ -3179,6 +3184,11 @@ class VisionXWebApp {
     if (this.currentMode === 'manager' || this.currentMode === 'home') return;
     if (this.cameraService && this.cameraService.state.status === 'connected') return;
 
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      this.showCameraInsecureWarning('Kamera butuh HTTPS. Buka lewat alamat HTTPS atau localhost.');
+      return;
+    }
+
     this.isStartingCamera = true;
     const sessionId = ++this._cameraSessionId;
 
@@ -3205,9 +3215,48 @@ class VisionXWebApp {
       this.startRenderLoop();
     } catch (err) {
       console.error('[VisionX] Gagal memulai kamera:', err);
+      const isSecure = (typeof window !== 'undefined' && window.isSecureContext !== false);
+      let errorMsg = err && (err.friendlyMessage || err.message);
+      if (!isSecure || (err && err.category === 'INSECURE_CONTEXT')) {
+        errorMsg = 'Kamera butuh HTTPS. Buka lewat alamat HTTPS atau localhost.';
+      }
+      this.showCameraInsecureWarning(errorMsg || 'Kamera butuh HTTPS. Buka lewat alamat HTTPS atau localhost.');
     } finally {
       this.isStartingCamera = false;
     }
+  }
+
+  showCameraInsecureWarning(message) {
+    if (typeof document === 'undefined') return;
+    let banner = document.getElementById('insecureCameraBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'insecureCameraBanner';
+      banner.className = 'insecure-camera-banner';
+      banner.setAttribute('role', 'alert');
+      banner.innerHTML = `
+        <div class="insecure-banner-content">
+          <span class="insecure-banner-icon">⚠️</span>
+          <span class="insecure-banner-text"></span>
+          <button type="button" class="btn-close-banner" aria-label="Tutup Peringatan">✕</button>
+        </div>
+      `;
+      const closeBtn = banner.querySelector('.btn-close-banner');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          banner.classList.add('hidden');
+        });
+      }
+      document.body.appendChild(banner);
+    }
+    const textEl = banner.querySelector('.insecure-banner-text');
+    if (textEl) textEl.textContent = message;
+    banner.classList.remove('hidden');
+    setTimeout(() => {
+      if (banner && !banner.classList.contains('hidden')) {
+        banner.classList.add('hidden');
+      }
+    }, 6000);
   }
 
   updateCameraToggleButtonVisibility(overrideStatus = null) {

@@ -100,7 +100,7 @@ export class CameraService {
         isSecure: false,
         protocol: window.location.protocol,
         hostname: window.location.hostname,
-        errorReason: 'Insecure Context: Browser memblokir kamera di HTTP non-localhost.',
+        errorReason: 'Kamera butuh HTTPS. Buka lewat alamat HTTPS atau localhost.',
         actionableInstruction: `Akses browser melalui HTTPS atau localhost. Jika mengakses IP lokal HP (${window.location.hostname}), aktifkan flag "Insecure origins treated as secure" di chrome://flags/#unsafely-treat-insecure-origin-as-secure atau gunakan HTTPS tunnel (misal ngrok/mkcert).`
       };
     }

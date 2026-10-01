@@ -138,6 +138,49 @@ export class NavigationManager {
       this.attachKeyboardNav(this.desktopNavItems);
     }
 
+    // 3b. Mobile "Lainnya" Bottom Sheet Toggle
+    const btnMore = document.getElementById('btnMobileMore');
+    const moreSheet = document.getElementById('moreBottomSheet');
+    const btnCloseSheet = document.getElementById('btnCloseMoreSheet');
+    const sheetBackdrop = document.getElementById('moreSheetBackdrop');
+
+    const openSheet = (e) => {
+      if (e) e.preventDefault();
+      if (moreSheet) {
+        moreSheet.classList.remove('hidden');
+        moreSheet.setAttribute('aria-hidden', 'false');
+      }
+    };
+
+    const closeSheet = (e) => {
+      if (e) e.preventDefault();
+      if (moreSheet) {
+        moreSheet.classList.add('hidden');
+        moreSheet.setAttribute('aria-hidden', 'true');
+      }
+    };
+
+    if (btnMore) {
+      btnMore.addEventListener('click', openSheet);
+      this._listeners.push({ el: btnMore, event: 'click', fn: openSheet });
+    }
+    if (btnCloseSheet) {
+      btnCloseSheet.addEventListener('click', closeSheet);
+      this._listeners.push({ el: btnCloseSheet, event: 'click', fn: closeSheet });
+    }
+    if (sheetBackdrop) {
+      sheetBackdrop.addEventListener('click', closeSheet);
+      this._listeners.push({ el: sheetBackdrop, event: 'click', fn: closeSheet });
+    }
+
+    if (moreSheet) {
+      const sheetItems = moreSheet.querySelectorAll('.sheet-menu-item');
+      sheetItems.forEach((btn) => {
+        btn.addEventListener('click', closeSheet);
+        this._listeners.push({ el: btn, event: 'click', fn: closeSheet });
+      });
+    }
+
     // 4. Initial Sync of UI Elements
     this.syncUI(this.activeMode);
   }
@@ -274,6 +317,21 @@ export class NavigationManager {
         homeBtn.classList.remove('active');
         homeBtn.setAttribute('aria-selected', 'false');
         homeBtn.setAttribute('tabindex', '-1');
+      }
+    }
+
+    // Sync Mobile "Lainnya" More Tab
+    const moreBtn = document.getElementById('btnMobileMore');
+    if (moreBtn) {
+      const isMoreActive = (mode === 'manager' || mode === 'identity');
+      if (isMoreActive) {
+        moreBtn.classList.add('active');
+        moreBtn.setAttribute('aria-selected', 'true');
+        moreBtn.setAttribute('aria-current', 'page');
+      } else {
+        moreBtn.classList.remove('active');
+        moreBtn.setAttribute('aria-selected', 'false');
+        moreBtn.removeAttribute('aria-current');
       }
     }
   }
