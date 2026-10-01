@@ -41,3 +41,7 @@ scratch/
 # Environment Variables
 .env
 .env.*
+.env.local
+**/.env
+**/.env.*
+**/.env.local
