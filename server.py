@@ -49,6 +49,7 @@ from flask_cors import CORS
 from werkzeug.exceptions import RequestEntityTooLarge
 import requests
 import jwt
+from jwt import PyJWKClient, PyJWKClientError
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError, InvalidAudienceError
 
 # Optional OpenCV & Identity Lab imports for graceful resilience
@@ -87,6 +88,10 @@ except Exception:
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnwaniiuflsuemyambuy.supabase.co").rstrip("/")
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
 SUPABASE_AUDIENCE = os.environ.get("SUPABASE_AUDIENCE", "authenticated")
+
+# Supabase JWKS Client for asymmetric tokens (ES256 / RS256)
+jwks_url = f"{SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+jwks_client = PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=3600)
 
 # Rate Limiting Configuration
 VISIONX_USER_DAILY_CHAT_LIMIT = int(os.environ.get("VISIONX_USER_DAILY_CHAT_LIMIT", 30))
@@ -368,30 +373,44 @@ def authenticate_token(token_str: str) -> Tuple[Optional[Dict[str, Any]], Option
     # Case A: 3-part standard JWT (Supabase Auth token)
     # -------------------------------------------------------------------------
     if len(parts) == 3:
-        if not SUPABASE_JWT_SECRET:
-            logger.error("SUPABASE_JWT_SECRET is not configured on the server")
-            return None, "Supabase authentication secret is not configured on backend", 500
-        
         try:
-            decode_kwargs: Dict[str, Any] = {
-                "algorithms": ["HS256"],
-                "options": {
-                    "verify_exp": True,
-                    "verify_aud": True
-                }
+            unverified_header = jwt.get_unverified_header(token_str)
+            alg = unverified_header.get("alg", "HS256")
+        except Exception as header_err:
+            logger.warning(f"Failed to read JWT header: {header_err}")
+            return None, "Malformed token format", 401
+
+        decode_kwargs: Dict[str, Any] = {
+            "options": {
+                "verify_exp": True,
+                "verify_aud": True
             }
-            if SUPABASE_AUDIENCE:
-                decode_kwargs["audience"] = SUPABASE_AUDIENCE
-            
-            payload = jwt.decode(token_str, SUPABASE_JWT_SECRET, **decode_kwargs)
-            
+        }
+        if SUPABASE_AUDIENCE:
+            decode_kwargs["audience"] = SUPABASE_AUDIENCE
+
+        try:
+            if alg in ("ES256", "RS256"):
+                signing_key = jwks_client.get_signing_key_from_jwt(token_str)
+                decode_kwargs["algorithms"] = [alg]
+                payload = jwt.decode(token_str, signing_key.key, **decode_kwargs)
+            elif alg == "HS256":
+                if not SUPABASE_JWT_SECRET:
+                    logger.error("SUPABASE_JWT_SECRET is not configured on the server")
+                    return None, "Supabase authentication secret is not configured on backend", 500
+                decode_kwargs["algorithms"] = ["HS256"]
+                payload = jwt.decode(token_str, SUPABASE_JWT_SECRET, **decode_kwargs)
+            else:
+                logger.warning(f"Unsupported JWT algorithm: {alg}")
+                return None, f"Unsupported JWT algorithm: {alg}", 401
+
             # Optional: verify issuer if SUPABASE_URL is configured
             if SUPABASE_URL and "iss" in payload:
                 expected_iss = f"{SUPABASE_URL.rstrip('/')}/auth/v1"
                 if payload["iss"] != expected_iss:
                     logger.warning(f"JWT issuer mismatch: expected '{expected_iss}', got '{payload.get('iss')}'")
                     return None, "Invalid token issuer", 401
-            
+
             # B2: Ekstraksi Role & Identitas User
             # WAJIB dari payload claim 'app_metadata.role' (default ke 'user' jika kosong).
             # JANGAN PERNAH mengambil role dari 'user_metadata'!
@@ -399,9 +418,9 @@ def authenticate_token(token_str: str) -> Tuple[Optional[Dict[str, Any]], Option
             role = "user"
             if isinstance(app_metadata, dict):
                 role = app_metadata.get("role", "user")
-            
+
             user_id = payload.get("sub", "unknown_user")
-            
+
             user = {
                 "id": user_id,
                 "role": role,
@@ -410,19 +429,19 @@ def authenticate_token(token_str: str) -> Tuple[Optional[Dict[str, Any]], Option
                 "auth_type": "supabase"
             }
             return user, None, 200
-            
+
         except ExpiredSignatureError:
             logger.warning("Supabase JWT has expired")
             return None, "Token has expired", 401
         except InvalidAudienceError:
             logger.warning("Supabase JWT audience verification failed")
             return None, "Invalid token audience", 401
-        except InvalidTokenError as err:
+        except (InvalidTokenError, PyJWKClientError) as err:
             logger.warning(f"Supabase JWT validation failed: {str(err)}")
             return None, f"Invalid token: {str(err)}", 401
         except Exception as err:
             logger.error(f"Unexpected error validating JWT: {str(err)}")
-            return None, "Token verification failed", 401
+            return None, f"Token verification failed: {str(err)}", 401
 
     # -------------------------------------------------------------------------
     # Case B: 2-part token (VisionX Legacy PIN token)

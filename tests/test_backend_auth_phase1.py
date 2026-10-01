@@ -241,3 +241,48 @@ def test_8_cors_headers_production_and_local(client):
     )
     assert local_resp.status_code in [200, 204]
     assert local_resp.headers.get("Access-Control-Allow-Origin") == "http://localhost:5173"
+
+
+# -----------------------------------------------------------------------------
+# Test 9: Asymmetric ES256 Supabase Token Support (JWKS)
+# -----------------------------------------------------------------------------
+def test_9_es256_asymmetric_token_support(client):
+    """Verify that tokens signed with ES256 can be decoded and authenticated."""
+    from unittest.mock import MagicMock
+    from cryptography.hazmat.primitives.asymmetric import ec
+    import server
+
+    # Generate temporary EC key pair
+    priv = ec.generate_private_key(ec.SECP256R1())
+    pub = priv.public_key()
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = pub
+
+    orig_client = server.jwks_client
+    server.jwks_client = MagicMock()
+    server.jwks_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+    try:
+        now = int(time.time())
+        es256_token = jwt.encode(
+            {
+                "sub": "developer_es256_user",
+                "aud": "authenticated",
+                "iss": "https://wnwaniiuflsuemyambuy.supabase.co/auth/v1",
+                "iat": now - 10,
+                "exp": now + 3600,
+                "app_metadata": {"role": "developer"}
+            },
+            priv,
+            algorithm="ES256",
+            headers={"kid": "mock-kid-123"}
+        )
+
+        resp = client.get("/api/manager/stats", headers={"Authorization": f"Bearer {es256_token}"})
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data.get("success") is True
+    finally:
+        server.jwks_client = orig_client
+
