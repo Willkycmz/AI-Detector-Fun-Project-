@@ -1626,6 +1626,7 @@ class VisionXWebApp {
     this.captureService.on('directoryChange', (dirInfo) => this.handleDirectoryChange(dirInfo));
 
     window.addEventListener('keydown', (e) => this.handleGlobalKeydown(e));
+    this.initFoundationUI();
   }
 
   /**
@@ -1994,6 +1995,10 @@ class VisionXWebApp {
         }
       }
     }
+
+    // Update foundation UI elements (slider fill, camera buttons)
+    this.updateAllSliders();
+    this.updateCameraDependentButtons(this.cameraService?.state?.status === 'connected');
   }
 
   // ==========================================================================
@@ -2290,6 +2295,18 @@ class VisionXWebApp {
         this.elements.idLabThresholdSlider.value = profile.threshold;
         if (this.elements.idLabThresholdMarker) {
           this.elements.idLabThresholdMarker.style.left = `${profile.threshold * 100}%`;
+        }
+
+        const statusEl = document.getElementById('idLabStatusDisplay');
+        if (statusEl) {
+          const count = profile.reference_count || 0;
+          if (count === 0) {
+            statusEl.textContent = 'Belum terdaftar';
+            statusEl.className = 'text-muted';
+          } else {
+            statusEl.textContent = 'Active Matching';
+            statusEl.className = 'text-success';
+          }
         }
       }
 
@@ -3095,6 +3112,13 @@ class VisionXWebApp {
   }
 
   handleGlobalKeydown(e) {
+    if (e.key === 'Escape') {
+      const modalClosed = this.closeTopmostModal();
+      if (modalClosed) {
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
 
     // Sub-phase B.2: Abaikan shortcut kamera saat mode aktif adalah Dataset Manager
@@ -3256,6 +3280,7 @@ class VisionXWebApp {
     }
 
     this.updateCameraToggleButtonVisibility(status);
+    this.updateCameraDependentButtons(status === 'connected');
   }
 
   handleCameraError(err) {
@@ -4760,6 +4785,141 @@ class VisionXWebApp {
         `;
       }).join('');
     }
+  }
+
+  // ==========================================================================
+  // UI FOUNDATION METHODS (F5 Buttons, F6 Modals, F7 Sliders)
+  // ==========================================================================
+  initFoundationUI() {
+    // Universal modal backdrop click handler
+    document.addEventListener('click', (e) => {
+      const backdrop = e.target.closest('.modal-backdrop, .modal-overlay, .camera-modal-backdrop');
+      if (backdrop && e.target === backdrop) {
+        this.closeModalElement(backdrop);
+      }
+    });
+
+    // Universal modal close button click handler
+    document.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('.modal-close-icon, .btn-modal-close, [data-modal-close]');
+      if (closeBtn) {
+        const modal = closeBtn.closest('.modal-backdrop, .modal-overlay, .camera-modal-backdrop');
+        if (modal) {
+          this.closeModalElement(modal);
+        }
+      }
+    });
+
+    // Universal slider track fill updater
+    document.addEventListener('input', (e) => {
+      if (e.target && e.target.matches('input[type="range"]')) {
+        this.updateSliderProgress(e.target);
+      }
+    });
+    document.addEventListener('change', (e) => {
+      if (e.target && e.target.matches('input[type="range"]')) {
+        this.updateSliderProgress(e.target);
+      }
+    });
+
+    // Initialize all sliders, camera buttons, and modal scroll lock observer
+    this.updateAllSliders();
+    this.updateCameraDependentButtons(this.cameraService?.state?.status === 'connected');
+    this.observeModalScrollLock();
+  }
+
+  closeTopmostModal() {
+    if (this.cameraModal && this.cameraModal.isOpen) {
+      this.cameraModal.close();
+      this.syncModalScrollLock();
+      return true;
+    }
+    const visibleModals = Array.from(document.querySelectorAll('.modal-backdrop:not(.hidden), .modal-overlay:not(.hidden), .camera-modal-backdrop:not(.hidden)'));
+    if (visibleModals.length > 0) {
+      const topModal = visibleModals[visibleModals.length - 1];
+      this.closeModalElement(topModal);
+      return true;
+    }
+    return false;
+  }
+
+  closeModalElement(modal) {
+    if (!modal) return;
+    if (modal.id === 'confirmModal') {
+      this.closeConfirmModal();
+    } else if (modal.id === 'folderImportModal') {
+      this.closeFolderModal();
+    } else if (modal.id === 'mgrPreviewModal') {
+      if (this.elements.mgrPreviewModal) {
+        this.elements.mgrPreviewModal.classList.add('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    } else if (modal.id === 'cameraModal' && this.cameraModal) {
+      this.cameraModal.close();
+    } else {
+      modal.classList.add('hidden');
+    }
+    this.syncModalScrollLock();
+  }
+
+  syncModalScrollLock() {
+    const hasOpenModal = !!document.querySelector('.modal-backdrop:not(.hidden), .modal-overlay:not(.hidden), .camera-modal-backdrop:not(.hidden)');
+    document.body.classList.toggle('modal-scroll-lock', hasOpenModal);
+  }
+
+  observeModalScrollLock() {
+    const observer = new MutationObserver(() => {
+      this.syncModalScrollLock();
+    });
+    document.querySelectorAll('.modal-backdrop, .modal-overlay, .camera-modal-backdrop').forEach(el => {
+      observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+  }
+
+  updateSliderProgress(slider) {
+    if (!slider) return;
+    const min = parseFloat(slider.min) || 0;
+    const max = parseFloat(slider.max) || 100;
+    const val = parseFloat(slider.value) || 0;
+    const range = max - min;
+    const pct = range === 0 ? 50 : Math.max(0, Math.min(100, ((val - min) / range) * 100));
+    slider.style.setProperty('--slider-percent', `${pct}%`);
+  }
+
+  updateAllSliders() {
+    document.querySelectorAll('input[type="range"]').forEach(slider => {
+      this.updateSliderProgress(slider);
+    });
+  }
+
+  updateCameraDependentButtons(isConnected) {
+    const items = [
+      { btn: this.elements.btnCapture, helper: document.getElementById('btnCaptureHelper') },
+      { btn: this.elements.btnTriggerOcr, helper: document.getElementById('btnOcrHelper') },
+      { btn: this.elements.btnIdLabCaptureCam, helper: document.getElementById('idLabCaptureHelper') }
+    ];
+
+    items.forEach(({ btn, helper }) => {
+      if (btn) {
+        if (!isConnected) {
+          btn.setAttribute('disabled', 'disabled');
+          btn.classList.add('disabled');
+        } else {
+          btn.removeAttribute('disabled');
+          btn.classList.remove('disabled');
+        }
+      }
+      if (helper) {
+        if (!isConnected) {
+          helper.classList.remove('hidden');
+          helper.style.display = 'inline-flex';
+        } else {
+          helper.classList.add('hidden');
+          helper.style.display = 'none';
+        }
+      }
+    });
   }
 }
 

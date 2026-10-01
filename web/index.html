@@ -1582,23 +1582,38 @@
 
       <!-- COLLECTION & MANAGEMENT CONTROLS (V0.4.1) -->
       <div id="collectionControls" class="collection-controls-panel workspace-panel" data-workspace="collection-controls">
-        <div class="panel-section-header">
-          <div class="title-with-badge">
-            <h3 class="panel-title">📸 Sesi Capture Dataset</h3>
-            <span class="badge badge-manager">Live Session</span>
+        <div class="section-header panel-section-header">
+          <div class="section-header-left">
+            <span class="section-header-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+            </span>
+            <div class="section-header-text">
+              <div class="title-with-badge">
+                <h3 class="section-title panel-title">Sesi Capture Dataset</h3>
+                <span class="badge badge-manager">Live Session</span>
+              </div>
+              <p class="section-subtitle panel-desc">Pengumpulan citra objek real-time langsung dari kamera atau impor batch lokal untuk pelatihan model kustom.</p>
+            </div>
           </div>
-          <p class="panel-desc">Pengumpulan citra objek real-time langsung dari kamera atau impor batch lokal untuk pelatihan model kustom.</p>
         </div>
 
         <div class="collection-cards-stack">
           <!-- CARD 1: Pengaturan Kelas & Pengambilan Gambar -->
-          <div class="collection-card">
-            <div class="collection-card-header">
-              <div class="card-title-group">
-                <span class="card-icon">🏷️</span>
-                <div>
-                  <h4 class="card-title">Kelas Aktif &amp; Pengambilan Gambar</h4>
-                  <p class="card-desc">Tentukan label kategori objek dan rekam frame langsung ke dataset.</p>
+          <div class="card collection-card">
+            <div class="card-header collection-card-header">
+              <div class="section-header-left card-title-group">
+                <span class="section-header-icon card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                  </svg>
+                </span>
+                <div class="section-header-text">
+                  <h4 class="section-title card-title">Kelas Aktif &amp; Pengambilan Gambar</h4>
+                  <span class="section-subtitle card-subtitle">Tentukan label kategori objek dan rekam frame langsung ke dataset.</span>
                 </div>
               </div>
             </div>
@@ -1625,6 +1640,7 @@
                     <span>Capture Image</span>
                     <span class="hotkey-badge">SPACE / C</span>
                   </button>
+                  <span id="collectCaptureHelper" class="btn-disabled-helper">Kamera belum aktif — nyalakan kamera untuk mengambil gambar</span>
                 </div>
 
                 <!-- Kolom 2: Class Name Management & Hotkeys -->
@@ -1749,13 +1765,19 @@
           </div>
 
           <!-- CARD 3: Galeri Sesi Ini -->
-          <div class="collection-card recent-captures-section">
-            <div class="collection-card-header recent-header">
-              <div class="gallery-title-group">
-                <span class="card-icon">📸</span>
-                <div>
-                  <h4 class="card-title">Galeri Dataset Sesi Ini</h4>
-                  <span id="recentCapturesCount" class="text-muted">0 item</span>
+          <div class="card collection-card recent-captures-section">
+            <div class="card-header collection-card-header recent-header">
+              <div class="section-header-left gallery-title-group">
+                <span class="section-header-icon card-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                </span>
+                <div class="section-header-text">
+                  <h4 class="section-title card-title">Galeri Dataset Sesi Ini</h4>
+                  <span id="recentCapturesCount" class="section-subtitle card-subtitle text-muted">0 item</span>
                 </div>
               </div>
 
@@ -1912,22 +1934,26 @@
 
       <!-- MODULE 2 — IDENTITY LAB (V0.6) -->
       <div id="identityControls" class="identity-controls-panel workspace-panel" data-workspace="identity-controls">
-        <div class="panel-section-header">
-          <div class="title-with-badge">
-            <span class="inline-book-icon" aria-hidden="true">
+        <div class="section-header panel-section-header">
+          <div class="section-header-left">
+            <span class="section-header-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </span>
-            <h3 class="panel-title">Identity Lab — Face Recognition Studio</h3>
-            <span class="badge badge-identity">Local SFace 128-d</span>
+            <div class="section-header-text">
+              <div class="title-with-badge">
+                <h3 class="section-title panel-title">Identity Lab — Face Recognition Studio</h3>
+                <span class="badge badge-identity">Local SFace 128-d</span>
+              </div>
+              <p class="section-subtitle panel-desc">Sistem pengenalan wajah untuk satu profil terdaftar ("VisionX Developer"). Wajah tak dikenal otomatis ditandai PERSON • UNKNOWN.</p>
+            </div>
           </div>
-          <p class="panel-desc">Sistem pengenalan wajah untuk satu profil terdaftar ("VisionX Developer"). Wajah tak dikenal otomatis ditandai PERSON • UNKNOWN.</p>
         </div>
 
         <!-- Privacy & Safety Banner -->
-        <div class="privacy-safety-banner">
+        <div class="privacy-safety-banner card">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
             <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -1942,19 +1968,19 @@
           <div class="identity-col">
             <div class="card profile-card">
               <div class="card-header">
-                <div class="card-header-left">
-                  <span class="card-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="section-header-left card-header-left">
+                  <span class="section-header-icon card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                       <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                   </span>
-                  <div>
-                    <h4 class="card-title">Profil Pengembang</h4>
-                    <span class="card-subtitle">Profil lokal yang terdaftar untuk pencocokan wajah</span>
+                  <div class="section-header-text">
+                    <h4 class="section-title card-title">Profil Pengembang</h4>
+                    <span class="section-subtitle card-subtitle">Profil lokal yang terdaftar untuk pencocokan wajah</span>
                   </div>
                 </div>
-                <span class="badge badge-ready">Enrolled</span>
+                <span id="idLabEnrolledBadge" class="badge badge-ready">Enrolled</span>
               </div>
 
               <div class="card-body">
@@ -1976,7 +2002,7 @@
                   </div>
                   <div class="meta-item">
                     <span class="meta-label">Status:</span>
-                    <span class="text-success">Active Matching</span>
+                    <span id="idLabStatusDisplay" class="text-muted">Belum terdaftar</span>
                   </div>
                 </div>
 
@@ -2001,13 +2027,14 @@
                     </svg>
                     Import Foto Wajah
                   </button>
-                  <button id="btnIdLabCaptureCam" class="btn btn-sm btn-capture-sub">
+                  <button id="btnIdLabCaptureCam" class="btn btn-sm btn-secondary">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                       <circle cx="12" cy="13" r="4"></circle>
                     </svg>
                     Ambil dari Kamera
                   </button>
+                  <span id="idLabCaptureHelper" class="btn-disabled-helper">Kamera belum aktif — nyalakan kamera untuk mengambil foto</span>
                 </div>
               </div>
             </div>
@@ -2015,17 +2042,17 @@
             <!-- Galeri Foto Referensi Wajah Terdaftar -->
             <div class="card reference-gallery-card">
               <div class="card-header">
-                <div class="card-header-left">
-                  <span class="card-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="section-header-left card-header-left">
+                  <span class="section-header-icon card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                       <circle cx="8.5" cy="8.5" r="1.5"></circle>
                       <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
                   </span>
-                  <div>
-                    <h4 class="card-title">Foto Referensi Terdaftar</h4>
-                    <span class="card-subtitle"><span id="idLabGalleryCount">0</span> foto tersimpan di disk</span>
+                  <div class="section-header-text">
+                    <h4 class="section-title card-title">Foto Referensi Terdaftar</h4>
+                    <span class="section-subtitle card-subtitle"><span id="idLabGalleryCount">0</span> foto tersimpan di disk</span>
                   </div>
                 </div>
               </div>
@@ -2041,17 +2068,17 @@
           <div class="identity-col">
             <div class="card live-test-card">
               <div class="card-header">
-                <div class="card-header-left">
-                  <span class="card-icon">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="section-header-left card-header-left">
+                  <span class="section-header-icon card-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <circle cx="12" cy="12" r="10"></circle>
                       <circle cx="12" cy="12" r="6"></circle>
                       <circle cx="12" cy="12" r="2"></circle>
                     </svg>
                   </span>
-                  <div>
-                    <h4 class="card-title">Realtime Identity Test</h4>
-                    <span class="card-subtitle">Pencocokan langsung dari stream kamera aktif</span>
+                  <div class="section-header-text">
+                    <h4 class="section-title card-title">Realtime Identity Test</h4>
+                    <span class="section-subtitle card-subtitle">Pencocokan langsung dari stream kamera aktif</span>
                   </div>
                 </div>
               </div>
@@ -2084,7 +2111,7 @@
                   <ul>
                     <li><span class="tag-dev">VISIONX DEVELOPER</span>: Wajah terdeteksi dengan skor kemiripan &ge; threshold.</li>
                     <li><span class="tag-unknown">PERSON • UNKNOWN</span>: Wajah manusia terdeteksi namun tidak cocok dengan foto referensi pengembang.</li>
-                    <li><strong>Objek Lain</strong>: Tetap dideteksi secara simultan oleh model YOLO.</li>
+                    <li><strong>Objek Lain</strong>: Tetap dideteksi secara simultan oleh model deteksi VisionX.</li>
                   </ul>
                 </div>
               </div>
@@ -2095,9 +2122,9 @@
 
       <!-- READ TEXT MODE CONTROLS (V0.9 OCR) -->
       <div id="readTextControls" class="read-text-controls-panel workspace-panel" aria-label="Read Text Mode OCR Controls" data-workspace="readtext-controls">
-        <div class="read-text-header-row">
-          <div class="read-text-title-group">
-            <span class="inline-book-icon" aria-hidden="true">
+        <div class="section-header read-text-header-row">
+          <div class="section-header-left read-text-title-group">
+            <span class="section-header-icon inline-book-icon" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="read-text-icon">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -2105,9 +2132,9 @@
                 <line x1="9" y1="11" x2="13" y2="11"></line>
               </svg>
             </span>
-            <div class="read-text-title-texts">
-              <h3 class="read-text-title">OCR &amp; Read Text Engine</h3>
-              <span class="read-text-subtitle">Pindai Teks Kamera On-Demand &bull; Pembaca Suara TTS</span>
+            <div class="section-header-text read-text-title-texts">
+              <h3 class="section-title read-text-title">OCR &amp; Read Text Engine</h3>
+              <span class="section-subtitle read-text-subtitle">Pindai Teks Kamera On-Demand &bull; Pembaca Suara TTS</span>
             </div>
           </div>
 
@@ -2134,6 +2161,7 @@
             <span>Pindai Teks</span>
             <span class="hotkey-badge">R</span>
           </button>
+          <span id="ocrScanHelper" class="btn-disabled-helper">Kamera belum aktif — nyalakan kamera untuk memindai teks</span>
 
           <button id="btnSpeakOcr" class="btn btn-secondary btn-ocr-speak" title="Bacakan teks hasil OCR bersuara">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2163,16 +2191,16 @@
         <!-- 2. Card Pengaturan OCR (R1) -->
         <div class="card ocr-settings-card">
           <div class="card-header">
-            <div class="card-header-left">
-              <span class="card-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="section-header-left card-header-left">
+              <span class="section-header-icon card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="3"></circle>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
               </span>
-              <div>
-                <h4 class="card-title">Pengaturan OCR</h4>
-                <p class="card-subtitle">Konfigurasi bahasa, profil pengenalan, area ROI, dan pembacaan otomatis</p>
+              <div class="section-header-text">
+                <h4 class="section-title card-title">Pengaturan OCR</h4>
+                <span class="section-subtitle card-subtitle">Konfigurasi bahasa, profil pengenalan, area ROI, dan pembacaan otomatis</span>
               </div>
             </div>
           </div>
@@ -2222,9 +2250,9 @@
         <!-- 3. Card Hasil OCR & Telemetri -->
         <div class="card ocr-result-card">
           <div class="card-header">
-            <div class="card-header-left">
-              <span class="card-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="section-header-left card-header-left">
+              <span class="section-header-icon card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -2232,9 +2260,9 @@
                   <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
               </span>
-              <div>
-                <h4 class="card-title">Hasil OCR</h4>
-                <span id="ocrCharWordCount" class="card-subtitle ocr-meta-counts">0 kata &bull; 0 karakter</span>
+              <div class="section-header-text">
+                <h4 class="section-title card-title">Hasil OCR</h4>
+                <span id="ocrCharWordCount" class="section-subtitle card-subtitle ocr-meta-counts">0 kata &bull; 0 karakter</span>
               </div>
             </div>
             <div class="result-header-actions">
