@@ -9,6 +9,7 @@
  */
 
 import { ENDPOINTS } from './apiConfig.js';
+import { apiFetch } from './ApiClient.js';
 
 export class IdentityService {
   constructor() {
@@ -23,7 +24,7 @@ export class IdentityService {
 
   async getProfile() {
     try {
-      const res = await fetch(ENDPOINTS.IDENTITY_PROFILE);
+      const res = await apiFetch(ENDPOINTS.IDENTITY_PROFILE);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -40,7 +41,7 @@ export class IdentityService {
 
   async registerProfile(name) {
     if (!name || !name.trim()) throw new Error('Nama profil tidak boleh kosong.');
-    const res = await fetch(ENDPOINTS.IDENTITY_REGISTER, {
+    const res = await apiFetch(ENDPOINTS.IDENTITY_REGISTER, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim() })
@@ -53,7 +54,7 @@ export class IdentityService {
 
   async getReferences() {
     try {
-      const res = await fetch(ENDPOINTS.IDENTITY_REFERENCES);
+      const res = await apiFetch(ENDPOINTS.IDENTITY_REFERENCES);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
@@ -70,7 +71,7 @@ export class IdentityService {
 
   async addReference(dataUrl, filename = null) {
     if (!dataUrl) throw new Error('Citra wajah tidak boleh kosong.');
-    const res = await fetch(ENDPOINTS.IDENTITY_ADD_REF, {
+    const res = await apiFetch(ENDPOINTS.IDENTITY_ADD_REF, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dataUrl, filename })
@@ -84,7 +85,7 @@ export class IdentityService {
 
   async deleteReference(filename) {
     if (!filename) throw new Error('Nama file referensi harus disertakan.');
-    const res = await fetch(ENDPOINTS.IDENTITY_DEL_REF, {
+    const res = await apiFetch(ENDPOINTS.IDENTITY_DEL_REF, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename })
@@ -99,7 +100,7 @@ export class IdentityService {
   async detectFaces(dataUrl) {
     if (!dataUrl) return null;
     try {
-      const res = await fetch(ENDPOINTS.IDENTITY_DETECT, {
+      const res = await apiFetch(ENDPOINTS.IDENTITY_DETECT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl })
@@ -119,7 +120,7 @@ export class IdentityService {
     if (!dataUrl) return null;
     const thresh = customThreshold !== null ? customThreshold : this.threshold;
     try {
-      const res = await fetch(ENDPOINTS.IDENTITY_MATCH, {
+      const res = await apiFetch(ENDPOINTS.IDENTITY_MATCH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl, threshold: thresh })

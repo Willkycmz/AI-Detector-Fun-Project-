@@ -34,6 +34,7 @@ export class AIProvider {
 }
 
 import { API_BASE_URL, ENDPOINTS } from './apiConfig.js';
+import { authService } from './AuthService.js';
 
 /**
  * BackendAIProvider - Menghubungi backend gateway produksi VisionX (https://visionx.my.id/api/chat)
@@ -67,41 +68,32 @@ export class BackendAIProvider extends AIProvider {
   }
 
   /**
-   * Mendapatkan token sesi dari sessionStorage
+   * Mendapatkan token sesi dari AuthService
    * @returns {string|null}
    */
   getToken() {
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        return sessionStorage.getItem(this.sessionStorageKey) || this._memoryToken;
-      }
-    } catch (_) {}
-    return this._memoryToken || null;
+    return authService.getAccessToken() || this._memoryToken;
   }
 
   /**
-   * Menyimpan token sesi ke sessionStorage
+   * Menyimpan token sesi
    * @param {string} token
    */
   setToken(token) {
     this._memoryToken = token;
     try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(this.sessionStorageKey, token);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('visionx_auth_token', token);
       }
     } catch (_) {}
   }
 
   /**
-   * Menghapus token sesi dari sessionStorage
+   * Menghapus token sesi
    */
   clearToken() {
     this._memoryToken = null;
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(this.sessionStorageKey);
-      }
-    } catch (_) {}
+    authService.signOut();
   }
 
   /**
@@ -109,7 +101,7 @@ export class BackendAIProvider extends AIProvider {
    * @returns {boolean}
    */
   isAuthenticated() {
-    return Boolean(this.getToken());
+    return authService.isAuthenticated() || Boolean(this._memoryToken);
   }
 
   /**

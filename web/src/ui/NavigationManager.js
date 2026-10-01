@@ -337,6 +337,49 @@ export class NavigationManager {
   }
 
   /**
+   * Update visibility of developer-only navigation items.
+   * Developer-only modes: collection, manager, identity.
+   * @param {string} role 'developer' | 'user'
+   */
+  updateRoleVisibility(role) {
+    if (typeof document === 'undefined') return;
+    const isDev = (role === 'developer');
+
+    // 1. Desktop tabs (Collection, Manager, Identity)
+    ['btnModeCollect', 'btnModeManager', 'btnModeIdentity'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (isDev) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      }
+    });
+
+    // 2. Mobile Bottom Nav Item (Collection)
+    this.mobileNavItems.forEach((item) => {
+      if (item.dataset.mode === 'collection') {
+        if (isDev) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      }
+    });
+
+    // 3. Mobile "Lainnya" Button (Opens Manager & Identity drawer)
+    const btnMobileMore = document.getElementById('btnMobileMore');
+    if (btnMobileMore) {
+      if (isDev) {
+        btnMobileMore.classList.remove('hidden');
+      } else {
+        btnMobileMore.classList.add('hidden');
+      }
+    }
+  }
+
+  /**
    * Returns current canonical active mode.
    * @returns {string}
    */

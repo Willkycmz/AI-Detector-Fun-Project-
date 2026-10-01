@@ -7,6 +7,7 @@
  */
 
 import { ENDPOINTS } from './apiConfig.js';
+import { apiFetch } from './ApiClient.js';
 
 // Daftar nama reserved Windows yang dilarang (kompatibel dengan app/collector.py)
 export const WINDOWS_RESERVED_NAMES = new Set([
@@ -273,7 +274,7 @@ export class DatasetCaptureService {
    */
   async loadExistingDataset() {
     try {
-      const response = await fetch(ENDPOINTS.DATASET_LIST);
+      const response = await apiFetch(ENDPOINTS.DATASET_LIST);
       if (!response.ok) {
         console.info('[DatasetCaptureService] /api/dataset/list tidak tersedia di backend production — memuat dari cache lokal.');
         return;
@@ -389,7 +390,7 @@ export class DatasetCaptureService {
         height: vh
       }));
 
-      const apiRes = await fetch(ENDPOINTS.UPLOAD, {
+      const apiRes = await apiFetch(ENDPOINTS.UPLOAD, {
         method: 'POST',
         body: formData
         // Note: NO 'Content-Type' header — browser sets multipart boundary automatically
@@ -490,7 +491,7 @@ export class DatasetCaptureService {
 
     // 1. Hapus dari disk via server API
     try {
-      const res = await fetch(ENDPOINTS.DATASET_DELETE, {
+      const res = await apiFetch(ENDPOINTS.DATASET_DELETE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -634,7 +635,7 @@ export class DatasetCaptureService {
           height
         }));
 
-        const apiRes = await fetch(ENDPOINTS.UPLOAD, {
+        const apiRes = await apiFetch(ENDPOINTS.UPLOAD, {
           method: 'POST',
           body: formData
         });

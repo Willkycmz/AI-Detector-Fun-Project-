@@ -46,6 +46,8 @@ import { CameraModal } from './ui/CameraModal.js';
 import { ChatController } from './ui/ChatController.js';
 import { APP_VERSION } from './version.js';
 import { ENDPOINTS } from './services/apiConfig.js';
+import { authService } from './services/AuthService.js';
+import { setApiEventHandlers } from './services/ApiClient.js';
 
 class VisionXWebApp {
   constructor() {
@@ -155,10 +157,38 @@ class VisionXWebApp {
       console.warn('[VisionX] Peringatan inisialisasi PersonalObject services (terisolasi):', poInitErr);
     }
 
-    // 4d. Inisialisasi AI Vision Assistant (V1.0/V1.1/V1.2) - Terisolasi agar kegagalan tidak memblokir UI
+    // 4d. Inisialisasi AI Vision Assistant & Auth Handler (Phase 2)
     this.visionAssistant = null;
     this.pendingAuthResolve = null;
     this.pendingAuthReject = null;
+    this.authTabMode = 'login'; // 'login' | 'register' | 'forgot_password'
+
+    // Centralized API Event Handlers (F4: 401 & 403 interceptors)
+    setApiEventHandlers({
+      onAuthRequired: () => {
+        this.promptAuthModal();
+      },
+      onForbidden: (msg) => {
+        this.showError(msg || 'Akses ditolak: Fitur ini khusus Developer.');
+        this.showDeveloperNotice();
+      }
+    });
+
+    // Supabase Auth State Change Listener (F1, F3, F5, F6)
+    authService.onAuthStateChange((event, session, role) => {
+      this.updateAuthStatusUI();
+      if (this.navigationManager) {
+        this.navigationManager.updateRoleVisibility(role);
+      }
+      if (this.chatController) {
+        this.chatController.setUserId(authService.getUserId());
+        this.chatController.updateAuthStatus();
+      }
+      if (['collection', 'manager', 'identity'].includes(this.currentMode) && role !== 'developer') {
+        this.setMode('home');
+      }
+    });
+
     try {
       const backendAIProvider = new BackendAIProvider({
         onAuthRequired: () => this.promptAuthModal()
@@ -559,18 +589,54 @@ class VisionXWebApp {
       askVisionMeta: document.getElementById('askVisionMeta'),
       quickPromptChips: document.querySelectorAll('.quick-prompt-chip'),
 
-      // Milestone 1 Gateway Auth Elements
+      // Milestone 1 & Phase 2 Auth Elements (Supabase + Legacy)
       gatewayAuthBar: document.getElementById('gatewayAuthBar'),
       authStatusDot: document.getElementById('authStatusDot'),
       authStatusLabel: document.getElementById('authStatusLabel'),
       btnAuthToggle: document.getElementById('btnAuthToggle'),
       visionxAuthModal: document.getElementById('visionxAuthModal'),
+      authModalTitle: document.getElementById('authModalTitle'),
+      authModalTabs: document.getElementById('authModalTabs'),
+      tabAuthLogin: document.getElementById('tabAuthLogin'),
+      tabAuthRegister: document.getElementById('tabAuthRegister'),
+      authModalDescription: document.getElementById('authModalDescription'),
+      authModalEmailGroup: document.getElementById('authModalEmailGroup'),
+      authModalEmailInput: document.getElementById('authModalEmailInput'),
+      authModalPasswordGroup: document.getElementById('authModalPasswordGroup'),
+      authModalPasswordInput: document.getElementById('authModalPasswordInput'),
+      authModalLinksRow: document.getElementById('authModalLinksRow'),
+      btnAuthForgotPassword: document.getElementById('btnAuthForgotPassword'),
+      btnAuthBackToLogin: document.getElementById('btnAuthBackToLogin'),
+      legacyPinSection: document.getElementById('legacyPinSection'),
+      btnToggleLegacyPin: document.getElementById('btnToggleLegacyPin'),
+      legacyPinContainer: document.getElementById('legacyPinContainer'),
       authModalPinInput: document.getElementById('authModalPinInput'),
+      authModalNotice: document.getElementById('authModalNotice'),
+      authModalNoticeMessage: document.getElementById('authModalNoticeMessage'),
       authModalError: document.getElementById('authModalError'),
       authModalErrorMessage: document.getElementById('authModalErrorMessage'),
       btnCloseAuthModal: document.getElementById('btnCloseAuthModal'),
       btnCancelAuthModal: document.getElementById('btnCancelAuthModal'),
       btnSubmitAuthModal: document.getElementById('btnSubmitAuthModal'),
+      authSubmitBtnText: document.getElementById('authSubmitBtnText'),
+
+      // Header User Avatar & Dropdown (Phase 2 F3)
+      userAvatarContainer: document.getElementById('userAvatarContainer'),
+      headerUserAvatar: document.getElementById('headerUserAvatar'),
+      headerAvatarLetter: document.getElementById('headerAvatarLetter'),
+      headerAvatarLabel: document.getElementById('headerAvatarLabel'),
+      userAvatarDropdown: document.getElementById('userAvatarDropdown'),
+      dropdownUserEmail: document.getElementById('dropdownUserEmail'),
+      dropdownUserRoleBadge: document.getElementById('dropdownUserRoleBadge'),
+      btnHeaderSignOut: document.getElementById('btnHeaderSignOut'),
+
+      // Developer Route Guard Modal (Phase 2 F5)
+      developerNoticeModal: document.getElementById('developerNoticeModal'),
+      devNoticeTitle: document.getElementById('devNoticeTitle'),
+      btnCloseDevNotice: document.getElementById('btnCloseDevNotice'),
+      devNoticeMessage: document.getElementById('devNoticeMessage'),
+      btnDevNoticeHome: document.getElementById('btnDevNoticeHome'),
+      btnDevNoticeLogin: document.getElementById('btnDevNoticeLogin'),
 
       // Object Memory Panel (V1.1)
       objectMemoryPanel: document.getElementById('objectMemoryPanel'),
@@ -683,6 +749,7 @@ class VisionXWebApp {
         initialMode: 'home',
         onModeChange: (mode) => this.setMode(mode)
       });
+      this.navigationManager.updateRoleVisibility(authService.getRole());
       this.contextualPanelManager = new ContextualPanelManager();
 
       // M9: Insecure Context Warning check
@@ -752,6 +819,7 @@ class VisionXWebApp {
             rightPanelModelStatus: this.elements.rightPanelModelStatus
           }
         });
+        this.chatController.setUserId(authService.getUserId());
       } catch (chatInitErr) {
         console.warn('[VisionX] Peringatan inisialisasi ChatController/CameraModal:', chatInitErr);
       }
@@ -1085,18 +1153,69 @@ class VisionXWebApp {
       });
     }
 
-    // Milestone 1 Gateway Auth Events
+    // Phase 2 Auth & Gateway Events
     if (this.elements.btnAuthToggle) {
       this.elements.btnAuthToggle.addEventListener('click', () => {
-        if (this.visionAssistant?.aiProvider?.isAuthenticated?.()) {
-          this.visionAssistant.aiProvider.clearToken();
+        if (authService.isAuthenticated()) {
+          authService.signOut();
           this.updateAuthStatusUI();
-          this.showSuccess('Sesi gateway berhasil keluar.');
+          this.showSuccess('Sesi berhasil keluar.');
         } else {
           this.openAuthModal();
         }
       });
     }
+
+    // Modal Tabs & Switching
+    if (this.elements.tabAuthLogin) {
+      this.elements.tabAuthLogin.addEventListener('click', () => this.switchAuthTab('login'));
+    }
+    if (this.elements.tabAuthRegister) {
+      this.elements.tabAuthRegister.addEventListener('click', () => this.switchAuthTab('register'));
+    }
+    if (this.elements.btnAuthForgotPassword) {
+      this.elements.btnAuthForgotPassword.addEventListener('click', () => this.switchAuthTab('forgot_password'));
+    }
+    if (this.elements.btnAuthBackToLogin) {
+      this.elements.btnAuthBackToLogin.addEventListener('click', () => this.switchAuthTab('login'));
+    }
+    if (this.elements.btnToggleLegacyPin) {
+      this.elements.btnToggleLegacyPin.addEventListener('click', () => {
+        this.elements.legacyPinContainer?.classList.toggle('hidden');
+      });
+    }
+
+    // Inputs Enter Key Handling
+    if (this.elements.authModalEmailInput) {
+      this.elements.authModalEmailInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (this.authTabMode === 'forgot_password') {
+            this.handleAuthSubmit();
+          } else {
+            this.elements.authModalPasswordInput?.focus();
+          }
+        }
+      });
+    }
+    if (this.elements.authModalPasswordInput) {
+      this.elements.authModalPasswordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleAuthSubmit();
+        }
+      });
+    }
+    if (this.elements.authModalPinInput) {
+      this.elements.authModalPinInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.handleAuthSubmit();
+        }
+      });
+    }
+
+    // Modal Action Buttons
     if (this.elements.btnCloseAuthModal) {
       this.elements.btnCloseAuthModal.addEventListener('click', () => this.closeAuthModal());
     }
@@ -1106,12 +1225,52 @@ class VisionXWebApp {
     if (this.elements.btnSubmitAuthModal) {
       this.elements.btnSubmitAuthModal.addEventListener('click', () => this.handleAuthSubmit());
     }
-    if (this.elements.authModalPinInput) {
-      this.elements.authModalPinInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          this.handleAuthSubmit();
+
+    // Header User Avatar & Dropdown Menu (F3)
+    if (this.elements.headerUserAvatar) {
+      this.elements.headerUserAvatar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!authService.isAuthenticated()) {
+          this.openAuthModal();
+        } else {
+          this.elements.userAvatarDropdown?.classList.toggle('hidden');
         }
+      });
+    }
+    if (this.elements.btnHeaderSignOut) {
+      this.elements.btnHeaderSignOut.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.elements.userAvatarDropdown?.classList.add('hidden');
+        await authService.signOut();
+        this.updateAuthStatusUI();
+        this.showSuccess('Anda telah keluar.');
+      });
+    }
+    document.addEventListener('click', (e) => {
+      if (
+        this.elements.userAvatarDropdown &&
+        !this.elements.userAvatarDropdown.classList.contains('hidden') &&
+        !this.elements.userAvatarContainer?.contains(e.target)
+      ) {
+        this.elements.userAvatarDropdown.classList.add('hidden');
+      }
+    });
+
+    // Developer Notice Modal Buttons (F5)
+    if (this.elements.btnCloseDevNotice) {
+      this.elements.btnCloseDevNotice.addEventListener('click', () => this.closeDeveloperNotice());
+    }
+    if (this.elements.btnDevNoticeHome) {
+      this.elements.btnDevNoticeHome.addEventListener('click', () => {
+        this.closeDeveloperNotice();
+        this.setMode('home');
+      });
+    }
+    if (this.elements.btnDevNoticeLogin) {
+      this.elements.btnDevNoticeLogin.addEventListener('click', () => {
+        this.closeDeveloperNotice();
+        this.openAuthModal();
       });
     }
 
@@ -1718,6 +1877,13 @@ class VisionXWebApp {
    */
   setMode(mode, options = {}) {
     if (!['home', 'detection', 'collection', 'manager', 'identity', 'read_text'].includes(mode)) return;
+
+    // Proteksi Rute & Navigasi: Collection, Dataset Manager, Identity Lab HANYA untuk role 'developer' (F5)
+    if (['collection', 'manager', 'identity'].includes(mode) && !authService.isDeveloper()) {
+      this.showDeveloperNotice(mode);
+      return;
+    }
+
     const prevMode = this.currentMode;
     this.currentMode = mode;
 
@@ -4381,29 +4547,121 @@ class VisionXWebApp {
 
   /**
    * =========================================================================
-   * Gateway Authentication Methods (Milestone 1)
+   * Supabase & Gateway Authentication Methods (Phase 2)
    * =========================================================================
    */
   updateAuthStatusUI() {
-    const isAuthed = this.visionAssistant?.aiProvider?.isAuthenticated?.() || false;
+    const isAuthed = authService.isAuthenticated();
+    const role = authService.getRole();
+    const user = authService.getUser();
+    const email = user?.email || (isAuthed ? 'developer@visionx.local' : 'Tamu');
+
+    // 1. Update Header User Avatar & Pill (F3)
+    if (this.elements.headerUserAvatar) {
+      if (isAuthed) {
+        this.elements.headerUserAvatar.classList.remove('unauthenticated');
+        if (this.elements.headerAvatarLetter) {
+          this.elements.headerAvatarLetter.textContent = (email[0] || 'U').toUpperCase();
+        }
+        if (this.elements.headerAvatarLabel) {
+          this.elements.headerAvatarLabel.textContent = '';
+        }
+      } else {
+        this.elements.headerUserAvatar.classList.add('unauthenticated');
+        if (this.elements.headerAvatarLetter) {
+          this.elements.headerAvatarLetter.textContent = 'V';
+        }
+        if (this.elements.headerAvatarLabel) {
+          this.elements.headerAvatarLabel.textContent = 'Masuk';
+        }
+      }
+    }
+
+    // 2. Update Header Dropdown Info (F3)
+    if (this.elements.dropdownUserEmail) {
+      this.elements.dropdownUserEmail.textContent = email;
+    }
+    if (this.elements.dropdownUserRoleBadge) {
+      const isDev = (role === 'developer');
+      this.elements.dropdownUserRoleBadge.textContent = isDev ? 'Developer' : 'Pengguna';
+      this.elements.dropdownUserRoleBadge.className = `dropdown-role-badge ${isDev ? 'developer' : 'user'}`;
+    }
+
+    // 3. Update Existing Gateway UI Indicators
     if (this.elements.authStatusDot) {
       this.elements.authStatusDot.className = `status-dot ${isAuthed ? 'active' : 'unauthed'}`;
     }
     if (this.elements.authStatusLabel) {
-      this.elements.authStatusLabel.textContent = isAuthed ? 'Terautentikasi (Sesi Aktif)' : 'Belum Login Gateway';
+      this.elements.authStatusLabel.textContent = isAuthed
+        ? `Aktif (${role === 'developer' ? 'Developer' : 'User'})`
+        : 'Belum Masuk';
     }
     if (this.elements.btnAuthToggle) {
-      this.elements.btnAuthToggle.textContent = isAuthed ? 'Keluar' : '🔑 Login PIN';
+      this.elements.btnAuthToggle.textContent = isAuthed ? 'Keluar' : '🔑 Masuk Akun';
     }
     if (this.elements.sidebarAuthStatus) {
-      this.elements.sidebarAuthStatus.textContent = isAuthed ? 'Terautentikasi' : 'Login Diperlukan';
+      this.elements.sidebarAuthStatus.textContent = isAuthed ? (role === 'developer' ? 'Developer' : 'Pengguna') : 'Belum Masuk';
       this.elements.sidebarAuthStatus.className = `status-value ${isAuthed ? 'online' : 'offline'}`;
     }
     if (this.elements.btnSidebarAuth) {
-      this.elements.btnSidebarAuth.textContent = isAuthed ? 'Keluar PIN' : '🔑 Login Gateway';
+      this.elements.btnSidebarAuth.textContent = isAuthed ? 'Keluar' : '🔑 Masuk Akun';
     }
+
+    // 4. Update Navigation role visibility (F5)
+    if (this.navigationManager) {
+      this.navigationManager.updateRoleVisibility(role);
+    }
+
+    // 5. Update Chat Controller (F6)
     if (this.chatController) {
+      this.chatController.setUserId(authService.getUserId());
       this.chatController.updateAuthStatus();
+    }
+  }
+
+  switchAuthTab(tab) {
+    this.authTabMode = tab; // 'login' | 'register' | 'forgot_password'
+
+    if (this.elements.authModalError) this.elements.authModalError.classList.add('hidden');
+    if (this.elements.authModalNotice) this.elements.authModalNotice.classList.add('hidden');
+
+    if (tab === 'login') {
+      this.elements.tabAuthLogin?.classList.add('active');
+      this.elements.tabAuthRegister?.classList.remove('active');
+      if (this.elements.authModalTitle) this.elements.authModalTitle.textContent = '🔐 Masuk ke VisionX';
+      if (this.elements.authModalDescription) {
+        this.elements.authModalDescription.textContent = 'Masuk ke akun VisionX Anda untuk menggunakan AI Vision Assistant dan sinkronisasi percakapan.';
+      }
+      if (this.elements.authModalTabs) this.elements.authModalTabs.classList.remove('hidden');
+      if (this.elements.authModalPasswordGroup) this.elements.authModalPasswordGroup.classList.remove('hidden');
+      if (this.elements.btnAuthForgotPassword) this.elements.btnAuthForgotPassword.classList.remove('hidden');
+      if (this.elements.btnAuthBackToLogin) this.elements.btnAuthBackToLogin.classList.add('hidden');
+      if (this.elements.authSubmitBtnText) this.elements.authSubmitBtnText.textContent = 'Masuk';
+      setTimeout(() => this.elements.authModalEmailInput?.focus(), 50);
+    } else if (tab === 'register') {
+      this.elements.tabAuthLogin?.classList.remove('active');
+      this.elements.tabAuthRegister?.classList.add('active');
+      if (this.elements.authModalTitle) this.elements.authModalTitle.textContent = '📝 Daftar Akun VisionX';
+      if (this.elements.authModalDescription) {
+        this.elements.authModalDescription.textContent = 'Buat akun baru untuk mulai menggunakan seluruh fitur VisionX.';
+      }
+      if (this.elements.authModalTabs) this.elements.authModalTabs.classList.remove('hidden');
+      if (this.elements.authModalPasswordGroup) this.elements.authModalPasswordGroup.classList.remove('hidden');
+      if (this.elements.btnAuthForgotPassword) this.elements.btnAuthForgotPassword.classList.add('hidden');
+      if (this.elements.btnAuthBackToLogin) this.elements.btnAuthBackToLogin.classList.add('hidden');
+      if (this.elements.authSubmitBtnText) this.elements.authSubmitBtnText.textContent = 'Daftar Akun';
+      setTimeout(() => this.elements.authModalEmailInput?.focus(), 50);
+    } else if (tab === 'forgot_password') {
+      if (this.elements.authModalTitle) this.elements.authModalTitle.textContent = '🔑 Lupa Password';
+      if (this.elements.authModalDescription) {
+        this.elements.authModalDescription.textContent = 'Masukkan alamat email akun Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi.';
+      }
+      if (this.elements.authModalTabs) this.elements.authModalTabs.classList.add('hidden');
+      if (this.elements.authModalPasswordGroup) this.elements.authModalPasswordGroup.classList.add('hidden');
+      if (this.elements.btnAuthForgotPassword) this.elements.btnAuthForgotPassword.classList.add('hidden');
+      if (this.elements.btnAuthBackToLogin) this.elements.btnAuthBackToLogin.classList.remove('hidden');
+      if (this.elements.authSubmitBtnText) this.elements.authSubmitBtnText.textContent = 'Kirim Tautan Reset';
+      setTimeout(() => this.elements.authModalEmailInput?.focus(), 50);
     }
   }
 
@@ -4411,10 +4669,8 @@ class VisionXWebApp {
     if (this.elements.visionxAuthModal) {
       this.elements.visionxAuthModal.classList.remove('hidden');
       if (this.elements.authModalError) this.elements.authModalError.classList.add('hidden');
-      if (this.elements.authModalPinInput) {
-        this.elements.authModalPinInput.value = '';
-        setTimeout(() => this.elements.authModalPinInput?.focus(), 60);
-      }
+      if (this.elements.authModalNotice) this.elements.authModalNotice.classList.add('hidden');
+      this.switchAuthTab('login');
     }
   }
 
@@ -4438,46 +4694,169 @@ class VisionXWebApp {
   }
 
   async handleAuthSubmit() {
-    const pin = this.elements.authModalPinInput?.value?.trim() || '';
-    if (!pin) {
-      if (this.elements.authModalError && this.elements.authModalErrorMessage) {
-        this.elements.authModalError.classList.remove('hidden');
-        this.elements.authModalErrorMessage.textContent = 'Silakan masukkan PIN.';
-      }
+    // Check if legacy PIN is visible and has value
+    const legacyPin = this.elements.authModalPinInput?.value?.trim() || '';
+    const isLegacyPinVisible = this.elements.legacyPinContainer && !this.elements.legacyPinContainer.classList.contains('hidden');
+
+    if (isLegacyPinVisible && legacyPin) {
+      return this._handleLegacyPinSubmit(legacyPin);
+    }
+
+    const email = this.elements.authModalEmailInput?.value?.trim() || '';
+    const password = this.elements.authModalPasswordInput?.value || '';
+
+    if (!email) {
+      this._showAuthError('Silakan masukkan alamat email Anda.');
+      this.elements.authModalEmailInput?.focus();
+      return;
+    }
+
+    if (this.authTabMode !== 'forgot_password' && !password) {
+      this._showAuthError('Silakan masukkan password.');
+      this.elements.authModalPasswordInput?.focus();
+      return;
+    }
+
+    if (this.authTabMode !== 'forgot_password' && password.length < 6) {
+      this._showAuthError('Password minimal harus 6 karakter.');
+      this.elements.authModalPasswordInput?.focus();
       return;
     }
 
     if (this.elements.btnSubmitAuthModal) {
       this.elements.btnSubmitAuthModal.disabled = true;
-      const span = this.elements.btnSubmitAuthModal.querySelector('.btn-text');
-      if (span) span.textContent = 'Memverifikasi...';
+      if (this.elements.authSubmitBtnText) {
+        this.elements.authSubmitBtnText.textContent = 'Memproses...';
+      }
     }
 
     try {
-      if (this.visionAssistant?.aiProvider?.login) {
-        await this.visionAssistant.aiProvider.login(pin);
+      if (this.authTabMode === 'login') {
+        await authService.signIn({ email, password });
         this.updateAuthStatusUI();
         if (this.elements.visionxAuthModal) {
           this.elements.visionxAuthModal.classList.add('hidden');
         }
-        this.showSuccess('Login gateway berhasil!');
+        this.showSuccess('Berhasil masuk.');
         if (this.pendingAuthResolve) {
           this.pendingAuthResolve(true);
           this.pendingAuthResolve = null;
           this.pendingAuthReject = null;
         }
+      } else if (this.authTabMode === 'register') {
+        const result = await authService.signUp({ email, password });
+        if (result?.session) {
+          this.updateAuthStatusUI();
+          if (this.elements.visionxAuthModal) {
+            this.elements.visionxAuthModal.classList.add('hidden');
+          }
+          this.showSuccess('Pendaftaran berhasil! Anda telah masuk.');
+          if (this.pendingAuthResolve) {
+            this.pendingAuthResolve(true);
+            this.pendingAuthResolve = null;
+            this.pendingAuthReject = null;
+          }
+        } else {
+          this._showAuthNotice('Pendaftaran berhasil! Cek email Anda untuk konfirmasi pendaftaran.');
+        }
+      } else if (this.authTabMode === 'forgot_password') {
+        await authService.resetPassword(email);
+        this._showAuthNotice('Tautan reset kata sandi telah dikirim. Silakan periksa inbox/spam email Anda.');
       }
     } catch (err) {
-      if (this.elements.authModalError && this.elements.authModalErrorMessage) {
-        this.elements.authModalError.classList.remove('hidden');
-        this.elements.authModalErrorMessage.textContent = err.message || 'Gagal login.';
+      let friendlyMsg = err.message || 'Terjadi kesalahan saat memproses permintaan.';
+      if (friendlyMsg.includes('Invalid login credentials')) {
+        friendlyMsg = 'Email atau password salah. Silakan periksa kembali.';
+      } else if (friendlyMsg.includes('Email not confirmed')) {
+        friendlyMsg = 'Email belum dikonfirmasi. Silakan cek tautan konfirmasi di inbox email Anda.';
+      } else if (friendlyMsg.includes('User already registered')) {
+        friendlyMsg = 'Alamat email ini sudah terdaftar. Silakan pilih tab Masuk.';
       }
+      this._showAuthError(friendlyMsg);
     } finally {
       if (this.elements.btnSubmitAuthModal) {
         this.elements.btnSubmitAuthModal.disabled = false;
-        const span = this.elements.btnSubmitAuthModal.querySelector('.btn-text');
-        if (span) span.textContent = 'Masuk & Dapatkan Token';
+        if (this.elements.authSubmitBtnText) {
+          this.elements.authSubmitBtnText.textContent =
+            this.authTabMode === 'login' ? 'Masuk' :
+            this.authTabMode === 'register' ? 'Daftar Akun' : 'Kirim Tautan Reset';
+        }
       }
+    }
+  }
+
+  async _handleLegacyPinSubmit(pin) {
+    if (this.elements.btnSubmitAuthModal) {
+      this.elements.btnSubmitAuthModal.disabled = true;
+      if (this.elements.authSubmitBtnText) {
+        this.elements.authSubmitBtnText.textContent = 'Memverifikasi PIN...';
+      }
+    }
+
+    try {
+      if (this.visionAssistant?.aiProvider?.login) {
+        await this.visionAssistant.aiProvider.login(pin);
+      }
+      this.updateAuthStatusUI();
+      if (this.elements.visionxAuthModal) {
+        this.elements.visionxAuthModal.classList.add('hidden');
+      }
+      this.showSuccess('Login gateway dengan PIN berhasil!');
+      if (this.pendingAuthResolve) {
+        this.pendingAuthResolve(true);
+        this.pendingAuthResolve = null;
+        this.pendingAuthReject = null;
+      }
+    } catch (err) {
+      this._showAuthError(err.message || 'PIN salah atau server menolak.');
+    } finally {
+      if (this.elements.btnSubmitAuthModal) {
+        this.elements.btnSubmitAuthModal.disabled = false;
+        if (this.elements.authSubmitBtnText) {
+          this.elements.authSubmitBtnText.textContent = 'Masuk';
+        }
+      }
+    }
+  }
+
+  _showAuthError(msg) {
+    if (this.elements.authModalError && this.elements.authModalErrorMessage) {
+      this.elements.authModalError.classList.remove('hidden');
+      this.elements.authModalErrorMessage.textContent = msg;
+    }
+    if (this.elements.authModalNotice) {
+      this.elements.authModalNotice.classList.add('hidden');
+    }
+  }
+
+  _showAuthNotice(msg) {
+    if (this.elements.authModalNotice && this.elements.authModalNoticeMessage) {
+      this.elements.authModalNotice.classList.remove('hidden');
+      this.elements.authModalNoticeMessage.textContent = msg;
+    }
+    if (this.elements.authModalError) {
+      this.elements.authModalError.classList.add('hidden');
+    }
+  }
+
+  showDeveloperNotice(targetMode = null) {
+    if (this.elements.developerNoticeModal) {
+      this.elements.developerNoticeModal.classList.remove('hidden');
+      if (this.elements.devNoticeMessage) {
+        const modeNames = {
+          collection: 'Koleksi Dataset',
+          manager: 'Dataset Manager',
+          identity: 'Identity Lab'
+        };
+        const name = modeNames[targetMode] || 'Fitur ini';
+        this.elements.devNoticeMessage.textContent = `${name} khusus untuk akun Developer`;
+      }
+    }
+  }
+
+  closeDeveloperNotice() {
+    if (this.elements.developerNoticeModal) {
+      this.elements.developerNoticeModal.classList.add('hidden');
     }
   }
 

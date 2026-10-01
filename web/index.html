@@ -337,8 +337,26 @@
             </svg>
             <span class="notif-badge">1</span>
           </button>
-          <div class="user-avatar-pill" id="headerUserAvatar" role="button" tabindex="0" title="Profil Pengguna VisionX" aria-label="Profil Pengguna">
-            <span class="avatar-letter">V</span>
+          <div class="user-avatar-container" id="userAvatarContainer">
+            <div class="user-avatar-pill unauthenticated" id="headerUserAvatar" role="button" tabindex="0" title="Akun VisionX" aria-label="Akun VisionX">
+              <span class="avatar-letter" id="headerAvatarLetter">V</span>
+              <span class="avatar-label" id="headerAvatarLabel">Masuk</span>
+            </div>
+            <div class="user-avatar-dropdown hidden" id="userAvatarDropdown" role="menu" aria-label="Menu Pengguna">
+              <div class="dropdown-user-info">
+                <span class="dropdown-user-email" id="dropdownUserEmail">user@visionx.id</span>
+                <span class="dropdown-role-badge user" id="dropdownUserRoleBadge">Pengguna</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <button type="button" class="dropdown-item" id="btnHeaderSignOut" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Keluar</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2689,37 +2707,107 @@
   <!-- Sheet Backdrop for Mobile Drawers -->
   <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
 
-  <!-- VisionX Gateway Authentication Modal -->
+  <!-- VisionX Supabase Authentication Modal (Phase 2) -->
   <div id="visionxAuthModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
     <div class="modal-card auth-modal-card">
       <div class="modal-header">
-        <h3 id="authModalTitle" class="modal-title">🔐 Autentikasi Gateway VisionX</h3>
+        <h3 id="authModalTitle" class="modal-title">🔐 Masuk ke VisionX</h3>
         <button type="button" id="btnCloseAuthModal" class="btn-close-modal" aria-label="Tutup dialog autentikasi">✕</button>
       </div>
       <div class="modal-body">
-        <p class="modal-description">
-          Fitur AI Vision Assistant dilindungi gateway server VisionX (<code>https://visionx.my.id</code>). Masukkan PIN otorisasi server Anda.
+        <!-- Auth Tabs: Masuk / Daftar -->
+        <div class="auth-modal-tabs" id="authModalTabs">
+          <button type="button" class="auth-modal-tab active" id="tabAuthLogin">Masuk</button>
+          <button type="button" class="auth-modal-tab" id="tabAuthRegister">Daftar</button>
+        </div>
+
+        <!-- Description/Subheading -->
+        <p class="modal-description" id="authModalDescription">
+          Masuk ke akun VisionX Anda untuk menggunakan AI Vision Assistant dan sinkronisasi percakapan.
         </p>
-        <div class="form-group">
-          <label for="authModalPinInput" class="form-label">PIN Akses VisionX:</label>
+
+        <!-- Form Group: Email -->
+        <div class="form-group" id="authModalEmailGroup">
+          <label for="authModalEmailInput" class="form-label">Email:</label>
           <input
-            type="password"
-            id="authModalPinInput"
-            class="form-input auth-pin-input"
-            placeholder="Masukkan PIN (cth: visionx2026)"
-            autocomplete="current-password"
-            maxlength="32"
+            type="email"
+            id="authModalEmailInput"
+            class="form-input"
+            placeholder="nama@email.com"
+            autocomplete="email"
           />
         </div>
+
+        <!-- Form Group: Password -->
+        <div class="form-group" id="authModalPasswordGroup">
+          <label for="authModalPasswordInput" class="form-label">Password:</label>
+          <input
+            type="password"
+            id="authModalPasswordInput"
+            class="form-input"
+            placeholder="Minimal 6 karakter"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <!-- Links Row: Lupa Password & Kembali ke Masuk -->
+        <div class="auth-modal-links-row" id="authModalLinksRow">
+          <button type="button" id="btnAuthForgotPassword" class="auth-link-btn">Lupa Password?</button>
+          <button type="button" id="btnAuthBackToLogin" class="auth-link-btn hidden">← Kembali ke Form Masuk</button>
+        </div>
+
+        <!-- Legacy PIN Accordion (Fallback pengembang) -->
+        <div class="legacy-pin-section" id="legacyPinSection">
+          <button type="button" id="btnToggleLegacyPin" class="auth-link-subtle">Atau gunakan PIN server lokal</button>
+          <div id="legacyPinContainer" class="form-group hidden" style="margin-top: 8px;">
+            <label for="authModalPinInput" class="form-label">PIN Akses Server (Legacy):</label>
+            <input
+              type="password"
+              id="authModalPinInput"
+              class="form-input auth-pin-input"
+              placeholder="PIN lokal (cth: visionx2026)"
+              autocomplete="current-password"
+              maxlength="32"
+            />
+          </div>
+        </div>
+
+        <!-- Notifications: Success/Info and Error -->
+        <div id="authModalNotice" class="auth-modal-notice hidden" role="status">
+          <span id="authModalNoticeMessage"></span>
+        </div>
         <div id="authModalError" class="auth-modal-error hidden" role="alert">
-          <span id="authModalErrorMessage">PIN salah atau server menolak permintaan.</span>
+          <span id="authModalErrorMessage"></span>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" id="btnCancelAuthModal" class="btn btn-outline">Batal</button>
         <button type="button" id="btnSubmitAuthModal" class="btn btn-primary">
-          <span class="btn-text">Masuk &amp; Dapatkan Token</span>
+          <span class="btn-text" id="authSubmitBtnText">Masuk</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Developer Route Guard Notice Modal (Phase 2 F5) -->
+  <div id="developerNoticeModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="devNoticeTitle">
+    <div class="modal-card dev-notice-card">
+      <div class="modal-header">
+        <h3 id="devNoticeTitle" class="modal-title">🔒 Akses Khusus Developer</h3>
+        <button type="button" id="btnCloseDevNotice" class="btn-close-modal" aria-label="Tutup pemberitahuan">✕</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div class="dev-notice-icon">🛠️</div>
+        <p class="modal-description" id="devNoticeMessage" style="color: var(--text-primary); font-weight: 600;">
+          Fitur ini khusus untuk akun Developer
+        </p>
+        <p class="modal-description" style="font-size: 0.82rem; color: var(--text-secondary); margin-top: -4px;">
+          Fitur Koleksi Dataset, Dataset Manager, dan Identity Lab dilindungi dan memerlukan hak akses Developer.
+        </p>
+      </div>
+      <div class="modal-footer" style="justify-content: center; gap: 10px;">
+        <button type="button" id="btnDevNoticeHome" class="btn btn-outline">Kembali ke Beranda</button>
+        <button type="button" id="btnDevNoticeLogin" class="btn btn-primary">Masuk sebagai Developer</button>
       </div>
     </div>
   </div>

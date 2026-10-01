@@ -8,6 +8,7 @@
  */
 
 import { ENDPOINTS } from './apiConfig.js';
+import { apiFetch } from './ApiClient.js';
 
 export const DEFAULT_ENDPOINT_URL = ENDPOINTS.UPLOAD;
 
@@ -84,7 +85,7 @@ class TunnelService {
       formData.append('image', imageBlob, 'web_capture.jpg');
       formData.append('info', String(info));
 
-      const response = await fetch(targetUrl, {
+      const response = await apiFetch(targetUrl, {
         method: 'POST',
         body: formData,
       });

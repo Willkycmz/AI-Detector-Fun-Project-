@@ -1174,6 +1174,17 @@ export class ChatController {
   }
 
   /**
+   * Set namespace ID user untuk isolasi riwayat chat
+   * @param {string} userId
+   */
+  setUserId(userId) {
+    if (this.storageService && typeof this.storageService.setUserId === 'function') {
+      this.storageService.setUserId(userId);
+      this.storageService.getSessions().then((s) => this.renderHistoryList(s)).catch(() => {});
+    }
+  }
+
+  /**
    * Sinkronkan status server gateway ke UI
    */
   updateServerStatus(isOnline, label = null) {

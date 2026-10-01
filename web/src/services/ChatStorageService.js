@@ -28,6 +28,23 @@ export class ChatStorageService {
     this._memoryFallback = false;
     this._memSessions = new Map();
     this._memMessages = new Map();
+    this.currentUserId = 'guest';
+  }
+
+  /**
+   * Set user ID namespace for isolated chat storage
+   * @param {string|null} userId
+   */
+  setUserId(userId) {
+    this.currentUserId = userId || 'guest';
+  }
+
+  /**
+   * Get current user ID namespace
+   * @returns {string}
+   */
+  getUserId() {
+    return this.currentUserId || 'guest';
   }
 
   /**
@@ -124,9 +141,11 @@ export class ChatStorageService {
    */
   async getSessions() {
     await this.init();
+    const activeUserId = this.currentUserId || 'guest';
 
     if (this._memoryFallback) {
-      const list = Array.from(this._memSessions.values());
+      const list = Array.from(this._memSessions.values())
+        .filter(s => (s.userId || 'guest') === activeUserId);
       list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       return list;
     }
@@ -142,7 +161,10 @@ export class ChatStorageService {
         req.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
-            sessions.push(cursor.value);
+            const val = cursor.value;
+            if ((val.userId || 'guest') === activeUserId) {
+              sessions.push(val);
+            }
             cursor.continue();
           } else {
             resolve(sessions);
@@ -197,6 +219,7 @@ export class ChatStorageService {
     await this.init();
     const session = {
       id: sessionId,
+      userId: this.currentUserId || 'guest',
       title: String(title || 'Percakapan Baru').trim().substring(0, 80),
       createdAt: Number(createdAt) || Date.now(),
       updatedAt: Date.now()
@@ -325,6 +348,7 @@ export class ChatStorageService {
     const record = {
       id: id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       sessionId: sessionId || 'default_session',
+      userId: this.currentUserId || 'guest',
       role: role === 'assistant' ? 'assistant' : 'user',
       content: String(content || '').trim(),
       timestamp: Number(timestamp) || Date.now(),
@@ -420,25 +444,29 @@ export class ChatStorageService {
    */
   async clearAllData() {
     await this.init();
+    const activeUserId = this.currentUserId || 'guest';
 
     if (this._memoryFallback) {
-      this._memSessions.clear();
-      this._memMessages.clear();
+      for (const [id, s] of this._memSessions.entries()) {
+        if ((s.userId || 'guest') === activeUserId) {
+          this._memSessions.delete(id);
+          for (const [mId, m] of this._memMessages.entries()) {
+            if (m.sessionId === id) this._memMessages.delete(mId);
+          }
+        }
+      }
       return true;
     }
 
-    return new Promise((resolve) => {
-      try {
-        const tx = this.db.transaction([STORE_SESSIONS, STORE_MESSAGES], 'readwrite');
-        tx.objectStore(STORE_SESSIONS).clear();
-        tx.objectStore(STORE_MESSAGES).clear();
-
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      } catch (err) {
-        console.warn('[ChatStorageService] Error clearAllData:', err);
-        resolve(false);
+    try {
+      const userSessions = await this.getSessions();
+      for (const sess of userSessions) {
+        await this.deleteSession(sess.id);
       }
-    });
+      return true;
+    } catch (err) {
+      console.warn('[ChatStorageService] Error clearAllData:', err);
+      return false;
+    }
   }
 }
