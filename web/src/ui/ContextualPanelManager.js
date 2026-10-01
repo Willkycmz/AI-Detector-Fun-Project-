@@ -69,12 +69,13 @@ export class ContextualPanelManager {
       }
     }
 
-    // Bind close buttons inside panels
-    document.querySelectorAll('[data-close-tool]').forEach((closeBtn) => {
-      closeBtn.addEventListener('click', (e) => {
+    // Bind close buttons inside panels with direct and delegated listeners
+    document.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('[data-close-tool], .btn-close-contextual-panel');
+      if (closeBtn) {
         e.preventDefault();
         this.closeAll();
-      });
+      }
     });
 
     // Escape key listener to close active panel
@@ -156,6 +157,22 @@ export class ContextualPanelManager {
   openTool(toolId) {
     if (!this.panels.has(toolId)) return;
 
+    const view = document.getElementById('contextual-tools-view');
+    const pool = document.getElementById('contextualPanelsPool') || document.querySelector('.contextual-panels-container');
+
+    // Return any active panel back to pool and clear view container
+    if (view && pool) {
+      while (view.firstChild) {
+        const child = view.firstChild;
+        if (child.classList) {
+          child.classList.remove('open');
+          child.setAttribute('aria-hidden', 'true');
+        }
+        pool.appendChild(child);
+      }
+      view.innerHTML = '';
+    }
+
     // Close any currently active panel first (Strict 1-panel rule)
     for (const [id, panel] of this.panels.entries()) {
       if (id !== toolId) {
@@ -183,6 +200,9 @@ export class ContextualPanelManager {
     if (panel) {
       panel.classList.add('open');
       panel.setAttribute('aria-hidden', 'false');
+      if (view) {
+        view.appendChild(panel);
+      }
     }
     if (btn) {
       btn.classList.add('active');
@@ -218,6 +238,20 @@ export class ContextualPanelManager {
    */
   closeAll() {
     const previousTool = this.activeTool;
+
+    const view = document.getElementById('contextual-tools-view');
+    const pool = document.getElementById('contextualPanelsPool') || document.querySelector('.contextual-panels-container');
+    if (view && pool) {
+      while (view.firstChild) {
+        const child = view.firstChild;
+        if (child.classList) {
+          child.classList.remove('open');
+          child.setAttribute('aria-hidden', 'true');
+        }
+        pool.appendChild(child);
+      }
+      view.innerHTML = '';
+    }
 
     for (const panel of this.panels.values()) {
       panel.classList.remove('open');

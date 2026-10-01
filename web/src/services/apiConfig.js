@@ -35,10 +35,14 @@ export const ENDPOINTS = {
   UPLOAD:             apiUrl('/api/upload'),
   HEALTH:             apiUrl('/api/health'),
 
-  // Dataset Capture
+  // Dataset Capture & Management
   DATASET_LIST:       apiUrl('/api/dataset/list'),
   DATASET_SAVE:       apiUrl('/api/dataset/save'),
   DATASET_DELETE:     apiUrl('/api/dataset/delete'),
+  DATASET_TRASH:      apiUrl('/api/dataset/trash'),
+  DATASET_PERMANENT:  apiUrl('/api/dataset/permanent'),
+  DATASET_RESTORE:    apiUrl('/api/dataset/restore'),
+  DATASET_IMAGE:      apiUrl('/api/dataset/image'),
 
   // Dataset Manager
   MANAGER_STATS:      apiUrl('/api/manager/stats'),

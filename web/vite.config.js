@@ -64,19 +64,54 @@ function visionxCorePlugin() {
   return {
     name: 'visionx-core-api',
     configureServer(server) {
-      // 1. Static file serving untuk /datasets/*
+      // 1. Static file serving untuk /datasets/*, /api/dataset/image/*, dan /api/dataset/file/*
       server.middlewares.use((req, res, next) => {
-        if (req.url && req.url.startsWith('/datasets/')) {
+        if (!req.url) return next();
+        const rawUrl = req.url.split('?')[0];
+        let subPath = null;
+        if (rawUrl.startsWith('/datasets/')) {
+          subPath = rawUrl.replace('/datasets/', '');
+        } else if (rawUrl.startsWith('/api/dataset/image/')) {
+          subPath = rawUrl.replace('/api/dataset/image/', '');
+        } else if (rawUrl.startsWith('/api/dataset/file/')) {
+          subPath = rawUrl.replace('/api/dataset/file/', '');
+        }
+
+        if (subPath !== null) {
           try {
-            const rawUrl = req.url.split('?')[0];
-            const relativePath = decodeURIComponent(rawUrl.replace('/datasets/', ''));
+            const relativePath = decodeURIComponent(subPath);
             const safePath = path.normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-            const fullPath = path.resolve(datasetsRoot, safePath);
+            
+            const candidates = [
+              path.resolve(datasetsRoot, safePath),
+              path.resolve(rawDatasetRoot, safePath),
+              path.resolve(trashDatasetRoot, safePath),
+              path.resolve(facesDatasetRoot, safePath),
+              path.resolve(datasetsRoot, 'raw', safePath)
+            ];
 
-            assertSafeDatasetPath(fullPath);
+            let targetFile = candidates.find(c => fs.existsSync(c) && fs.statSync(c).isFile());
 
-            if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-              const ext = path.extname(fullPath).toLowerCase();
+            if (!targetFile) {
+              const baseName = path.basename(safePath);
+              const findFile = (dir) => {
+                if (!fs.existsSync(dir)) return null;
+                const entries = fs.readdirSync(dir, { withFileTypes: true });
+                for (const ent of entries) {
+                  const fp = path.resolve(dir, ent.name);
+                  if (ent.isFile() && ent.name === baseName) return fp;
+                  if (ent.isDirectory()) {
+                    const found = findFile(fp);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
+              targetFile = findFile(datasetsRoot);
+            }
+
+            if (targetFile) {
+              const ext = path.extname(targetFile).toLowerCase();
               const mimeTypes = {
                 '.jpg': 'image/jpeg',
                 '.jpeg': 'image/jpeg',
@@ -84,9 +119,9 @@ function visionxCorePlugin() {
                 '.webp': 'image/webp',
                 '.json': 'application/json'
               };
-              res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+              res.setHeader('Content-Type', mimeTypes[ext] || 'image/jpeg');
               res.setHeader('Cache-Control', 'no-cache');
-              return fs.createReadStream(fullPath).pipe(res);
+              return fs.createReadStream(targetFile).pipe(res);
             }
           } catch (e) {
             console.warn('[Dataset Static Serve Error]', e.message);
@@ -688,47 +723,284 @@ function visionxCorePlugin() {
         // GET /api/dataset/list
         if (url.pathname === '/api/dataset/list' && req.method === 'GET') {
           try {
-            const requestedClass = url.searchParams.get('className');
-            const items = [];
+            const requestedClass = url.searchParams.get('className') || url.searchParams.get('class');
+            const view = (url.searchParams.get('view') || 'active').toLowerCase().trim();
+            const search = (url.searchParams.get('search') || '').toLowerCase().trim();
             const supportedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
-            const ownDir = path.resolve(rawDatasetRoot, 'own');
-            if (fs.existsSync(ownDir)) {
-              const classFolders = fs.readdirSync(ownDir, { withFileTypes: true });
-              for (const dirent of classFolders) {
-                if (dirent.isDirectory()) {
-                  const cls = dirent.name;
-                  if (requestedClass && requestedClass !== cls) continue;
+            const activeItems = [];
+            const trashItems = [];
 
-                  const classDirPath = path.resolve(ownDir, cls);
-                  const files = fs.readdirSync(classDirPath, { withFileTypes: true });
-                  for (const f of files) {
-                    if (f.isFile() && supportedExts.has(path.extname(f.name).toLowerCase())) {
-                      const filePath = path.resolve(classDirPath, f.name);
-                      const stat = fs.statSync(filePath);
-                      items.push({
-                        filename: f.name,
-                        className: cls,
-                        source: 'own_capture',
-                        sizeBytes: stat.size,
-                        formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
-                        timestamp: new Date(stat.mtimeMs).toLocaleTimeString(),
-                        mtime: stat.mtimeMs,
-                        url: `/datasets/raw/own/${cls}/${f.name}`
-                      });
-                    }
-                  }
+            // 1. Scan active items in rawDatasetRoot
+            const scanDir = (dir, category = 'own') => {
+              if (!fs.existsSync(dir)) return;
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const dirent of entries) {
+                if (dirent.name === '.trash') continue;
+                const fullP = path.resolve(dir, dirent.name);
+                if (dirent.isDirectory()) {
+                  scanDir(fullP, dirent.name);
+                } else if (dirent.isFile() && supportedExts.has(path.extname(dirent.name).toLowerCase())) {
+                  const stat = fs.statSync(fullP);
+                  const relP = path.relative(rawDatasetRoot, fullP).replace(/\\/g, '/');
+                  const parts = relP.split('/');
+                  const cls = parts.length > 2 ? parts[1] : (parts.length > 1 ? parts[0] : 'general');
+                  const fname = dirent.name;
+
+                  if (requestedClass && requestedClass !== 'all' && requestedClass !== cls) continue;
+                  if (search && !fname.toLowerCase().includes(search) && !cls.toLowerCase().includes(search)) continue;
+
+                  activeItems.push({
+                    id: fname,
+                    filename: fname,
+                    className: cls,
+                    source: category.startsWith('own') ? 'own_capture' : `external/${category}`,
+                    sizeBytes: stat.size,
+                    formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
+                    timestamp: new Date(stat.mtimeMs).toLocaleTimeString(),
+                    mtime: stat.mtimeMs,
+                    url: `/api/dataset/image/${relP}`,
+                    isTrash: false
+                  });
+                }
+              }
+            };
+            scanDir(rawDatasetRoot);
+
+            // 2. Scan trash items in trashDatasetRoot
+            const trashMeta = getTrashMeta();
+            const metaItems = trashMeta.items || {};
+            if (fs.existsSync(trashDatasetRoot)) {
+              const files = fs.readdirSync(trashDatasetRoot, { withFileTypes: true });
+              for (const f of files) {
+                if (f.isFile() && f.name !== '.trash_meta.json' && supportedExts.has(path.extname(f.name).toLowerCase())) {
+                  const fPath = path.resolve(trashDatasetRoot, f.name);
+                  const stat = fs.statSync(fPath);
+                  const meta = metaItems[f.name] || {};
+                  const origFname = meta.originalFilename || f.name;
+                  const origCls = meta.originalClass || 'unknown';
+
+                  if (requestedClass && requestedClass !== 'all' && requestedClass !== origCls) continue;
+                  if (search && !origFname.toLowerCase().includes(search) && !origCls.toLowerCase().includes(search)) continue;
+
+                  trashItems.push({
+                    id: f.name,
+                    trashFilename: f.name,
+                    filename: origFname,
+                    className: origCls,
+                    source: meta.originalSource || 'own_capture',
+                    sizeBytes: stat.size,
+                    formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
+                    timestamp: meta.trashedAt || new Date(stat.mtimeMs).toLocaleTimeString(),
+                    mtime: stat.mtimeMs,
+                    url: `/api/dataset/image/.trash/${f.name}`,
+                    isTrash: true
+                  });
                 }
               }
             }
 
-            items.sort((a, b) => b.mtime - a.mtime);
+            activeItems.sort((a, b) => b.mtime - a.mtime);
+            trashItems.sort((a, b) => b.mtime - a.mtime);
+
+            const selected = view === 'trash' ? trashItems : activeItems;
 
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: true, items }));
+            return res.end(JSON.stringify({
+              success: true,
+              items: selected,
+              active: activeItems,
+              trash: trashItems,
+              active_count: activeItems.length,
+              trash_count: trashItems.length,
+              count: selected.length,
+              total: activeItems.length
+            }));
           } catch (err) {
             console.error('[API List Error]', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        // POST /api/dataset/trash
+        if (url.pathname === '/api/dataset/trash' && req.method === 'POST') {
+          try {
+            const data = await parseJsonBody(req);
+            let filenames = data.filenames;
+            if (!filenames) {
+              if (Array.isArray(data.items)) {
+                filenames = data.items.map(it => (typeof it === 'object' ? it.filename : it));
+              } else if (data.filename) {
+                filenames = [data.filename];
+              } else {
+                filenames = [];
+              }
+            }
+
+            if (!filenames || filenames.length === 0) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, error: 'Parameter filenames kosong.' }));
+            }
+
+            if (!fs.existsSync(trashDatasetRoot)) {
+              fs.mkdirSync(trashDatasetRoot, { recursive: true });
+            }
+
+            const trashMeta = getTrashMeta();
+            if (!trashMeta.items) trashMeta.items = {};
+            const moved = [];
+
+            // Find and move files to trash
+            const findAndMove = (dir) => {
+              if (!fs.existsSync(dir)) return;
+              const entries = fs.readdirSync(dir, { withFileTypes: true });
+              for (const ent of entries) {
+                if (ent.name === '.trash') continue;
+                const fullP = path.resolve(dir, ent.name);
+                if (ent.isDirectory()) {
+                  findAndMove(fullP);
+                } else if (ent.isFile() && filenames.includes(ent.name)) {
+                  const targetDest = path.resolve(trashDatasetRoot, ent.name);
+                  fs.renameSync(fullP, targetDest);
+                  trashMeta.items[ent.name] = {
+                    originalFilename: ent.name,
+                    originalRelPath: path.relative(rawDatasetRoot, fullP).replace(/\\/g, '/'),
+                    trashedAt: new Date().toLocaleTimeString()
+                  };
+                  moved.push(ent.name);
+                }
+              }
+            };
+            findAndMove(rawDatasetRoot);
+
+            saveTrashMeta(trashMeta);
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: true, moved, count: moved.length }));
+          } catch (err) {
+            console.error('[API Trash Error]', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        // DELETE or POST /api/dataset/permanent
+        if (url.pathname === '/api/dataset/permanent' && (req.method === 'DELETE' || req.method === 'POST')) {
+          try {
+            const data = await parseJsonBody(req);
+            let filenames = data.filenames;
+            if (!filenames) {
+              if (Array.isArray(data.items)) {
+                filenames = data.items.map(it => (typeof it === 'object' ? (it.trashFilename || it.filename) : it));
+              } else if (data.filename) {
+                filenames = [data.filename];
+              } else {
+                filenames = [];
+              }
+            }
+
+            if (!filenames || filenames.length === 0) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, error: 'Parameter filenames kosong.' }));
+            }
+
+            const trashMeta = getTrashMeta();
+            const metaItems = trashMeta.items || {};
+            const deleted = [];
+
+            for (const fn of filenames) {
+              const baseName = path.basename(fn);
+              const trashP = path.resolve(trashDatasetRoot, baseName);
+              if (fs.existsSync(trashP)) {
+                fs.unlinkSync(trashP);
+                deleted.push(baseName);
+                if (metaItems[baseName]) delete metaItems[baseName];
+                continue;
+              }
+
+              // Search in raw
+              const findAndDel = (dir) => {
+                if (!fs.existsSync(dir)) return;
+                const entries = fs.readdirSync(dir, { withFileTypes: true });
+                for (const ent of entries) {
+                  const fp = path.resolve(dir, ent.name);
+                  if (ent.isDirectory()) findAndDel(fp);
+                  else if (ent.isFile() && ent.name === baseName) {
+                    fs.unlinkSync(fp);
+                    deleted.push(baseName);
+                  }
+                }
+              };
+              findAndDel(rawDatasetRoot);
+            }
+
+            trashMeta.items = metaItems;
+            saveTrashMeta(trashMeta);
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: true, deleted, count: deleted.length }));
+          } catch (err) {
+            console.error('[API Permanent Delete Error]', err);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        }
+
+        // POST /api/dataset/restore
+        if (url.pathname === '/api/dataset/restore' && req.method === 'POST') {
+          try {
+            const data = await parseJsonBody(req);
+            let filenames = data.filenames;
+            if (!filenames) {
+              if (Array.isArray(data.items)) {
+                filenames = data.items.map(it => (typeof it === 'object' ? (it.trashFilename || it.filename) : it));
+              } else if (data.filename) {
+                filenames = [data.filename];
+              } else {
+                filenames = [];
+              }
+            }
+
+            const trashMeta = getTrashMeta();
+            const metaItems = trashMeta.items || {};
+            const restored = [];
+
+            for (const fn of filenames) {
+              const baseName = path.basename(fn);
+              const srcP = path.resolve(trashDatasetRoot, baseName);
+              if (fs.existsSync(srcP)) {
+                const meta = metaItems[baseName] || {};
+                const origRel = meta.originalRelPath;
+                let destP;
+                if (origRel) {
+                  destP = path.resolve(rawDatasetRoot, origRel);
+                } else {
+                  destP = path.resolve(rawDatasetRoot, 'own', 'object', baseName);
+                }
+                fs.mkdirSync(path.dirname(destP), { recursive: true });
+                fs.renameSync(srcP, destP);
+                restored.push(baseName);
+                if (metaItems[baseName]) delete metaItems[baseName];
+              }
+            }
+
+            trashMeta.items = metaItems;
+            saveTrashMeta(trashMeta);
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: true, restored, count: restored.length }));
+          } catch (err) {
+            console.error('[API Restore Error]', err);
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({ success: false, error: err.message }));

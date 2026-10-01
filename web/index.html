@@ -43,7 +43,7 @@
 
       <!-- Action: New Chat -->
       <div class="sidebar-action-group">
-        <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Percakapan Baru">
+        <button type="button" id="btnNewChat" class="btn btn-new-chat bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700" aria-label="Mulai Percakapan Baru">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -617,6 +617,15 @@
           </div>
         </div>
 
+        <!-- Floating Expand Button when Right Panel is minimized -->
+        <button type="button" id="btnExpandRightPanel" class="btn-expand-right-panel hidden" title="Buka Status Sistem" aria-label="Buka Status Sistem">
+          <span class="status-dot green animate-pulse"></span>
+          <span class="expand-text">Status Sistem</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
         <!-- Right Status & Information Panel (Visible on Desktop >= 1200px) -->
         <aside class="chat-right-panel" id="chatRightPanel" aria-label="Status Sistem &amp; Aktivitas">
           <!-- Card 1: System Status -->
@@ -626,7 +635,10 @@
                 <span class="status-dot green animate-pulse"></span>
                 <span class="panel-title">System Status</span>
               </div>
-              <span class="badge badge-live">Live</span>
+              <div class="panel-header-actions" style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge badge-live">Live</span>
+                <button type="button" id="btnToggleRightPanel" class="btn-toggle-right-panel" title="Minimize Status Sidebar" aria-label="Minimize Status Sidebar">✕</button>
+              </div>
             </div>
             <div class="status-items-list">
               <div class="status-item-row">
@@ -828,8 +840,11 @@
 
     <!-- WORKSPACE: Vision/Camera Stage (Detection, ReadText, Collection, Identity) -->
     <main id="stageCard" class="stage-card workspace-panel hidden" data-workspace="vision-stage">
-      <video id="videoElement" class="video-view" autoplay playsinline muted></video>
-      <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
+      <!-- Container wrapper video dan canvas (dimirror bersamaan via class scale-x-[-1]) -->
+      <div id="stageVideoContainer" class="stage-video-container">
+        <video id="videoElement" class="video-view" autoplay playsinline muted></video>
+        <canvas id="canvasOverlay" class="canvas-overlay"></canvas>
+      </div>
       
       <!-- Visual Shutter Flash Effect saat Capture -->
       <div id="shutterFlash" class="shutter-flash"></div>
@@ -1006,8 +1021,11 @@
           </div>
         </div>
 
-        <!-- Contextual Panels Container (Phase E: Maximum 1 Active on Mobile) -->
-        <div class="contextual-panels-container">
+        <!-- Container #contextual-tools-view di bawah deretan tombol (Ask AI, Voice, Memory, dll) -->
+        <div id="contextual-tools-view" class="contextual-tools-view w-full overflow-hidden"></div>
+
+        <!-- Pool Container for Panels (Panels are moved into #contextual-tools-view on click) -->
+        <div id="contextualPanelsPool" class="contextual-panels-container hidden" style="display: none;">
           <!-- ================================================================
                1. V1.0 AI VISION ASSISTANT PANEL ("ASK VISIONX")
                ================================================================ -->
@@ -1949,8 +1967,8 @@
           </div>
         </div>
 
-        <!-- Grid Container -->
-        <div id="mgrGridContainer" class="manager-grid-container">
+        <!-- Grid Container: Modern Card Grid (2 cols mobile, 4 cols md/desktop) -->
+        <div id="mgrGridContainer" class="manager-grid-container grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="empty-gallery-text" style="grid-column: 1/-1; padding: 36px 16px;">
             <div class="spinner-small" style="margin: 0 auto 10px auto;"></div>
             Memuat dataset dari disk...

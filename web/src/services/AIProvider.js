@@ -49,7 +49,7 @@ export class BackendAIProvider extends AIProvider {
    * @param {string} [config.baseUrl] URL backend (default: from apiConfig.js)
    * @param {string} [config.endpoint] Endpoint chat (default: {baseUrl}/api/chat)
    * @param {string} [config.loginEndpoint] Endpoint login (default: {baseUrl}/api/login)
-   * @param {number} [config.timeoutMs=35000] Timeout permintaan (ms)
+   * @param {number} [config.timeoutMs=90000] Timeout permintaan (ms)
    * @param {Function} [config.onAuthRequired] Callback saat token kosong / 401
    */
   constructor(config = {}) {
@@ -57,7 +57,7 @@ export class BackendAIProvider extends AIProvider {
     this.baseUrl = config.baseUrl || API_BASE_URL;
     this.endpoint = config.endpoint || ENDPOINTS.CHAT;
     this.loginEndpoint = config.loginEndpoint || ENDPOINTS.LOGIN;
-    this.timeoutMs = config.timeoutMs || 35000;
+    this.timeoutMs = config.timeoutMs || 90000;
     this.onAuthRequired = config.onAuthRequired || null;
     this.sessionStorageKey = 'visionx_session_token';
     this._memoryToken = null;

@@ -62,12 +62,18 @@ export class DatasetManagerService {
 
     try {
       const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-      const res = await apiFetch(`${ENDPOINTS.MANAGER_LIST}?${params.toString()}`, { signal });
+      const res = await apiFetch(`${ENDPOINTS.DATASET_LIST}?${params.toString()}`, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.success) {
         this.items = data.items || [];
         this.currentView = view;
+        if (data.trash_count !== undefined) {
+          this.stats.trashCount = data.trash_count;
+        }
+        if (data.active_count !== undefined) {
+          this.stats.totalImages = data.active_count;
+        }
         return this.items;
       }
     } catch (e) {
@@ -100,84 +106,56 @@ export class DatasetManagerService {
     return this.items.filter(it => this.selectedIds.has(it.id));
   }
 
-  async trashSelected() {
-    const selected = this.getSelectedItems();
+  async trashSelected(itemsToTrash) {
+    const selected = itemsToTrash || this.getSelectedItems();
     if (selected.length === 0) return { count: 0 };
 
-    const payload = {
-      items: selected.map(it => ({
-        filename: it.filename,
-        className: it.className,
-        source: it.source
-      }))
-    };
-
-    const res = await apiFetch(ENDPOINTS.MANAGER_TRASH, {
+    const filenames = selected.map(it => (typeof it === 'object' ? it.filename : it));
+    const res = await apiFetch(ENDPOINTS.DATASET_TRASH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ filenames })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Gagal memindahkan ke Recycle Bin');
 
     this.clearSelection();
-    await this.fetchStats();
     await this.fetchList();
     return data;
   }
 
-  async restoreSelected() {
-    const selected = this.getSelectedItems();
+  async restoreSelected(itemsToRestore) {
+    const selected = itemsToRestore || this.getSelectedItems();
     if (selected.length === 0) return { count: 0 };
 
-    const payload = {
-      items: selected.map(it => ({
-        trashFilename: it.trashFilename || it.id,
-        filename: it.filename,
-        className: it.className,
-        source: it.source
-      }))
-    };
-
-    const res = await apiFetch(ENDPOINTS.MANAGER_RESTORE, {
+    const filenames = selected.map(it => (typeof it === 'object' ? (it.trashFilename || it.filename) : it));
+    const res = await apiFetch(ENDPOINTS.DATASET_RESTORE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ filenames })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Gagal merestore file');
 
     this.clearSelection();
-    await this.fetchStats();
     await this.fetchList();
     return data;
   }
 
-  async deletePermanentSelected() {
-    const selected = this.getSelectedItems();
+  async deletePermanentSelected(itemsToDelete) {
+    const selected = itemsToDelete || this.getSelectedItems();
     if (selected.length === 0) return { count: 0 };
 
-    const payload = {
-      items: selected.map(it => ({
-        id: it.id,
-        trashFilename: it.trashFilename,
-        filename: it.filename,
-        className: it.className,
-        source: it.source,
-        fromTrash: this.currentView === 'trash'
-      }))
-    };
-
-    const res = await apiFetch(ENDPOINTS.MANAGER_DELETE, {
-      method: 'POST',
+    const filenames = selected.map(it => (typeof it === 'object' ? (it.trashFilename || it.filename) : it));
+    const res = await apiFetch(ENDPOINTS.DATASET_PERMANENT, {
+      method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ filenames })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Gagal menghapus permanen');
 
     this.clearSelection();
-    await this.fetchStats();
     await this.fetchList();
     return data;
   }

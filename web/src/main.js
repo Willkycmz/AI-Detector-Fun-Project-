@@ -700,6 +700,11 @@ class VisionXWebApp {
       sidebarUserCard: document.getElementById('sidebarUserCard'),
       btnUserSettings: document.getElementById('btnUserSettings'),
 
+      // Right Panel System Status Controls
+      chatRightPanel: document.getElementById('chatRightPanel'),
+      btnToggleRightPanel: document.getElementById('btnToggleRightPanel'),
+      btnExpandRightPanel: document.getElementById('btnExpandRightPanel'),
+
       // Milestone 2 & 3 — Camera Modal Elements
       cameraModal: document.getElementById('cameraModal'),
       btnModalClose: document.getElementById('btnModalClose') || document.getElementById('btnCloseCameraModal'),
@@ -956,6 +961,22 @@ class VisionXWebApp {
           this.chatController.newChat();
         }
         this.closeMobileDrawer();
+      });
+    }
+
+    if (this.elements.btnToggleRightPanel && this.elements.chatRightPanel) {
+      this.elements.btnToggleRightPanel.addEventListener('click', () => {
+        this.elements.chatRightPanel.classList.add('collapsed');
+        if (this.elements.btnExpandRightPanel) {
+          this.elements.btnExpandRightPanel.classList.remove('hidden');
+        }
+      });
+    }
+
+    if (this.elements.btnExpandRightPanel && this.elements.chatRightPanel) {
+      this.elements.btnExpandRightPanel.addEventListener('click', () => {
+        this.elements.chatRightPanel.classList.remove('collapsed');
+        this.elements.btnExpandRightPanel.classList.add('hidden');
       });
     }
 
@@ -1402,14 +1423,22 @@ class VisionXWebApp {
       console.warn('[VisionX] Summary observer initialization skipped:', obsErr);
     }
 
-    // Toggle Mirror Camera
+    // Toggle Mirror Camera (container wrapper scale-x-[-1])
     if (this.elements.btnToggleMirror) {
       this.elements.btnToggleMirror.addEventListener('click', () => {
         const isMirrored = this.frameSource.toggleMirror();
+        const stageContainer = document.getElementById('stageVideoContainer') || this.elements.video?.parentElement;
+        if (stageContainer) {
+          stageContainer.classList.toggle('scale-x-[-1]', isMirrored);
+          stageContainer.classList.toggle('mirrored', isMirrored);
+        }
         if (this.elements.mirrorBtnText) {
-          this.elements.mirrorBtnText.textContent = isMirrored ? 'Mirrored' : 'Mirror';
+          this.elements.mirrorBtnText.textContent = isMirrored ? 'Mirrored' : 'Cermin';
         }
         this.elements.btnToggleMirror.classList.toggle('active', isMirrored);
+        if (this.renderer) {
+          this.renderer.isMirrored = isMirrored;
+        }
         this.updateDiagnosticsUI();
       });
     }
@@ -1619,9 +1648,10 @@ class VisionXWebApp {
       const count = this.managerService.selectedIds.size;
       if (count === 0) return;
       try {
+        this.showSuccess(`Memindahkan ${count} item ke Recycle Bin...`, 1500);
         await this.managerService.trashSelected();
         this.showSuccess(`${count} item berhasil dipindahkan ke Recycle Bin.`);
-        this.loadManagerData();
+        await this.loadManagerData();
       } catch (err) {
         this.showError('Gagal memindahkan ke trash: ' + err.message);
       }
@@ -1631,9 +1661,10 @@ class VisionXWebApp {
       const count = this.managerService.selectedIds.size;
       if (count === 0) return;
       try {
+        this.showSuccess(`Merestore ${count} item ke dataset aktif...`, 1500);
         await this.managerService.restoreSelected();
         this.showSuccess(`${count} item berhasil di-restore ke dataset aktif.`);
-        this.loadManagerData();
+        await this.loadManagerData();
       } catch (err) {
         this.showError('Gagal merestore: ' + err.message);
       }
@@ -1644,9 +1675,10 @@ class VisionXWebApp {
       if (count === 0) return;
       if (!confirm(`Hapus permanen ${count} gambar dari disk? Tindakan ini tidak dapat dibatalkan.`)) return;
       try {
+        this.showSuccess(`Menghapus permanen ${count} item dari disk...`, 1500);
         await this.managerService.deletePermanentSelected();
         this.showSuccess(`${count} item berhasil dihapus permanen dari disk.`);
-        this.loadManagerData();
+        await this.loadManagerData();
       } catch (err) {
         this.showError('Gagal menghapus permanen: ' + err.message);
       }
@@ -1699,6 +1731,7 @@ class VisionXWebApp {
       if (!e.target.files || e.target.files.length === 0) return;
       const files = Array.from(e.target.files);
       let successCount = 0;
+      let lastErrMsg = '';
       for (const file of files) {
         try {
           const reader = new FileReader();
@@ -1707,14 +1740,21 @@ class VisionXWebApp {
             reader.onerror = rej;
             reader.readAsDataURL(file);
           });
-          await this.identityService.addReference(dataUrl, file.name);
-          successCount++;
+          const res = await this.identityService.addReference(dataUrl, file.name);
+          if (res && (res.success || res.saved || res.enrolled)) {
+            successCount++;
+          }
         } catch (err) {
+          lastErrMsg = err.message || '';
           console.warn('[Identity Lab Import]', err);
         }
       }
-      this.showSuccess(`Berhasil menambahkan ${successCount} foto referensi wajah.`);
-      this.loadIdentityData();
+      if (successCount > 0) {
+        this.showSuccess(`Berhasil menambahkan ${successCount} foto referensi wajah.`);
+      } else {
+        this.showError(`Gagal menambahkan foto referensi: ${lastErrMsg || 'Periksa koneksi server atau format gambar.'}`);
+      }
+      await this.loadIdentityData();
       e.target.value = '';
     });
 
@@ -1745,8 +1785,12 @@ class VisionXWebApp {
 
       try {
         const res = await this.identityService.addReference(dataUrl, filename);
-        this.showSuccess(`Foto referensi webcam tersimpan: ${filename}`);
-        this.loadIdentityData();
+        if (res && (res.success || res.saved || res.enrolled)) {
+          this.showSuccess(`Foto referensi webcam tersimpan: ${filename}`);
+        } else {
+          this.showError('Gagal menambahkan foto referensi: ' + (res?.error || 'Gagal menyimpan ke disk'));
+        }
+        await this.loadIdentityData();
       } catch (err) {
         this.showError('Gagal menambahkan foto referensi: ' + err.message);
       }
@@ -2170,28 +2214,43 @@ class VisionXWebApp {
     }
 
     try {
-      const stats = await this.managerService.fetchStats();
-      if (stats) {
-        this.elements.mgrStatTotalImages.textContent = stats.totalImages || 0;
-        this.elements.mgrStatTotalSize.textContent = stats.formattedTotalSize || '0 MB';
-        this.elements.mgrStatTotalClasses.textContent = stats.classesCount || 0;
-        this.elements.mgrStatTrashCount.textContent = stats.trashCount || 0;
-        this.elements.mgrTrashBadgeCount.textContent = stats.trashCount || 0;
+      try {
+        const stats = await this.managerService.fetchStats();
+        if (stats) {
+          if (this.elements.mgrStatTotalImages) this.elements.mgrStatTotalImages.textContent = stats.totalImages || 0;
+          if (this.elements.mgrStatTotalSize) this.elements.mgrStatTotalSize.textContent = stats.formattedTotalSize || '0 MB';
+          if (this.elements.mgrStatTotalClasses) this.elements.mgrStatTotalClasses.textContent = stats.classesCount || 0;
+          if (this.elements.mgrStatTrashCount) this.elements.mgrStatTrashCount.textContent = stats.trashCount || 0;
+          if (this.elements.mgrTrashBadgeCount) this.elements.mgrTrashBadgeCount.textContent = stats.trashCount || 0;
 
-        // Populate class filter dropdown
-        const selClass = this.elements.mgrSelectClass;
-        if (selClass) {
-          const currentVal = selClass.value;
-          let opts = '<option value="all">Semua Kelas</option>';
-          Object.keys(stats.classCounts || {}).forEach(cls => {
-            opts += `<option value="${cls}">${cls} (${stats.classCounts[cls]})</option>`;
-          });
-          selClass.innerHTML = opts;
-          if (currentVal) selClass.value = currentVal;
+          // Populate class filter dropdown
+          const selClass = this.elements.mgrSelectClass;
+          if (selClass) {
+            const currentVal = selClass.value;
+            let opts = '<option value="all">Semua Kelas</option>';
+            Object.keys(stats.classCounts || {}).forEach(cls => {
+              opts += `<option value="${cls}">${cls} (${stats.classCounts[cls]})</option>`;
+            });
+            selClass.innerHTML = opts;
+            if (currentVal) selClass.value = currentVal;
+          }
         }
+      } catch (statsErr) {
+        console.warn('[VisionX] Warning: stats fetch failed, continuing to fetch list:', statsErr);
       }
 
       await this.managerService.fetchList();
+
+      if (this.elements.mgrStatTrashCount && this.managerService.stats.trashCount !== undefined) {
+        this.elements.mgrStatTrashCount.textContent = this.managerService.stats.trashCount;
+      }
+      if (this.elements.mgrTrashBadgeCount && this.managerService.stats.trashCount !== undefined) {
+        this.elements.mgrTrashBadgeCount.textContent = this.managerService.stats.trashCount;
+      }
+      if (this.elements.mgrStatTotalImages && this.managerService.stats.totalImages !== undefined) {
+        this.elements.mgrStatTotalImages.textContent = this.managerService.stats.totalImages;
+      }
+
       this.renderManagerGrid();
       this.updateManagerSelectionUI();
     } catch (e) {
@@ -2297,6 +2356,9 @@ class VisionXWebApp {
       return;
     }
 
+    // Pastikan container memiliki layout grid modern 2 kolom di mobile dan 4 kolom di desktop
+    container.className = 'manager-grid-container grid grid-cols-2 md:grid-cols-4 gap-4';
+
     let html = '';
     items.forEach(it => {
       const isSelected = this.managerService.selectedIds.has(it.id);
@@ -2304,35 +2366,66 @@ class VisionXWebApp {
       const isTrash = it.isTrash;
 
       html += `
-        <div class="manager-card ${selClass}" data-id="${it.id}">
-          <div class="manager-card-thumb-wrapper" data-action="preview" data-id="${it.id}">
-            <input type="checkbox" class="manager-card-checkbox" data-id="${it.id}" ${isSelected ? 'checked' : ''} />
-            <img src="${it.url}" alt="${it.filename}" class="manager-card-thumb" loading="lazy" />
-          </div>
-          <div class="manager-card-body">
-            <span class="manager-card-class">${it.className}</span>
-            <span class="manager-card-filename" title="${it.filename}">${it.filename}</span>
-            <div class="manager-card-meta">
-              <span>${it.formattedSize}</span>
-              <span>${it.source}</span>
+        <div class="manager-card relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-cyan-500/50 transition flex flex-col ${selClass}" data-id="${it.id}">
+          <!-- Thumbnail Wrapper (Atas): Rasio 16:9 ('h-40 w-full bg-slate-950 overflow-hidden relative') -->
+          <div class="manager-card-thumb-wrapper h-40 w-full bg-slate-950 overflow-hidden relative cursor-pointer" data-action="preview" data-id="${it.id}">
+            <img src="${it.url}" alt="${it.filename}" class="manager-card-thumb w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.parentElement.classList.add('img-broken');" />
+            <div class="card-thumb-gradient"></div>
+
+            <!-- Checkbox: melayang di pojok kiri atas thumbnail dengan background pelindung -->
+            <div class="absolute top-2 left-2 z-10">
+              <label class="card-checkbox-label flex items-center justify-center p-1 rounded-md bg-slate-950/80 backdrop-blur border border-slate-700/60 cursor-pointer shadow-sm hover:border-cyan-400" title="Pilih item">
+                <input type="checkbox" class="manager-card-checkbox accent-cyan-400 w-4 h-4 rounded cursor-pointer" data-id="${it.id}" ${isSelected ? 'checked' : ''} />
+              </label>
+            </div>
+
+            <!-- Badge Ukuran File: melayang di pojok kanan atas thumbnail -->
+            <div class="absolute top-2 right-2 bg-slate-950/80 backdrop-blur px-2 py-0.5 rounded text-[10px] text-slate-300 font-mono border border-slate-800/80 shadow-sm z-10 pointer-events-none">
+              ${it.formattedSize}
+            </div>
+
+            <!-- Badge Kategori Kelas: melayang di pojok kiri bawah thumbnail -->
+            <div class="absolute bottom-2 left-2 z-10 pointer-events-none">
+              <span class="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/60 text-[10px] text-cyan-300 font-medium">
+                ${it.className}
+              </span>
             </div>
           </div>
-          <div class="manager-card-actions">
-            <button type="button" class="btn-card-action" data-action="preview" data-id="${it.id}" title="Preview Metadata">
-              Detail
-            </button>
-            ${!isTrash ? `
-              <button type="button" class="btn-card-action danger" data-action="trash" data-id="${it.id}" title="Pindah ke Recycle Bin">
-                Trash
+
+          <!-- Metadata & Footer (Bawah): Padding 'p-3 flex flex-col gap-1.5' -->
+          <div class="manager-card-body p-3 flex flex-col gap-1.5 flex-1 justify-between">
+            <div>
+              <span class="manager-card-filename truncate text-xs font-medium text-slate-200 block" title="${it.filename}">
+                ${it.filename}
+              </span>
+              <div class="manager-card-meta flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                <span>${it.source === 'own_capture' ? '📸 Kamera' : '💾 Impor'}</span>
+                <span class="font-mono text-[10px]">${it.timestamp || ''}</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons Row: Tombol 'Trash' dan 'Detail' diletakkan rapi di baris paling bawah -->
+            <div class="manager-card-actions flex items-center gap-2 mt-2 pt-2 border-t border-slate-800/80">
+              <button type="button" class="btn-card-action btn-card-detail flex-1 py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium transition text-center" data-action="preview" data-id="${it.id}" title="Detail metadata">
+                Detail
               </button>
-            ` : `
-              <button type="button" class="btn-card-action success" data-action="restore" data-id="${it.id}" title="Restore ke dataset">
-                Restore
-              </button>
-              <button type="button" class="btn-card-action danger" data-action="perm-delete" data-id="${it.id}" title="Hapus Permanen">
-                Hapus
-              </button>
-            `}
+              ${!isTrash ? `
+                <button type="button" class="btn-card-action btn-card-trash flex-1 py-1 px-2 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 hover:border-red-700 text-red-400 hover:text-red-300 text-xs font-medium transition flex items-center justify-center gap-1" data-action="trash" data-id="${it.id}" data-filename="${it.filename}" title="Pindah ke Recycle Bin">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <span>Trash</span>
+                </button>
+              ` : `
+                <button type="button" class="btn-card-action btn-card-restore flex-1 py-1 px-2 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/40 hover:border-emerald-700 text-emerald-400 hover:text-emerald-300 text-xs font-medium transition flex items-center justify-center gap-1" data-action="restore" data-id="${it.id}" data-filename="${it.filename}" title="Restore ke dataset">
+                  Restore
+                </button>
+                <button type="button" class="btn-card-action btn-card-perm flex-1 py-1 px-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 hover:border-red-600 text-red-400 hover:text-red-200 text-xs font-medium transition flex items-center justify-center gap-1" data-action="perm-delete" data-id="${it.id}" data-filename="${it.filename}" title="Hapus Permanen">
+                  Hapus
+                </button>
+              `}
+            </div>
           </div>
         </div>
       `;
@@ -2353,7 +2446,7 @@ class VisionXWebApp {
 
     container.querySelectorAll('[data-action="preview"]').forEach(el => {
       el.addEventListener('click', (e) => {
-        if (e.target.classList.contains('manager-card-checkbox')) return;
+        if (e.target.closest('.manager-card-checkbox') || e.target.closest('.card-checkbox-label')) return;
         const id = el.dataset.id;
         const item = this.managerService.items.find(i => i.id === id);
         if (item) this.openManagerPreview(item);
@@ -2361,62 +2454,53 @@ class VisionXWebApp {
     });
 
     container.querySelectorAll('[data-action="trash"]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         const item = this.managerService.items.find(i => i.id === id);
-        if (item) {
-          try {
-            await fetch(ENDPOINTS.MANAGER_TRASH, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: [item] })
-            });
-            this.showSuccess(`"${item.filename}" dipindahkan ke Recycle Bin.`);
-            this.loadManagerData();
-          } catch (e) {
-            this.showError('Gagal trash item: ' + e.message);
-          }
+        const fname = btn.dataset.filename || item?.filename || id;
+        try {
+          this.showSuccess('Memindahkan ke Recycle Bin...', 1000);
+          await this.managerService.trashSelected([item || { filename: fname, id }]);
+          this.showSuccess(`"${fname}" dipindahkan ke Recycle Bin.`);
+          await this.loadManagerData();
+        } catch (err) {
+          this.showError('Gagal memindahkan ke trash: ' + err.message);
         }
       });
     });
 
     container.querySelectorAll('[data-action="restore"]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         const item = this.managerService.items.find(i => i.id === id);
-        if (item) {
-          try {
-            await fetch(ENDPOINTS.MANAGER_RESTORE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: [item] })
-            });
-            this.showSuccess(`"${item.filename}" berhasil di-restore.`);
-            this.loadManagerData();
-          } catch (e) {
-            this.showError('Gagal restore item: ' + e.message);
-          }
+        const fname = btn.dataset.filename || item?.filename || id;
+        try {
+          this.showSuccess('Merestore gambar...', 1000);
+          await this.managerService.restoreSelected([item || { filename: fname, trashFilename: fname, id }]);
+          this.showSuccess(`"${fname}" berhasil di-restore.`);
+          await this.loadManagerData();
+        } catch (err) {
+          this.showError('Gagal merestore gambar: ' + err.message);
         }
       });
     });
 
     container.querySelectorAll('[data-action="perm-delete"]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         const item = this.managerService.items.find(i => i.id === id);
-        if (item) {
-          if (!confirm(`Hapus permanen "${item.filename}" dari disk?`)) return;
-          try {
-            await fetch(ENDPOINTS.MANAGER_DELETE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ items: [item] })
-            });
-            this.showSuccess(`"${item.filename}" berhasil dihapus permanen.`);
-            this.loadManagerData();
-          } catch (e) {
-            this.showError('Gagal hapus permanen: ' + e.message);
-          }
+        const fname = btn.dataset.filename || item?.filename || id;
+        if (!confirm(`Hapus permanen "${fname}" dari disk? Tindakan ini tidak dapat dibatalkan.`)) return;
+        try {
+          this.showSuccess('Menghapus permanen...', 1000);
+          await this.managerService.deletePermanentSelected([item || { filename: fname, trashFilename: fname, id }]);
+          this.showSuccess(`"${fname}" berhasil dihapus permanen.`);
+          await this.loadManagerData();
+        } catch (err) {
+          this.showError('Gagal menghapus permanen: ' + err.message);
         }
       });
     });
@@ -2693,7 +2777,7 @@ class VisionXWebApp {
         frameId: activeFrameId,
         inferenceTimeMs: activeInferenceLatency,
         modelName: this.inferenceService.modelConfig.shortName
-      }, this.currentOcrRegions);
+      }, this.currentOcrRegions, this.frameSource?.isMirrored);
 
       // 5. Update UI, Counters, & Live Diagnostics
       this.elements.detectionCountValue.textContent = unifiedDetections.length;
@@ -2742,7 +2826,7 @@ class VisionXWebApp {
 
     // 2. Render deteksi wajah aktif pada canvas setiap frame untuk mencegah kedipan visual (smooth 60fps)
     if (this.currentIdentityFaces && this.currentIdentityFaces.length > 0) {
-      this.renderer.renderUnified(this.currentIdentityFaces);
+      this.renderer.renderUnified(this.currentIdentityFaces, null, [], this.frameSource?.isMirrored);
     } else {
       this.renderer.clear();
     }
@@ -2814,7 +2898,7 @@ class VisionXWebApp {
         });
 
         this.currentIdentityFaces = mappedFaces;
-        this.renderer.renderUnified(this.currentIdentityFaces);
+        this.renderer.renderUnified(this.currentIdentityFaces, null, [], this.frameSource?.isMirrored);
       } else {
         // Tidak ada wajah terdeteksi pada frame ini
         this.currentIdentityFaces = [];
@@ -3087,43 +3171,68 @@ class VisionXWebApp {
       return;
     }
 
+    container.className = 'recent-captures-list grid grid-cols-2 md:grid-cols-4 gap-4';
+
     let html = '';
     list.forEach(item => {
       const isSelected = this.selectedItems.has(item.filename);
       const selectedClass = isSelected ? 'selected' : '';
       const sourceBadge = item.source === 'own_capture' ? '📸' : '💾';
       const imgUrl = item.previewUrl || item.dataUrl || item.url || '';
-      const dimensions = (item.width && item.height) ? `${item.width}x${item.height}` : (item.resolution && item.resolution !== 'undefinedxundefined' ? item.resolution : '-');
       const sizeText = item.formattedSize || (item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-');
 
       html += `
-        <div class="gallery-item-card ${selectedClass}" data-filename="${item.filename}">
-          ${this.isSelectMode ? `
-            <div class="item-checkbox-wrapper">
-              <input type="checkbox" class="gallery-checkbox" ${isSelected ? 'checked' : ''} data-filename="${item.filename}" />
+        <div class="gallery-item-card manager-card relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-cyan-500/50 transition flex flex-col ${selectedClass}" data-filename="${item.filename}">
+          <!-- Thumbnail Wrapper (Atas): Rasio 16:9 ('h-40 w-full bg-slate-950 overflow-hidden relative') -->
+          <div class="manager-card-thumb-wrapper h-40 w-full bg-slate-950 overflow-hidden relative cursor-pointer">
+            <img src="${imgUrl}" alt="${item.filename}" class="manager-card-thumb w-full h-full object-cover" loading="lazy" onerror="this.onerror=null;this.parentElement.classList.add('img-broken');" />
+            <div class="card-thumb-gradient"></div>
+
+            ${this.isSelectMode ? `
+              <div class="absolute top-2 left-2 z-10">
+                <label class="card-checkbox-label flex items-center justify-center p-1 rounded-md bg-slate-950/80 backdrop-blur border border-slate-700/60 cursor-pointer shadow-sm hover:border-cyan-400" title="Pilih item">
+                  <input type="checkbox" class="gallery-checkbox accent-cyan-400 w-4 h-4 rounded cursor-pointer" ${isSelected ? 'checked' : ''} data-filename="${item.filename}" />
+                </label>
+              </div>
+            ` : ''}
+
+            <!-- Badge Ukuran File: melayang di pojok kanan atas -->
+            <div class="absolute top-2 right-2 bg-slate-950/80 backdrop-blur px-2 py-0.5 rounded text-[10px] text-slate-300 font-mono border border-slate-800/80 shadow-sm z-10 pointer-events-none">
+              ${sizeText}
             </div>
-          ` : ''}
-          <img src="${imgUrl}" alt="${item.filename}" class="gallery-thumbnail" loading="lazy" />
-          <div class="gallery-item-info">
-            <span class="gallery-item-class" title="Kelas">${item.className}</span>
-            <span class="gallery-item-name" title="${item.filename}">${item.filename}</span>
-            <div class="gallery-item-meta">
-              <span>${sourceBadge} ${item.source}</span>
-              <span>${dimensions}</span>
-            </div>
-            <div class="gallery-item-submeta">
-              <span>${sizeText}</span>
-              <span>${item.timestamp}</span>
+
+            <!-- Badge Kategori Kelas: melayang di pojok kiri bawah -->
+            <div class="absolute bottom-2 left-2 z-10 pointer-events-none">
+              <span class="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800/60 text-[10px] text-cyan-300 font-medium">
+                ${item.className}
+              </span>
             </div>
           </div>
-          ${!this.isSelectMode ? `
-            <button type="button" class="btn-delete-single" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
-          ` : ''}
+
+          <!-- Metadata & Footer (Bawah): Padding 'p-3 flex flex-col gap-1.5' -->
+          <div class="manager-card-body p-3 flex flex-col gap-1.5 flex-1 justify-between">
+            <div>
+              <span class="manager-card-filename truncate text-xs font-medium text-slate-200 block" title="${item.filename}">
+                ${item.filename}
+              </span>
+              <div class="manager-card-meta flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                <span>${sourceBadge} ${item.source}</span>
+                <span class="font-mono text-[10px]">${item.timestamp || ''}</span>
+              </div>
+            </div>
+
+            ${!this.isSelectMode ? `
+              <div class="manager-card-actions flex items-center gap-2 mt-2 pt-2 border-t border-slate-800/80">
+                <button type="button" class="btn-card-action btn-delete-single flex-1 py-1 px-2 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 hover:border-red-700 text-red-400 hover:text-red-300 text-xs font-medium transition flex items-center justify-center gap-1" data-filename="${item.filename}" data-class="${item.className}" title="Hapus gambar ini">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  <span>Trash</span>
+                </button>
+              </div>
+            ` : ''}
+          </div>
         </div>
       `;
     });

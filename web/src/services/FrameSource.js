@@ -39,6 +39,20 @@ export class FrameSource {
 
   set isMirrored(val) {
     this._isMirrored = Boolean(val);
+    
+    // Toggle class scale-x-[-1] pada CONTAINER wrapper video dan canvas secara bersamaan
+    const containers = [
+      document.getElementById('stageVideoContainer'),
+      document.querySelector('.camera-modal-viewport'),
+      this.videoElement?.parentElement
+    ];
+    containers.forEach(container => {
+      if (container) {
+        container.classList.toggle('scale-x-[-1]', this._isMirrored);
+        container.classList.toggle('mirrored', this._isMirrored);
+      }
+    });
+
     if (this.videoElement) {
       if (this._isMirrored) {
         this.videoElement.classList.add('mirrored');
@@ -106,12 +120,8 @@ export class FrameSource {
     ctx.fillRect(0, 0, targetDim, targetDim);
 
     ctx.save();
-    if (this._isMirrored) {
-      // Jika kamera dicerminkan, cerminkan saat menggambar ke canvas letterbox
-      ctx.translate(targetDim, 0);
-      ctx.scale(-1, 1);
-    }
-
+    // Gambar frame murni tanpa flipping software karena container wrapper (video + canvas)
+    // sudah dibalik secara visual oleh CSS transform scale-x-[-1]
     ctx.drawImage(this.videoElement, params.padX, params.padY, params.nw, params.nh);
     ctx.restore();
 
@@ -119,7 +129,7 @@ export class FrameSource {
       canvas: this.letterboxCanvas,
       ctx,
       params,
-      isMirrored: this._isMirrored
+      isMirrored: false // Koordinat tetap presisi dalam koordinat video asli
     };
   }
 

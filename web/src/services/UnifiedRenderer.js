@@ -18,6 +18,7 @@ export class UnifiedRenderer {
   constructor(canvasElement) {
     this.canvas = canvasElement;
     this.ctx = canvasElement.getContext('2d');
+    this.isMirrored = false;
 
     // Mapping warna spesifik 7 kelas VisionX V1
     this.customClassColors = {
@@ -67,18 +68,29 @@ export class UnifiedRenderer {
   /**
    * Menggambar list UnifiedDetection [{ type, bbox, label, confidence, identityStatus, ... }]
    */
-  renderUnified(unifiedDetections = [], debugInfo = null, ocrRegions = []) {
+  renderUnified(unifiedDetections = [], debugInfo = null, ocrRegions = [], isMirrored = null) {
+    if (isMirrored !== null) {
+      this.isMirrored = Boolean(isMirrored);
+    }
     this.clear();
     const ctx = this.ctx;
 
     // Watermark debug opsional di pojok kiri atas canvas
     if (debugInfo && debugInfo.frameId) {
+      ctx.save();
+      if (this.isMirrored) {
+        const midX = 10 + 260 / 2;
+        ctx.translate(midX, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-midX, 0);
+      }
       ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
       ctx.fillRect(10, 10, 260, 28);
       ctx.fillStyle = '#38bdf8';
       ctx.font = '600 12px Inter, sans-serif';
       const label = `Frame #${debugInfo.frameId} | ${debugInfo.inferenceTimeMs || 0}ms (${unifiedDetections.length} targets)`;
       ctx.fillText(label, 18, 28);
+      ctx.restore();
     }
 
     // Gambar OCR Text Regions jika tersedia (V0.9 OCR + Read Text Mode)
@@ -264,6 +276,14 @@ export class UnifiedRenderer {
       if (tagY < 0) tagY = y1;
 
       // Background tag HUD (Glassmorphism gelap dengan accent garis kelas)
+      if (this.isMirrored) {
+        ctx.save();
+        const midX = tagX + tagW / 2;
+        ctx.translate(midX, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-midX, 0);
+      }
+
       ctx.fillStyle = isPersonalized ? 'rgba(15, 23, 42, 0.96)' : 'rgba(15, 23, 42, 0.92)';
       if (ctx.roundRect) {
         ctx.beginPath();
@@ -310,6 +330,10 @@ export class UnifiedRenderer {
       ctx.fillStyle = color.border;
       ctx.fillText(confPercent, tagX + paddingX + 3, tagY + 28);
 
+      if (this.isMirrored) {
+        ctx.restore();
+      }
+
       // Velocity trail halus jika objek bergerak
       if (item.velocity && (Math.abs(item.velocity.x) > 1.5 || Math.abs(item.velocity.y) > 1.5)) {
         const cx = (x1 + x2) / 2;
@@ -333,6 +357,14 @@ export class UnifiedRenderer {
       let tagY = y1 - tagH;
       if (tagY < 0) tagY = y1;
 
+      if (this.isMirrored) {
+        ctx.save();
+        const midX = tagX + tagW / 2;
+        ctx.translate(midX, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-midX, 0);
+      }
+
       ctx.fillStyle = color.border;
       if (ctx.roundRect) {
         ctx.beginPath();
@@ -344,6 +376,10 @@ export class UnifiedRenderer {
 
       ctx.fillStyle = '#0f172a';
       ctx.fillText(label, tagX + paddingX, tagY + 15);
+
+      if (this.isMirrored) {
+        ctx.restore();
+      }
     }
   }
 
@@ -447,6 +483,14 @@ export class UnifiedRenderer {
     if (tagY < 0) tagY = y1 + h; // pindah ke bawah jika terpotong layar
 
     // Background Badge Tag
+    if (this.isMirrored) {
+      ctx.save();
+      const midX = tagX + tagW / 2;
+      ctx.translate(midX, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-midX, 0);
+    }
+
     ctx.fillStyle = style.textBg;
     if (ctx.roundRect) {
       ctx.beginPath();
@@ -465,6 +509,10 @@ export class UnifiedRenderer {
     // Teks Label
     ctx.fillStyle = style.textColor;
     ctx.fillText(label, tagX + 22, tagY + 17);
+
+    if (this.isMirrored) {
+      ctx.restore();
+    }
   }
 
   // Kompatibilitas dengan pemanggil lama render(detections, debugInfo)

@@ -397,13 +397,9 @@ export class YOLOInferenceService {
     ctx.fillRect(0, 0, targetDim, targetDim);
 
     ctx.save();
-    if (isMirrored) {
-      ctx.translate(targetDim, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(source, padX, padY, nw, nh);
-    } else {
-      ctx.drawImage(source, padX, padY, nw, nh);
-    }
+    // Video dan canvas dimirror bersamaan via CSS transform container scale-x-[-1]
+    // Tidak perlu membalik frame di sini agar bounding box canvas selaras 100% dengan video
+    ctx.drawImage(source, padX, padY, nw, nh);
     ctx.restore();
 
     const imgData = ctx.getImageData(0, 0, targetDim, targetDim);
