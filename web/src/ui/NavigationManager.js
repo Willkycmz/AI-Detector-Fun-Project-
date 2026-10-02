@@ -176,8 +176,15 @@ export class NavigationManager {
     if (moreSheet) {
       const sheetItems = moreSheet.querySelectorAll('.sheet-menu-item');
       sheetItems.forEach((btn) => {
-        btn.addEventListener('click', closeSheet);
-        this._listeners.push({ el: btn, event: 'click', fn: closeSheet });
+        const clickHandler = () => {
+          const mode = btn.dataset.mode;
+          if (mode) {
+            this.setActiveMode(mode, { triggerCallback: true });
+          }
+          closeSheet();
+        };
+        btn.addEventListener('click', clickHandler);
+        this._listeners.push({ el: btn, event: 'click', fn: clickHandler });
       });
     }
 

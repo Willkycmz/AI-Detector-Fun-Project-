@@ -20,12 +20,12 @@ export class ThemeManager {
 
     this.applyTheme(this.currentTheme);
 
-    const toggleBtn = document.getElementById('btnThemeToggle');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', () => {
+    const toggleTheme = () => {
         this.toggleTheme();
-      });
-    }
+    };
+    document.getElementById('btnThemeToggle')?.addEventListener('click', toggleTheme);
+    document.getElementById('btnMobileThemeToggle')?.addEventListener('click', toggleTheme);
+    this.updateMobileToggleIcon();
   }
 
   applyTheme(theme) {
@@ -46,6 +46,12 @@ export class ThemeManager {
     if (iconEl) {
       iconEl.textContent = theme === 'light' ? '🌙' : '☀️';
     }
+    this.updateMobileToggleIcon();
+  }
+
+  updateMobileToggleIcon() {
+    const mobileIcon = document.getElementById('btnMobileThemeToggle');
+    if (mobileIcon) mobileIcon.textContent = this.currentTheme === 'light' ? '🌙' : '☀️';
   }
 
   toggleTheme() {

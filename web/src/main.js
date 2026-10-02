@@ -1043,13 +1043,6 @@ class VisionXWebApp {
       });
     }
 
-    const headerUserAvatar = document.getElementById('headerUserAvatar');
-    if (headerUserAvatar) {
-      headerUserAvatar.addEventListener('click', () => {
-        this.setMode('identity');
-      });
-    }
-
     const btnNotifications = document.getElementById('btnNotifications');
     if (btnNotifications) {
       btnNotifications.addEventListener('click', () => {
@@ -1323,6 +1316,14 @@ class VisionXWebApp {
     if (this.elements.btnCloseSettingsModal) {
       this.elements.btnCloseSettingsModal.addEventListener('click', () => {
         this.closeSettingsModal();
+      });
+    }
+
+    const btnMobileProfile = document.getElementById('btnMobileProfile');
+    if (btnMobileProfile) {
+      btnMobileProfile.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openSettingsModal('account');
       });
     }
     if (this.elements.appSettingsModal) {

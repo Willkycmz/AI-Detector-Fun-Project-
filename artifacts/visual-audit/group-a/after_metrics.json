@@ -1,0 +1,63 @@
+{
+  "phase": "after",
+  "avatar_1920": {
+    "dropdownOpen": true,
+    "developerModalOpen": false
+  },
+  "avatar_1280": {
+    "dropdownOpen": true,
+    "developerModalOpen": false
+  },
+  "tabs1280": {
+    "tabs": [
+      {
+        "id": "btnNavHome",
+        "labelVisible": true,
+        "right": 513
+      },
+      {
+        "id": "btnModeDetect",
+        "labelVisible": true,
+        "right": 572
+      },
+      {
+        "id": "btnModeReadText",
+        "labelVisible": true,
+        "right": 650
+      },
+      {
+        "id": "btnModeCollect",
+        "labelVisible": true,
+        "right": 730
+      },
+      {
+        "id": "btnModeManager",
+        "labelVisible": true,
+        "right": 846
+      },
+      {
+        "id": "btnModeIdentity",
+        "labelVisible": true,
+        "right": 934
+      }
+    ],
+    "groupRight": 938,
+    "actionsLeft": 989,
+    "overlap": false
+  },
+  "mobileHeader": {
+    "themeButtonVisible": true,
+    "profileButtonVisible": true
+  },
+  "mobileSheet": {
+    "open": true
+  },
+  "sheetManagerNavigation": {
+    "requestedMode": "manager",
+    "sheetClosed": true
+  },
+  "sheetIdentityNavigation": {
+    "requestedMode": "identity",
+    "sheetClosed": true
+  }
+}
