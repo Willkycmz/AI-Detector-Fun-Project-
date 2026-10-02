@@ -96,10 +96,11 @@ jwks_client = PyJWKClient(jwks_url, cache_jwk_set=True, lifespan=3600)
 # Rate Limiting Configuration
 VISIONX_USER_DAILY_CHAT_LIMIT = int(os.environ.get("VISIONX_USER_DAILY_CHAT_LIMIT", 30))
 
-# AI Provider Configuration (OpenAI-compatible / 9Router Proxy)
-AI_BASE_URL = os.environ.get("AI_BASE_URL", "http://localhost:20128/v1").rstrip("/")
+# AI Provider Configuration (OpenAI-compatible / Groq Cloud)
+AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
-AI_MODEL = os.environ.get("AI_MODEL", "VisionX")
+AI_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
+AI_FALLBACK_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 
 # Maximum payload size: 10 MB (allows image dataset uploads and imports)
 MAX_CONTENT_LENGTH = 10 * 1024 * 1024
@@ -596,6 +597,8 @@ def api_health():
         "status": "ok",
         "service": "VisionX Production Core Gateway",
         "version": "1.1.0",
+        "ai_provider": "Groq (Llama 3.3)",
+        "ai_model": AI_MODEL,
         "auth": {
             "supabase_enabled": bool(SUPABASE_JWT_SECRET),
             "legacy_pin_enabled": VISIONX_LEGACY_PIN
@@ -610,9 +613,21 @@ def server_status():
     return jsonify({
         "status": "online",
         "service": "visionx",
+        "ai_provider": "Groq (Llama 3.3)",
+        "ai_model": AI_MODEL,
         "auth_enabled": True,
         "legacy_pin_enabled": VISIONX_LEGACY_PIN,
         "streaming_enabled": True
+    }), 200
+
+
+@app.route("/api/config", methods=["GET"])
+def api_config():
+    return jsonify({
+        "service": "visionx",
+        "ai_provider": "Groq (Llama 3.3)",
+        "ai_model": AI_MODEL,
+        "status": "online"
     }), 200
 
 
@@ -742,12 +757,119 @@ def api_upload():
 
 
 # -----------------------------------------------------------------------------
+# Dataset & Collection Upload Routes (POST & OPTIONS /api/dataset/upload, /api/collection/save)
+# -----------------------------------------------------------------------------
+@app.route("/api/dataset/upload", methods=["POST", "OPTIONS"])
+@app.route("/api/collection/save", methods=["POST", "OPTIONS"])
+def api_dataset_upload():
+    """
+    Endpoint for dataset collection uploads.
+    Accepts:
+    - Multipart form-data: image file in 'image' or 'file', and label/className in 'label', 'className', or 'info'.
+    - JSON base64: { "image": "data:image/jpeg;base64,...", "label": "earphone" }.
+    Saves image into local datasets storage directory (RAW_DATASET_ROOT/own/<clean_label>).
+    Returns:
+    { "success": true, "message": "Dataset tersimpan", "filename": filename }
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+
+    try:
+        image_bytes = None
+        label = "object"
+        filename = None
+
+        # 1. Parse Multipart form-data
+        if request.files:
+            file = request.files.get("image") or request.files.get("file")
+            if file and file.filename:
+                try:
+                    filename = sanitize_filename(file.filename)
+                except Exception:
+                    filename = os.path.basename(file.filename)
+                image_bytes = file.read()
+            
+            form_label = request.form.get("label") or request.form.get("className")
+            if form_label:
+                label = form_label.strip()
+            elif "info" in request.form:
+                info_raw = request.form.get("info", "")
+                try:
+                    info_json = json.loads(info_raw)
+                    label = info_json.get("className") or info_json.get("label") or label
+                    if not filename and "filename" in info_json:
+                        filename = sanitize_filename(info_json["filename"])
+                except Exception:
+                    label = info_raw.strip() or label
+
+        # 2. Parse JSON base64 payload
+        if not image_bytes:
+            data = request.get_json(silent=True)
+            if data and isinstance(data, dict):
+                b64_str = data.get("image") or data.get("dataUrl") or data.get("data")
+                if b64_str and isinstance(b64_str, str):
+                    if "," in b64_str:
+                        b64_str = b64_str.split(",", 1)[1]
+                    try:
+                        image_bytes = base64.b64decode(b64_str)
+                    except Exception as b64_err:
+                        return jsonify({"success": False, "error": f"Invalid base64 encoding: {str(b64_err)}"}), 400
+                
+                label = data.get("label") or data.get("className") or label
+                if "filename" in data and not filename:
+                    try:
+                        filename = sanitize_filename(str(data["filename"]))
+                    except Exception:
+                        pass
+
+        if not image_bytes or len(image_bytes) == 0:
+            return jsonify({"success": False, "message": "Tidak ada data citra yang valid (multipart atau base64)"}), 400
+
+        # Normalisasi nama kelas/label
+        clean_label = re.sub(r'[^a-zA-Z0-9_\-]', '_', label.strip().lower()) or "object"
+
+        # Buat nama file jika belum ada
+        if not filename:
+            filename = f"{clean_label}_{int(time.time() * 1000)}.jpg"
+        elif not (filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png") or filename.endswith(".webp")):
+            filename = f"{filename}.jpg"
+
+        # Target penyimpanan fisik di folder dataset lokal
+        target_dir = os.path.join(RAW_DATASET_ROOT, "own", clean_label)
+        os.makedirs(target_dir, exist_ok=True)
+        dest_path = os.path.join(target_dir, filename)
+
+        with open(dest_path, "wb") as f_out:
+            f_out.write(image_bytes)
+
+        logger.info(f"Dataset image saved: {dest_path} ({len(image_bytes)} bytes, label: {clean_label})")
+
+        return jsonify({
+            "success": True,
+            "status": "success",
+            "message": "Dataset tersimpan",
+            "filename": filename,
+            "label": clean_label,
+            "size": len(image_bytes),
+            "path": dest_path
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in dataset upload: {str(e)}")
+        return jsonify({
+            "success": False,
+            "status": "error",
+            "message": f"Gagal menyimpan dataset: {str(e)}"
+        }), 500
+
+
+# -----------------------------------------------------------------------------
 # VisionX Grounding Prompt Construction
 # -----------------------------------------------------------------------------
 def build_grounded_system_prompt(vision_context: Optional[Dict[str, Any]] = None, detections: Optional[List[Any]] = None) -> str:
     """Builds strict VisionX grounding instruction."""
     prompt = (
-        "You are VisionX, an AI vision assistant connected to the VisionX computer-vision system.\n"
+        "Kamu adalah VisionX AI Assistant, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia.\n"
         "Ground visual claims ONLY in supplied VisionX context.\n\n"
         "Never invent:\n"
         "- detected objects\n"
@@ -963,9 +1085,15 @@ def api_chat():
             "Content-Type": "application/json"
         }
         
-        # Build OpenAI-compatible messages array
+        # Build OpenAI-compatible messages array with Indonesian system prompt
+        base_system_prompt = "Kamu adalah VisionX AI Assistant, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia."
+        if vision_context or detections:
+            system_prompt = f"{base_system_prompt}\n\n{system_instruction}"
+        else:
+            system_prompt = base_system_prompt
+            
         messages = [
-            {"role": "system", "content": system_instruction}
+            {"role": "system", "content": system_prompt}
         ]
         
         # Append conversation history (last 6 turns)
@@ -983,10 +1111,11 @@ def api_chat():
                         messages.append({"role": role, "content": t_text})
         
         # Build current user message content
+        user_message = message
         if image_b64:
             # Multimodal: use content array with text + image_url (vision format)
             user_content = [
-                {"type": "text", "text": message},
+                {"type": "text", "text": user_message},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -995,37 +1124,84 @@ def api_chat():
                 }
             ]
         else:
-            user_content = message
+            user_content = user_message
         
         # Merge or append user message
         if messages and messages[-1]["role"] == "user":
-            # Merge with previous user message
             prev = messages[-1]["content"]
             if isinstance(prev, str) and isinstance(user_content, str):
                 messages[-1]["content"] = f"{prev}\n{user_content}"
             else:
-                # Convert to list format for multimodal merge
                 prev_list = [{"type": "text", "text": prev}] if isinstance(prev, str) else prev
                 curr_list = [{"type": "text", "text": user_content}] if isinstance(user_content, str) else user_content
                 messages[-1]["content"] = prev_list + curr_list
         else:
             messages.append({"role": "user", "content": user_content})
         
-        payload = {
-            "model": AI_MODEL,
-            "messages": messages,
-            "stream": True
-        }
-        
+        # Candidate models: prioritize AI_MODEL or vision-capable model
+        if image_b64:
+            candidate_models = ["qwen/qwen3.8-27b", AI_MODEL]
+            for m in AI_FALLBACK_MODELS:
+                if m not in candidate_models:
+                    candidate_models.append(m)
+        else:
+            candidate_models = [AI_MODEL]
+            for m in AI_FALLBACK_MODELS:
+                if m not in candidate_models:
+                    candidate_models.append(m)
+
+        active_resp = None
+        last_error_text = ""
+        last_status_code = None
+
+        for target_model in candidate_models:
+            # Format messages for target model (convert multimodal to text if model is text-only)
+            model_messages = []
+            for m in messages:
+                m_content = m.get("content")
+                if isinstance(m_content, list) and not target_model.startswith("qwen/"):
+                    text_parts = [p.get("text", "") for p in m_content if isinstance(p, dict) and p.get("type") == "text"]
+                    combined = " ".join([tp for tp in text_parts if tp]).strip()
+                    model_messages.append({
+                        "role": m["role"],
+                        "content": (combined or user_message) + "\n[Catatan visual: Pengguna menyertakan gambar]"
+                    })
+                else:
+                    model_messages.append(m)
+
+            payload = {
+                "model": target_model,
+                "messages": model_messages,
+                "stream": True,
+                "temperature": 0.7
+            }
+
+            try:
+                resp = requests.post(endpoint, json=payload, headers=headers, stream=True, timeout=60)
+                if resp.status_code == 200:
+                    active_resp = resp
+                    break
+                else:
+                    last_status_code = resp.status_code
+                    last_error_text = resp.text if hasattr(resp, "text") else f"HTTP {resp.status_code}"
+                    print(f"[Groq Cloud Error] Model '{target_model}' returned HTTP {resp.status_code}: {last_error_text}")
+                    logger.warning(f"[Groq Cloud Error] Model '{target_model}' returned HTTP {resp.status_code}: {last_error_text}")
+                    resp.close()
+            except Exception as conn_err:
+                last_error_text = str(conn_err)
+                print(f"[Groq Cloud Error] Connection error for model '{target_model}': {conn_err}")
+                logger.warning(f"[Groq Cloud Error] Connection error for model '{target_model}': {conn_err}")
+
+        if not active_resp:
+            print(f"[Groq Cloud Fatal] Upstream chat completions failed for all models. Status: {last_status_code}, error: {last_error_text}")
+            logger.error(f"[Groq Cloud Fatal] Status: {last_status_code}, error: {last_error_text}")
+            err_msg = f"Groq Cloud error (HTTP {last_status_code or 500}): {last_error_text}"
+            yield f"data: {json.dumps({'error': err_msg})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
         try:
-            with requests.post(endpoint, json=payload, headers=headers, stream=True, timeout=60) as resp:
-                if resp.status_code != 200:
-                    err_body = resp.text if hasattr(resp, "text") else "(no body)"
-                    logger.error(f"AI provider returned HTTP {resp.status_code}: {err_body}")
-                    yield f"data: {json.dumps({'error': f'AI provider error (HTTP {resp.status_code})'})}\n\n"
-                    yield "data: [DONE]\n\n"
-                    return
-                
+            with active_resp as resp:
                 for line in resp.iter_lines():
                     if line:
                         decoded_line = line.decode("utf-8")
@@ -1038,20 +1214,21 @@ def api_chat():
                                 choices = chunk_data.get("choices", [])
                                 if choices:
                                     delta = choices[0].get("delta", {})
-                                    text_chunk = delta.get("content", "")
-                                    if text_chunk:
-                                        yield f"data: {json.dumps({'text': text_chunk})}\n\n"
+                                    chunk_text = delta.get("content", "")
+                                    if chunk_text:
+                                        yield f"data: {json.dumps({'text': chunk_text})}\n\n"
                             except Exception:
                                 continue
-                                
             yield "data: [DONE]\n\n"
         except requests.Timeout:
+            print("[Groq Cloud Error] Streaming request timed out (60s)")
             logger.error("AI provider request timed out (60s)")
-            yield f"data: {json.dumps({'error': 'AI provider request timed out'})}\n\n"
+            yield f"data: {json.dumps({'error': 'AI provider request timed out (60s)'})}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as err:
+            print(f"[Groq Cloud Error] Stream error: {err}")
             logger.error(f"Error streaming from AI provider: {str(err)}")
-            yield f"data: {json.dumps({'error': 'AI provider stream error'})}\n\n"
+            yield f"data: {json.dumps({'error': f'AI provider stream error: {str(err)}'})}\n\n"
             yield "data: [DONE]\n\n"
 
     try:

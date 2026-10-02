@@ -315,8 +315,8 @@
                 <span class="row-value"><span class="status-dot green"></span> visionx.my.id (Online)</span>
               </div>
               <div class="popover-row">
-                <span class="row-label">AI Multimodal:</span>
-                <span class="row-value"><span class="status-dot cyan"></span> Gemini Connected</span>
+                <span class="row-label">AI Provider:</span>
+                <span class="row-value"><span class="status-dot cyan"></span> Groq (Llama 3.3) Connected</span>
               </div>
               <div class="popover-row">
                 <span class="row-label">Vision Model:</span>
@@ -581,13 +581,25 @@
             <div id="snapshotPreviewContainer" class="snapshot-preview-container hidden" aria-live="polite">
               <div class="snapshot-preview-card">
                 <img id="snapshotThumbnail" src="" alt="Pratinjau Snapshot Kamera" class="snapshot-thumbnail-img" />
+                <div id="docAttachmentIcon" class="snapshot-doc-icon hidden" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                  </svg>
+                </div>
                 <div class="snapshot-preview-info">
                   <span id="snapshotInfoText" class="snapshot-info-title">Snapshot Kamera Siap</span>
-                  <span class="snapshot-info-sub">Akan dikirim bersama pesan Anda</span>
+                  <span id="snapshotInfoSub" class="snapshot-info-sub">Akan dikirim bersama pesan Anda</span>
                 </div>
-                <button type="button" id="btnRemoveSnapshot" class="btn-remove-snapshot" title="Hapus snapshot ini" aria-label="Hapus snapshot">✕ Hapus</button>
+                <button type="button" id="btnRemoveSnapshot" class="btn-remove-snapshot" title="Hapus lampiran ini" aria-label="Hapus lampiran">✕ Hapus</button>
               </div>
             </div>
+
+            <!-- Hidden File & Image Inputs for Chat Attachments -->
+            <input type="file" id="chatDocInput" class="hidden" style="display:none;" accept=".txt,.md,.markdown,.json,.csv,.pdf,.doc,.docx,.js,.py,.html,.css" />
+            <input type="file" id="chatImageInput" class="hidden" style="display:none;" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" />
 
             <!-- Floating Dock Row (H3 & I1: Fixed 20px icons, high contrast) -->
             <div class="chat-input-dock chat-input-row">
@@ -621,17 +633,19 @@
                     <polyline points="21 15 16 10 5 21"></polyline>
                   </svg>
                 </button>
-                <button type="button" id="btnStopGeneration" class="btn btn-stop-gen" aria-hidden="true" tabindex="-1" title="Hentikan Jawaban AI" aria-label="Hentikan Generasi">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-                  </svg>
-                </button>
-                <button type="button" id="btnSendChatMessage" class="btn-send-dock btn-send-chat" title="Kirim Pesan (Enter)" aria-label="Kirim Pesan">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </button>
+                <div class="dock-send-slot" id="dockSendSlot">
+                  <button type="button" id="btnStopGeneration" class="btn btn-stop-gen" aria-hidden="true" tabindex="-1" title="Hentikan Jawaban AI" aria-label="Hentikan Generasi">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                    </svg>
+                  </button>
+                  <button type="button" id="btnSendChatMessage" class="btn-send-dock btn-send-chat" title="Kirim Pesan (Enter)" aria-label="Kirim Pesan">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -675,8 +689,8 @@
 
               <div class="status-item-row">
                 <div class="status-item-info">
-                  <span class="item-name">AI Provider (Gemini)</span>
-                  <span class="item-sub">Multimodal API</span>
+                  <span class="item-name">AI Provider: Groq (Llama 3.3)</span>
+                  <span class="item-sub">Groq Cloud LPU API</span>
                 </div>
                 <div class="status-item-val online">
                   <span class="status-dot cyan"></span>
@@ -1227,73 +1241,147 @@
 
             <!-- Controls Grid -->
             <div class="voice-controls-grid">
-              <!-- Row 1: Enable Toggle & Mode Selector -->
-              <div class="voice-row-top">
-                <label class="toggle-group voice-toggle-label" for="toggleVoice" title="Aktifkan / nonaktifkan feedback suara (Shortcut: V)">
-                  <span class="field-label-lg">Voice Assistant:</span>
-                  <span class="switch">
-                    <input type="checkbox" id="toggleVoice" checked />
-                    <span class="slider"></span>
-                  </span>
-                  <span id="toggleVoiceStateLabel" class="toggle-state-text">● Enabled</span>
-                </label>
+              <!-- Row 1: Engine Activation Card & Mode Selector Card -->
+              <div class="voice-cards-row">
+                <!-- Card 1: Voice Engine Toggle -->
+                <div class="voice-card voice-card-status">
+                  <div class="voice-card-header">
+                    <div class="voice-card-title-group">
+                      <span class="voice-card-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                          <line x1="12" y1="19" x2="12" y2="23"></line>
+                          <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                      </span>
+                      <div>
+                        <span class="voice-card-title">Voice Engine</span>
+                        <span class="voice-card-sub">Audio sintesis narasi otomatis</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="voice-toggle-wrapper">
+                    <label class="toggle-group voice-toggle-label" for="toggleVoice" title="Aktifkan / nonaktifkan feedback suara (Shortcut: V)">
+                      <span class="switch">
+                        <input type="checkbox" id="toggleVoice" checked />
+                        <span class="slider"></span>
+                      </span>
+                      <span id="toggleVoiceStateLabel" class="toggle-state-text">● Enabled</span>
+                    </label>
+                  </div>
+                </div>
 
-                <div class="voice-mode-group">
-                  <label for="voiceModeSelect" class="field-label">Mode Suara:</label>
-                  <select id="voiceModeSelect" class="select-control voice-mode-select" aria-label="Pilih Mode Suara">
-                    <option value="OBJECT_ALERTS" selected>🔊 Object Alerts (Active)</option>
-                    <option value="OFF">🔇 Off (Bisu)</option>
-                    <option value="FULL_ASSISTANT" disabled>🤖 Full Assistant (Placeholder V0.9+)</option>
-                  </select>
+                <!-- Card 2: Voice Mode Selector -->
+                <div class="voice-card voice-card-mode">
+                  <div class="voice-card-header">
+                    <div class="voice-card-title-group">
+                      <span class="voice-card-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                      </span>
+                      <div>
+                        <label for="voiceModeSelect" class="voice-card-title cursor-pointer">Mode Suara</label>
+                        <span class="voice-card-sub">Pola pemberitahuan objek</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="voice-select-wrapper">
+                    <select id="voiceModeSelect" class="select-control voice-mode-select" aria-label="Pilih Mode Suara">
+                      <option value="OBJECT_ALERTS" selected>🔊 Object Alerts (Active)</option>
+                      <option value="OFF">🔇 Off (Bisu)</option>
+                      <option value="FULL_ASSISTANT" disabled>🤖 Full Assistant (Placeholder V0.9+)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <!-- Row 2: Sliders (Volume & Speed) -->
-              <div class="voice-sliders-row">
-                <div class="field-group slider-group voice-slider-item">
+              <!-- Row 2: Sliders (Volume & Speed) in dedicated Cards -->
+              <div class="voice-sliders-grid">
+                <!-- Volume Slider Card -->
+                <div class="voice-card voice-slider-card">
                   <div class="slider-header-flex">
-                    <label for="voiceVolumeSlider" class="field-label">
-                      Volume Suara:
-                    </label>
-                    <strong id="voiceVolumeVal">100%</strong>
+                    <div class="slider-label-group">
+                      <span class="slider-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                        </svg>
+                      </span>
+                      <label for="voiceVolumeSlider" class="field-label">Volume Suara</label>
+                    </div>
+                    <span class="slider-val-pill"><strong id="voiceVolumeVal">100%</strong></span>
                   </div>
-                  <input type="range" id="voiceVolumeSlider" min="0" max="1" step="0.05" value="1.0" class="range-slider" aria-label="Volume Suara Voice Assistant" />
+                  <div class="slider-track-wrap">
+                    <input type="range" id="voiceVolumeSlider" min="0" max="1" step="0.05" value="1.0" class="range-slider" aria-label="Volume Suara Voice Assistant" />
+                  </div>
+                  <div class="slider-ticks-flex">
+                    <span>Mute (0%)</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                  </div>
                 </div>
 
-                <div class="field-group slider-group voice-slider-item">
+                <!-- Speed Slider Card -->
+                <div class="voice-card voice-slider-card">
                   <div class="slider-header-flex">
-                    <label for="voiceSpeedSlider" class="field-label">
-                      Speed / Kecepatan:
-                    </label>
-                    <strong id="voiceSpeedVal">1.0x</strong>
+                    <div class="slider-label-group">
+                      <span class="slider-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                      </span>
+                      <label for="voiceSpeedSlider" class="field-label">Kecepatan Bicara</label>
+                    </div>
+                    <span class="slider-val-pill"><strong id="voiceSpeedVal">1.0x</strong></span>
                   </div>
-                  <input type="range" id="voiceSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="range-slider" aria-label="Kecepatan Bicara Voice Assistant" />
+                  <div class="slider-track-wrap">
+                    <input type="range" id="voiceSpeedSlider" min="0.5" max="2.0" step="0.1" value="1.0" class="range-slider" aria-label="Kecepatan Bicara Voice Assistant" />
+                  </div>
+                  <div class="slider-ticks-flex">
+                    <span>0.5x (Lambat)</span>
+                    <span>1.0x (Normal)</span>
+                    <span>2.0x (Cepat)</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Row 3: Action Buttons & Last Message -->
-              <div class="voice-actions-row">
-                <div class="voice-buttons-group">
-                  <button id="btnVoiceReplay" class="btn btn-sm btn-secondary" title="Ulangi ucapan pesan terakhir">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
-                    Replay
-                  </button>
-                  <button id="btnVoiceStop" class="btn btn-sm btn-danger btn-voice-stop" title="Hentikan ucapan yang sedang bersuara">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="6" y="6" width="12" height="12"></rect>
-                    </svg>
-                    Stop
-                  </button>
-                  <button id="btnVoiceClearQueue" class="btn btn-sm btn-outline" title="Kosongkan antrean ucapan yang tertunda">
-                    Clear Queue
-                  </button>
-                </div>
+              <!-- Row 3: Action Buttons & Last Message Transcript Card -->
+              <div class="voice-card voice-footer-card">
+                <div class="voice-actions-toolbar">
+                  <div class="voice-actions-buttons">
+                    <button id="btnVoiceReplay" class="btn-voice-action btn-voice-replay" title="Ulangi ucapan pesan terakhir">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                      </svg>
+                      <span>Replay</span>
+                    </button>
+                    <button id="btnVoiceStop" class="btn-voice-action btn-voice-stop" title="Hentikan ucapan yang sedang bersuara">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                      </svg>
+                      <span>Stop</span>
+                    </button>
+                    <button id="btnVoiceClearQueue" class="btn-voice-action btn-voice-clear" title="Kosongkan antrean ucapan yang tertunda">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                      <span>Clear Queue</span>
+                    </button>
+                  </div>
 
-                <div class="voice-last-msg-box" title="Kalimat terakhir yang diucapkan">
-                  <span class="last-msg-label">Last Message:</span>
-                  <span id="voiceLastMsgText" class="last-msg-content text-truncate">Belum ada pengumuman suara.</span>
+                  <div class="voice-last-msg-box" title="Kalimat terakhir yang diucapkan">
+                    <div class="last-msg-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                      <span>Pesan Terakhir</span>
+                    </div>
+                    <span id="voiceLastMsgText" class="last-msg-content text-truncate">Belum ada pengumuman suara.</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1580,24 +1668,37 @@
               </button>
             </div>
 
-            <details class="advanced-controls-details">
-              <summary class="advanced-controls-summary">
-                <span class="summary-left">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-                  <span>Advanced Controls &amp; Diagnostics</span>
-                </span>
-                <span class="chevron-tag">Detail ▼</span>
-              </summary>
-
-              <div class="advanced-dropdown-content">
-                <!-- Model Meta Tags -->
-                <div class="model-meta-info">
-                  <span id="modelArchTag" class="model-pill-tag">Arch: YOLOv8n</span>
-                  <span id="modelClassesTag" class="model-pill-tag">Classes: 7</span>
-                  <span id="modelLoadTimeTag" class="model-pill-tag">Load: -- ms</span>
+            <!-- Settings Content Container -->
+            <div class="settings-content-wrapper advanced-dropdown-content">
+              <!-- Section 1: Model Vision & Target Classes -->
+              <div class="settings-card settings-card-model">
+                <div class="settings-card-header">
+                  <div class="settings-card-title-group">
+                    <span class="settings-card-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                        <rect x="9" y="9" width="6" height="6"></rect>
+                        <line x1="9" y1="1" x2="9" y2="4"></line>
+                        <line x1="15" y1="1" x2="15" y2="4"></line>
+                        <line x1="9" y1="20" x2="9" y2="23"></line>
+                        <line x1="15" y1="20" x2="15" y2="23"></line>
+                        <line x1="20" y1="9" x2="23" y2="9"></line>
+                        <line x1="20" y1="14" x2="23" y2="14"></line>
+                        <line x1="1" y1="9" x2="4" y2="9"></line>
+                        <line x1="1" y1="14" x2="4" y2="14"></line>
+                      </svg>
+                    </span>
+                    <div>
+                      <span class="settings-card-title">Model Vision &amp; Spesifikasi</span>
+                      <span class="settings-card-sub">Arsitektur neural network &amp; daftar kelas target inferensi</span>
+                    </div>
+                  </div>
+                  <!-- Model Meta Tags -->
+                  <div class="model-meta-info">
+                    <span id="modelArchTag" class="model-pill-tag">Arch: YOLOv8n</span>
+                    <span id="modelClassesTag" class="model-pill-tag">Classes: 7</span>
+                    <span id="modelLoadTimeTag" class="model-pill-tag">Load: -- ms</span>
+                  </div>
                 </div>
 
                 <!-- Target Classes Chips -->
@@ -1611,77 +1712,175 @@
                   <span class="class-chip" data-chip-class="keyboard">keyboard</span>
                   <span class="class-chip" data-chip-class="cell_phone">cell_phone</span>
                 </div>
+              </div>
 
-                <div class="controls-row threshold-row">
-                  <!-- Toggle Inferensi AI -->
-                  <label class="toggle-group">
-                    <span class="field-label">AI Inference:</span>
-                    <span class="switch">
-                      <input type="checkbox" id="toggleInference" checked />
-                      <span class="slider"></span>
+              <!-- Section 2: Inference Thresholds & Feature Toggles -->
+              <div class="settings-card settings-card-controls">
+                <div class="settings-card-header">
+                  <div class="settings-card-title-group">
+                    <span class="settings-card-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                        <line x1="1" y1="14" x2="7" y2="14"></line>
+                        <line x1="9" y1="8" x2="15" y2="8"></line>
+                        <line x1="17" y1="16" x2="23" y2="16"></line>
+                      </svg>
                     </span>
-                  </label>
-
-                  <!-- Confidence Slider -->
-                  <div class="field-group slider-group">
-                    <label for="confSlider" class="field-label">
-                      Confidence Threshold: <strong id="confVal">0.25</strong>
-                    </label>
-                    <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.25" class="range-slider" />
+                    <div>
+                      <span class="settings-card-title">Threshold Akurasi &amp; Kontrol Inferensi</span>
+                      <span class="settings-card-sub">Sesuaikan sensitivitas bounding box dan layer cerdas</span>
+                    </div>
                   </div>
-
-                  <!-- IoU Slider -->
-                  <div class="field-group slider-group">
-                    <label for="iouSlider" class="field-label">
-                      IoU NMS Threshold: <strong id="iouVal">0.45</strong>
-                    </label>
-                    <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" />
-                  </div>
-
-                  <!-- Toggle Face Recognition Layer -->
-                  <label class="toggle-group face-toggle" title="Aktifkan layer identitas wajah VisionX Developer / Unknown">
-                    <span class="field-label">Face Layer:</span>
-                    <span class="switch">
-                      <input type="checkbox" id="toggleFaceRecognition" checked />
-                      <span class="slider"></span>
-                    </span>
-                  </label>
-
-                  <!-- Toggle Debug Mode -->
-                  <label class="toggle-group debug-toggle">
-                    <span class="field-label">Debug Mode:</span>
-                    <span class="switch">
-                      <input type="checkbox" id="toggleDebug" />
-                      <span class="slider"></span>
-                    </span>
-                  </label>
                 </div>
 
-                <!-- Camera Quality Diagnostics Strip -->
+                <!-- Sliders Grid (2 Columns) -->
+                <div class="settings-sliders-grid">
+                  <!-- Confidence Slider Card -->
+                  <div class="settings-slider-card">
+                    <div class="slider-header-flex">
+                      <div class="slider-label-group">
+                        <label for="confSlider" class="field-label">Confidence Threshold</label>
+                        <span class="slider-sub-hint">Batas akurasi minimal deteksi</span>
+                      </div>
+                      <span class="slider-val-pill"><strong id="confVal">0.25</strong></span>
+                    </div>
+                    <div class="slider-track-wrap">
+                      <input type="range" id="confSlider" min="0.10" max="0.95" step="0.05" value="0.25" class="range-slider" aria-label="Confidence Threshold" />
+                    </div>
+                    <div class="slider-ticks-flex">
+                      <span>0.10 (Sensitif)</span>
+                      <span>Default (0.25)</span>
+                      <span>0.95 (Ketat)</span>
+                    </div>
+                  </div>
+
+                  <!-- IoU Slider Card -->
+                  <div class="settings-slider-card">
+                    <div class="slider-header-flex">
+                      <div class="slider-label-group">
+                        <label for="iouSlider" class="field-label">IoU NMS Threshold</label>
+                        <span class="slider-sub-hint">Penyaringan tumpang tindih box</span>
+                      </div>
+                      <span class="slider-val-pill"><strong id="iouVal">0.45</strong></span>
+                    </div>
+                    <div class="slider-track-wrap">
+                      <input type="range" id="iouSlider" min="0.10" max="0.90" step="0.05" value="0.45" class="range-slider" aria-label="IoU NMS Threshold" />
+                    </div>
+                    <div class="slider-ticks-flex">
+                      <span>0.10 (Kompak)</span>
+                      <span>Default (0.45)</span>
+                      <span>0.90 (Longgar)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Toggles Grid (3 Columns) -->
+                <div class="settings-toggles-grid">
+                  <!-- AI Inference Toggle Card -->
+                  <div class="settings-toggle-card">
+                    <div class="toggle-card-info">
+                      <span class="toggle-card-icon">⚡</span>
+                      <div>
+                        <span class="toggle-card-title">AI Inference</span>
+                        <span class="toggle-card-desc">Deteksi objek aktif</span>
+                      </div>
+                    </div>
+                    <label class="toggle-group" for="toggleInference" title="Aktifkan / nonaktifkan inferensi AI real-time">
+                      <span class="switch">
+                        <input type="checkbox" id="toggleInference" checked />
+                        <span class="slider"></span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <!-- Face Recognition Toggle Card -->
+                  <div class="settings-toggle-card">
+                    <div class="toggle-card-info">
+                      <span class="toggle-card-icon">👤</span>
+                      <div>
+                        <span class="toggle-card-title">Face Layer</span>
+                        <span class="toggle-card-desc">Layer identitas wajah</span>
+                      </div>
+                    </div>
+                    <label class="toggle-group face-toggle" for="toggleFaceRecognition" title="Aktifkan layer identitas wajah VisionX Developer / Unknown">
+                      <span class="switch">
+                        <input type="checkbox" id="toggleFaceRecognition" checked />
+                        <span class="slider"></span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <!-- Debug Mode Toggle Card -->
+                  <div class="settings-toggle-card">
+                    <div class="toggle-card-info">
+                      <span class="toggle-card-icon">🛠️</span>
+                      <div>
+                        <span class="toggle-card-title">Debug Mode</span>
+                        <span class="toggle-card-desc">Audit box &amp; telemetri</span>
+                      </div>
+                    </div>
+                    <label class="toggle-group debug-toggle" for="toggleDebug" title="Tampilkan panel audit debug deteksi">
+                      <span class="switch">
+                        <input type="checkbox" id="toggleDebug" />
+                        <span class="slider"></span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Section 3: Camera Quality & Sensor Diagnostics -->
+              <div class="settings-card settings-card-diagnostics">
+                <div class="settings-card-header">
+                  <div class="settings-card-title-group">
+                    <span class="settings-card-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                      </svg>
+                    </span>
+                    <div>
+                      <span class="settings-card-title">Diagnostik Sensor &amp; Kamera</span>
+                      <span class="settings-card-sub">Status metrik resolusi, framerate, dan sensor video real-time</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Camera Quality Diagnostics Strip / Cards Grid -->
                 <div class="camera-quality-strip" id="cameraQualityStrip" aria-label="Camera Quality Diagnostics">
                   <div class="cam-quality-item">
-                    <span class="cam-quality-label">CAMERA</span>
+                    <span class="cam-quality-label">KAMERA</span>
                     <strong id="camDiagResolution" class="cam-quality-val">--</strong>
+                    <span class="cam-quality-sub">Resolusi</span>
                   </div>
                   <div class="cam-quality-item">
-                    <span class="cam-quality-label">FPS</span>
+                    <span class="cam-quality-label">FPS STREAM</span>
                     <strong id="camDiagFps" class="cam-quality-val">0.0</strong>
+                    <span class="cam-quality-sub">Framerate</span>
                   </div>
                   <div class="cam-quality-item">
-                    <span class="cam-quality-label">BRIGHTNESS</span>
+                    <span class="cam-quality-label">PENCAHAYAAN</span>
                     <strong id="camDiagBrightness" class="cam-quality-val status-ready">GOOD</strong>
+                    <span class="cam-quality-sub">Luminance</span>
                   </div>
                   <div class="cam-quality-item">
-                    <span class="cam-quality-label">SHARPNESS</span>
+                    <span class="cam-quality-label">KETAJAMAN</span>
                     <strong id="camDiagSharpness" class="cam-quality-val status-ready">FAIR</strong>
+                    <span class="cam-quality-sub">Focus</span>
                   </div>
                   <div class="cam-quality-item">
                     <span class="cam-quality-label">OCR INPUT</span>
                     <strong id="camDiagOcrInput" class="cam-quality-val">--</strong>
+                    <span class="cam-quality-sub">ROI Stream</span>
                   </div>
                 </div>
               </div>
-            </details>
+            </div>
           </div>
         </div>
       </div>

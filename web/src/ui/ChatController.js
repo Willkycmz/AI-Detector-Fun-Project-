@@ -69,7 +69,8 @@ export class ChatController {
     });
 
     this.state = ChatState.IDLE;
-    this.activeSnapshot = null; // { dataUrl, detections, width, height }
+    this.activeSnapshot = null; // { dataUrl, detections, width, height, fileName }
+    this.activeDocument = null; // { name, size, type, content, isBinary }
     this.abortController = null;
     this.activeStreamingMessageId = null;
 
@@ -131,6 +132,7 @@ export class ChatController {
    */
   initDOM(elements = {}) {
     if (!elements) return;
+    const doc = typeof document !== 'undefined' ? document : null;
     this.elements = {
       threadContainer: elements.threadContainer,
       welcomeScreen: elements.welcomeScreen,
@@ -143,7 +145,13 @@ export class ChatController {
       snapshotPreviewContainer: elements.snapshotPreviewContainer || elements.snapshotContainer,
       snapshotThumbnail: elements.snapshotThumbnail || elements.snapshotThumb,
       snapshotRemoveButton: elements.snapshotRemoveButton || elements.snapshotRemoveBtn,
-      snapshotInfoText: elements.snapshotInfoText,
+      snapshotInfoText: elements.snapshotInfoText || doc?.getElementById('snapshotInfoText'),
+      snapshotInfoSub: elements.snapshotInfoSub || doc?.getElementById('snapshotInfoSub'),
+      docAttachmentIcon: elements.docAttachmentIcon || doc?.getElementById('docAttachmentIcon'),
+      attachDocButton: elements.attachDocButton || elements.btnAttachDoc || elements.attachDocBtn || doc?.getElementById('btnAttachDoc'),
+      attachImageButton: elements.attachImageButton || elements.btnAttachImage || elements.attachImageBtn || doc?.getElementById('btnAttachImage'),
+      docInput: elements.docInput || elements.chatDocInput || doc?.getElementById('chatDocInput'),
+      imageInput: elements.imageInput || elements.chatImageInput || doc?.getElementById('chatImageInput'),
       privacyNotice: elements.privacyNotice,
       authBanner: elements.authBanner,
       authLoginBtn: elements.authLoginBtn,
@@ -153,11 +161,11 @@ export class ChatController {
       authStatusText: elements.authStatusText,
       serverStatusBadge: elements.serverStatusBadge,
       serverStatusText: elements.serverStatusText,
-      historyListContainer: elements.historyListContainer || (typeof document !== 'undefined' ? document.getElementById('sidebarChatHistory') : null),
-      recentActivityList: elements.recentActivityList || (typeof document !== 'undefined' ? document.getElementById('recentActivityList') : null),
-      rightPanelBackendStatus: elements.rightPanelBackendStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelBackendStatus') : null),
-      rightPanelAiStatus: elements.rightPanelAiStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelAiStatus') : null),
-      rightPanelModelStatus: elements.rightPanelModelStatus || (typeof document !== 'undefined' ? document.getElementById('rightPanelModelStatus') : null)
+      historyListContainer: elements.historyListContainer || doc?.getElementById('sidebarChatHistory'),
+      recentActivityList: elements.recentActivityList || doc?.getElementById('recentActivityList'),
+      rightPanelBackendStatus: elements.rightPanelBackendStatus || doc?.getElementById('rightPanelBackendStatus'),
+      rightPanelAiStatus: elements.rightPanelAiStatus || doc?.getElementById('rightPanelAiStatus'),
+      rightPanelModelStatus: elements.rightPanelModelStatus || doc?.getElementById('rightPanelModelStatus')
     };
 
     this._bindEvents();
@@ -189,7 +197,11 @@ export class ChatController {
       newChatButton,
       clearButton,
       snapshotRemoveButton,
-      welcomeScreen
+      welcomeScreen,
+      attachDocButton,
+      attachImageButton,
+      docInput,
+      imageInput
     } = this.elements;
 
     // Kirim pesan via Enter (Shift+Enter untuk newline)
@@ -250,6 +262,60 @@ export class ChatController {
       snapshotRemoveButton.addEventListener('click', (e) => {
         e.preventDefault();
         this.removeSnapshot();
+      });
+    }
+
+    // Tombol Pilih Gambar
+    if (attachImageButton && imageInput) {
+      attachImageButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        imageInput.click();
+      });
+      imageInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          this._handleSelectedImageFile(file);
+        }
+        imageInput.value = '';
+      });
+    }
+
+    // Tombol Lampirkan Dokumen
+    if (attachDocButton && docInput) {
+      attachDocButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        docInput.click();
+      });
+      docInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) {
+          this._handleSelectedDocumentFile(file);
+        }
+        docInput.value = '';
+      });
+    }
+
+    // Dukungan Drag & Drop berkas gambar atau dokumen ke area chat
+    const dropArea = typeof document !== 'undefined' ? document.getElementById('chatInputContainer') : null;
+    if (dropArea) {
+      dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('drag-active');
+      });
+      dropArea.addEventListener('dragleave', () => {
+        dropArea.classList.remove('drag-active');
+      });
+      dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('drag-active');
+        const file = e.dataTransfer?.files?.[0];
+        if (file) {
+          if (file.type.startsWith('image/')) {
+            this._handleSelectedImageFile(file);
+          } else {
+            this._handleSelectedDocumentFile(file);
+          }
+        }
       });
     }
 
@@ -385,6 +451,7 @@ export class ChatController {
         content: m.content,
         timestamp: m.timestamp,
         snapshotRef: m.snapshotThumbnail || null,
+        documentRef: m.documentRef || null,
         provider: m.metadata?.provider,
         latencyMs: m.metadata?.latencyMs
       }));
@@ -440,8 +507,194 @@ export class ChatController {
   }
 
   /**
-   * Menetapkan snapshot yang baru saja diambil dari CameraModal
-   * @param {Object|string} snapshotData { dataUrl, detections, width, height } atau dataUrl string
+   * Menangani pemilihan berkas gambar dari disk
+   * @param {File} file
+   * @private
+   */
+  _handleSelectedImageFile(file) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      if (typeof this.onError === 'function') {
+        this.onError('Harap pilih berkas gambar (JPG, PNG, WebP, GIF).');
+      }
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      if (typeof this.onError === 'function') {
+        this.onError('Ukuran gambar maksimal 15 MB.');
+      }
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      const img = new Image();
+      img.onload = () => {
+        this.setSnapshot({
+          dataUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          width: img.naturalWidth || 640,
+          height: img.naturalHeight || 480,
+          detections: []
+        });
+      };
+      img.onerror = () => {
+        this.setSnapshot({
+          dataUrl,
+          fileName: file.name,
+          fileSize: file.size,
+          width: 640,
+          height: 480,
+          detections: []
+        });
+      };
+      img.src = dataUrl;
+    };
+    reader.onerror = () => {
+      if (typeof this.onError === 'function') {
+        this.onError('Gagal membaca berkas gambar.');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /**
+   * Menangani pemilihan berkas dokumen dari disk
+   * @param {File} file
+   * @private
+   */
+  _handleSelectedDocumentFile(file) {
+    if (!file) return;
+    // Jika berkas yang dipilih pengguna ternyata gambar, alihkan ke pemroses gambar
+    if (file.type.startsWith('image/')) {
+      this._handleSelectedImageFile(file);
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      if (typeof this.onError === 'function') {
+        this.onError('Ukuran dokumen maksimal 10 MB.');
+      }
+      return;
+    }
+
+    const isTextReadable = file.type.includes('text') ||
+      file.type.includes('json') ||
+      file.type.includes('csv') ||
+      /\.(txt|md|markdown|json|csv|js|py|html|css|ts|jsx|tsx|log|xml|yaml|yml|sql)$/i.test(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target.result;
+      this.setAttachedDocument({
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        content: typeof content === 'string' ? content : '',
+        isBinary: !isTextReadable
+      });
+    };
+    reader.onerror = () => {
+      if (typeof this.onError === 'function') {
+        this.onError('Gagal membaca berkas dokumen.');
+      }
+    };
+
+    if (isTextReadable) {
+      reader.readAsText(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
+  }
+
+  /**
+   * Menetapkan dokumen lampiran aktif
+   * @param {Object} doc { name, size, type, content, isBinary }
+   */
+  setAttachedDocument(doc) {
+    if (!doc) return;
+    this.activeSnapshot = null;
+    this.activeDocument = doc;
+
+    const {
+      snapshotPreviewContainer,
+      snapshotThumbnail,
+      snapshotInfoText,
+      snapshotInfoSub,
+      docAttachmentIcon,
+      privacyNotice,
+      inputElement
+    } = this.elements;
+
+    const docRef = typeof document !== 'undefined' ? document : null;
+    const container = snapshotPreviewContainer || docRef?.getElementById('snapshotPreviewContainer');
+    const thumb = snapshotThumbnail || docRef?.getElementById('snapshotThumbnail');
+    const docIcon = docAttachmentIcon || docRef?.getElementById('docAttachmentIcon');
+    const titleEl = snapshotInfoText || docRef?.getElementById('snapshotInfoText');
+    const subEl = snapshotInfoSub || docRef?.getElementById('snapshotInfoSub');
+
+    if (container) {
+      container.classList.remove('hidden');
+    }
+    if (thumb) {
+      thumb.style.display = 'none';
+      thumb.src = '';
+    }
+    if (docIcon) {
+      docIcon.classList.remove('hidden');
+      docIcon.style.display = 'flex';
+    }
+    if (privacyNotice) {
+      privacyNotice.classList.remove('hidden');
+    }
+    if (titleEl) {
+      titleEl.textContent = doc.name;
+    }
+    if (subEl) {
+      subEl.textContent = `Dokumen (${this._formatFileSize(doc.size)}) • Siap dikirim & dianalisis`;
+    }
+
+    this.logActivity('Dokumen dilampirkan', 'Barusan');
+
+    if (inputElement) {
+      inputElement.focus();
+    }
+  }
+
+  /**
+   * Format ukuran berkas dalam representasi teks B / KB / MB
+   * @param {number} bytes
+   * @returns {string}
+   * @private
+   */
+  _formatFileSize(bytes) {
+    if (!bytes || isNaN(bytes)) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  /**
+   * Escape HTML untuk string aman di pesan
+   * @param {string} str
+   * @returns {string}
+   * @private
+   */
+  _escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Menetapkan snapshot yang baru saja diambil dari CameraModal atau Berkas
+   * @param {Object|string} snapshotData { dataUrl, detections, width, height, fileName } atau dataUrl string
    * @param {Array} [detections=null]
    */
   setSnapshot(snapshotData, detections = null) {
@@ -451,6 +704,7 @@ export class ChatController {
     let dets = [];
     let width = 640;
     let height = 480;
+    let fileName = null;
 
     if (typeof snapshotData === 'string') {
       dataUrl = snapshotData;
@@ -460,16 +714,20 @@ export class ChatController {
       dets = Array.isArray(snapshotData.detections) ? snapshotData.detections : (detections || []);
       width = snapshotData.width || 640;
       height = snapshotData.height || 480;
+      fileName = snapshotData.fileName || null;
     } else {
       return;
     }
 
-    this.activeSnapshot = { dataUrl, detections: dets, width, height };
+    this.activeDocument = null;
+    this.activeSnapshot = { dataUrl, detections: dets, width, height, fileName };
 
     const {
       snapshotPreviewContainer,
       snapshotThumbnail,
       snapshotInfoText,
+      snapshotInfoSub,
+      docAttachmentIcon,
       privacyNotice,
       inputElement
     } = this.elements;
@@ -482,19 +740,37 @@ export class ChatController {
 
     const thumb = snapshotThumbnail || doc?.getElementById('snapshotThumbnail');
     if (thumb) {
+      thumb.style.display = 'block';
       thumb.src = dataUrl;
+    }
+
+    const docIcon = docAttachmentIcon || doc?.getElementById('docAttachmentIcon');
+    if (docIcon) {
+      docIcon.classList.add('hidden');
+      docIcon.style.display = 'none';
     }
 
     if (privacyNotice) {
       privacyNotice.classList.remove('hidden');
     }
 
+    const subEl = snapshotInfoSub || doc?.getElementById('snapshotInfoSub');
     if (snapshotInfoText) {
-      const objCount = dets.length;
-      snapshotInfoText.textContent = `Snapshot siap (${width}×${height}) • ${objCount} objek`;
+      if (fileName) {
+        snapshotInfoText.textContent = fileName;
+        if (subEl) {
+          subEl.textContent = `Gambar siap dianalisis (${width}×${height})`;
+        }
+      } else {
+        const objCount = dets.length;
+        snapshotInfoText.textContent = `Snapshot Kamera Siap`;
+        if (subEl) {
+          subEl.textContent = `(${width}×${height}) • ${objCount} objek terdeteksi`;
+        }
+      }
     }
 
-    this.logActivity('Camera snapshot', 'Barusan');
+    this.logActivity('Gambar dilampirkan', 'Barusan');
 
     // Fokuskan input pesan agar user siap mengetik pertanyaan
     if (inputElement) {
@@ -503,11 +779,19 @@ export class ChatController {
   }
 
   /**
-   * Menghapus snapshot aktif dari input form
+   * Menghapus snapshot dan dokumen aktif dari input form
    */
   removeSnapshot() {
     this.activeSnapshot = null;
-    const { snapshotPreviewContainer, snapshotThumbnail, snapshotInfoText, privacyNotice } = this.elements;
+    this.activeDocument = null;
+    const {
+      snapshotPreviewContainer,
+      snapshotThumbnail,
+      snapshotInfoText,
+      snapshotInfoSub,
+      docAttachmentIcon,
+      privacyNotice
+    } = this.elements;
 
     const doc = typeof document !== 'undefined' ? document : null;
     const container = snapshotPreviewContainer || doc?.getElementById('snapshotPreviewContainer');
@@ -517,12 +801,22 @@ export class ChatController {
     const thumb = snapshotThumbnail || doc?.getElementById('snapshotThumbnail');
     if (thumb) {
       thumb.src = '';
+      thumb.style.display = 'block';
+    }
+    const docIcon = docAttachmentIcon || doc?.getElementById('docAttachmentIcon');
+    if (docIcon) {
+      docIcon.classList.add('hidden');
+      docIcon.style.display = 'none';
     }
     if (privacyNotice) {
       privacyNotice.classList.add('hidden');
     }
     if (snapshotInfoText) {
       snapshotInfoText.textContent = '';
+    }
+    const subEl = snapshotInfoSub || doc?.getElementById('snapshotInfoSub');
+    if (subEl) {
+      subEl.textContent = '';
     }
   }
 
@@ -597,9 +891,11 @@ export class ChatController {
 
     let text = inputVal.trim();
 
-    // Jika mengirim tanpa teks tapi ada snapshot, gunakan default deterministik
+    // Jika mengirim tanpa teks tapi ada snapshot atau dokumen, gunakan default deterministik
     if (!text && this.activeSnapshot) {
       text = 'Analisis gambar ini.';
+    } else if (!text && this.activeDocument) {
+      text = `Analisis dan rangkum dokumen ${this.activeDocument.name}.`;
     }
 
     if (!text) {
@@ -618,8 +914,9 @@ export class ChatController {
       }
     }
 
-    // Ambil snapshot referensi saat ini dan reset form preview
+    // Ambil snapshot & dokumen referensi saat ini dan reset form preview
     const snapshotToSend = this.activeSnapshot ? { ...this.activeSnapshot } : null;
+    const documentToSend = this.activeDocument ? { ...this.activeDocument } : null;
     this.removeSnapshot();
 
     // 1. Tambahkan pesan pengguna ke ConversationManager segera untuk zero-latency UI
@@ -629,6 +926,13 @@ export class ChatController {
       null,
       snapshotThumbnailUrl
     );
+    if (userTurn && documentToSend) {
+      userTurn.documentRef = {
+        name: documentToSend.name,
+        size: documentToSend.size,
+        type: documentToSend.type
+      };
+    }
 
     // 2. Render pesan pengguna segera di DOM
     this.renderThread();
@@ -669,7 +973,8 @@ export class ChatController {
         role: 'user',
         content: userTurn.content,
         timestamp: userTurn.timestamp,
-        snapshotThumbnail: snapshotThumbnailUrl
+        snapshotThumbnail: snapshotThumbnailUrl,
+        documentRef: userTurn.documentRef || null
       });
 
       this.storageService.getSessions().then((s) => this.renderHistoryList(s)).catch(() => {});
@@ -740,11 +1045,21 @@ export class ChatController {
       // Ambil riwayat percakapan terkini (sliding window 6 turns)
       const recentTurns = this.conversationManager.getRecentTurns(6);
 
+      // Format prompt dengan dokumen terlampir jika ada
+      let promptToSend = text;
+      if (documentToSend) {
+        if (documentToSend.content && !documentToSend.isBinary) {
+          promptToSend = `[Lampiran Dokumen: ${documentToSend.name} (${this._formatFileSize(documentToSend.size)})]\n\`\`\`\n${documentToSend.content.slice(0, 15000)}\n\`\`\`\n\n${text}`;
+        } else {
+          promptToSend = `[Lampiran Berkas: ${documentToSend.name} (${this._formatFileSize(documentToSend.size)})]\n\n${text}`;
+        }
+      }
+
       // Kirim ke AI Gateway dengan SSE progresif
       const response = await this.aiProvider.askVision({
         image: snapshotToSend?.dataUrl || null,
         context: currentContext,
-        question: text,
+        question: promptToSend,
         detections: verifiedDetections,
         conversationHistory: recentTurns,
         signal: currentAbortController.signal,
@@ -949,12 +1264,24 @@ export class ChatController {
       `;
     }
 
+    let docHtml = '';
+    if (turn.documentRef) {
+      docHtml = `
+        <div class="message-doc-pill">
+          <span class="message-doc-icon">📄</span>
+          <span class="message-doc-name" title="${this._escapeHtml(turn.documentRef.name)}">${this._escapeHtml(turn.documentRef.name)}</span>
+          <span class="message-doc-size">(${this._formatFileSize(turn.documentRef.size)})</span>
+        </div>
+      `;
+    }
+
     item.innerHTML = `
       <div class="message-bubble-header">
         <span class="message-sender">${isUser ? '👤 Anda' : '🤖 VisionX AI'}</span>
         <span class="message-timestamp">${timeStr}</span>
       </div>
       ${snapshotHtml}
+      ${docHtml}
       <div class="message-content">${this._escapeAndFormatText(turn.content)}</div>
       ${metaHtml}
     `;

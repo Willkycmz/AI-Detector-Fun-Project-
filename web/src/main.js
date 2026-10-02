@@ -760,7 +760,11 @@ class VisionXWebApp {
       recentActivityList: document.getElementById('recentActivityList'),
       rightPanelBackendStatus: document.getElementById('rightPanelBackendStatus'),
       rightPanelAiStatus: document.getElementById('rightPanelAiStatus'),
-      rightPanelModelStatus: document.getElementById('rightPanelModelStatus')
+      rightPanelModelStatus: document.getElementById('rightPanelModelStatus'),
+      btnAttachDoc: document.getElementById('btnAttachDoc'),
+      btnAttachImage: document.getElementById('btnAttachImage'),
+      chatDocInput: document.getElementById('chatDocInput'),
+      chatImageInput: document.getElementById('chatImageInput')
     };
   }
 
@@ -840,7 +844,11 @@ class VisionXWebApp {
             recentActivityList: this.elements.recentActivityList,
             rightPanelBackendStatus: this.elements.rightPanelBackendStatus,
             rightPanelAiStatus: this.elements.rightPanelAiStatus,
-            rightPanelModelStatus: this.elements.rightPanelModelStatus
+            rightPanelModelStatus: this.elements.rightPanelModelStatus,
+            attachDocBtn: this.elements.btnAttachDoc,
+            attachImageBtn: this.elements.btnAttachImage,
+            docInput: this.elements.chatDocInput,
+            imageInput: this.elements.chatImageInput
           }
         });
         this.chatController.setUserId(authService.getUserId());

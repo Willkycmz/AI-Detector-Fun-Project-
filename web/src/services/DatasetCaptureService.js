@@ -6,7 +6,7 @@
  * impor citra & folder, pencegahan duplikasi (SHA-256), serta metadata presisi.
  */
 
-import { ENDPOINTS } from './apiConfig.js';
+import { BACKEND_URL, ENDPOINTS } from './apiConfig.js';
 import { apiFetch } from './ApiClient.js';
 
 // Daftar nama reserved Windows yang dilarang (kompatibel dengan app/collector.py)
@@ -382,15 +382,19 @@ export class DatasetCaptureService {
     try {
       const formData = new FormData();
       formData.append('image', blob, filename);
+      formData.append('label', captureClass);
+      formData.append('className', captureClass);
       formData.append('info', JSON.stringify({
         filename,
         className: captureClass,
+        label: captureClass,
         source: 'own_capture',
         width: vw,
         height: vh
       }));
 
-      const apiRes = await apiFetch(ENDPOINTS.UPLOAD, {
+      const uploadUrl = `${BACKEND_URL}/api/dataset/upload`;
+      const apiRes = await apiFetch(uploadUrl, {
         method: 'POST',
         body: formData
         // Note: NO 'Content-Type' header — browser sets multipart boundary automatically
@@ -402,7 +406,7 @@ export class DatasetCaptureService {
       }
 
       const uploadResult = await apiRes.json();
-      if (uploadResult.status !== 'success') {
+      if (!uploadResult.success && uploadResult.status !== 'success') {
         throw new Error(uploadResult.message || 'Server gagal menyimpan citra.');
       }
       saveResult = { success: true, url: null, ...uploadResult };
@@ -627,15 +631,19 @@ export class DatasetCaptureService {
         // Upload via production backend (multipart/form-data)
         const formData = new FormData();
         formData.append('image', blob, filename);
+        formData.append('label', validClass);
+        formData.append('className', validClass);
         formData.append('info', JSON.stringify({
           filename,
           className: validClass,
+          label: validClass,
           source,
           width,
           height
         }));
 
-        const apiRes = await apiFetch(ENDPOINTS.UPLOAD, {
+        const uploadUrl = `${BACKEND_URL}/api/dataset/upload`;
+        const apiRes = await apiFetch(uploadUrl, {
           method: 'POST',
           body: formData
         });

@@ -653,6 +653,179 @@ function visionxCorePlugin() {
         }
 
         // ======================================================================
+        // STATUS & HEALTH METADATA (Groq Llama 3.3)
+        // ======================================================================
+        if ((url.pathname === '/api/config' || url.pathname === '/status' || url.pathname === '/api/health') && req.method === 'GET') {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({
+            status: 'online',
+            service: 'visionx',
+            ai_provider: 'Groq (Llama 3.3)',
+            ai_model: 'llama-3.3-70b-versatile',
+            streaming_enabled: true
+          }));
+        }
+
+        // ======================================================================
+        // GROQ CLOUD CHAT SSE PROXY (/api/chat)
+        // ======================================================================
+        if (url.pathname === '/api/chat' && (req.method === 'POST' || req.method === 'OPTIONS')) {
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            return res.end();
+          }
+
+          try {
+            const body = await parseJsonBody(req);
+            const userMsg = body.message || 'Halo';
+            const groqApiKey = process.env.AI_API_KEY || '';
+
+            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${groqApiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: 'openai/gpt-oss-120b',
+                messages: [
+                  { role: 'system', content: 'Kamu adalah VisionX AI Assistant, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia.' },
+                  { role: 'user', content: userMsg }
+                ],
+                stream: true,
+                temperature: 0.7
+              })
+            });
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            const reader = groqRes.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const text = decoder.decode(value, { stream: true });
+              const lines = text.split('\n');
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const raw = line.slice(6).trim();
+                  if (raw === '[DONE]') {
+                    res.write('data: [DONE]\n\n');
+                    break;
+                  }
+                  try {
+                    const parsed = JSON.parse(raw);
+                    const chunk = parsed.choices?.[0]?.delta?.content || '';
+                    if (chunk) {
+                      res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                    }
+                  } catch (_) {}
+                }
+              }
+            }
+            res.end();
+            return;
+          } catch (chatErr) {
+            console.error('[Vite /api/chat Proxy Error]', chatErr);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ error: chatErr.message }));
+          }
+        }
+
+        // ======================================================================
+        // DATASET UPLOAD & COLLECTION SAVE (/api/dataset/upload, /api/collection/save)
+        // ======================================================================
+        if ((url.pathname === '/api/dataset/upload' || url.pathname === '/api/collection/save' || url.pathname === '/api/upload') && (req.method === 'POST' || req.method === 'OPTIONS')) {
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204;
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            return res.end();
+          }
+
+          try {
+            const cType = req.headers['content-type'] || '';
+            let filename = `capture_${Date.now()}.jpg`;
+            let className = 'object';
+            let buffer = null;
+
+            if (cType.includes('application/json')) {
+              const body = await parseJsonBody(req);
+              className = body.label || body.className || 'object';
+              filename = body.filename || `${className}_${Date.now()}.jpg`;
+              const b64 = (body.image || body.dataUrl || '').replace(/^data:image\/\w+;base64,/, '');
+              buffer = Buffer.from(b64, 'base64');
+            } else {
+              const rawData = await new Promise((resolve, reject) => {
+                const chunks = [];
+                req.on('data', chunk => chunks.push(chunk));
+                req.on('end', () => resolve(Buffer.concat(chunks)));
+                req.on('error', reject);
+              });
+
+              if (cType.includes('multipart/form-data')) {
+                const boundary = cType.split('boundary=')[1];
+                if (boundary) {
+                  const parts = rawData.toString('binary').split('--' + boundary);
+                  for (const part of parts) {
+                    if (part.includes('filename="')) {
+                      const fnameMatch = part.match(/filename="([^"]+)"/);
+                      if (fnameMatch) filename = fnameMatch[1];
+                      const fileStart = part.indexOf('\r\n\r\n') + 4;
+                      const fileEnd = part.lastIndexOf('\r\n');
+                      const fileContent = part.substring(fileStart, fileEnd);
+                      buffer = Buffer.from(fileContent, 'binary');
+                    } else if (part.includes('name="label"') || part.includes('name="className"')) {
+                      const lStart = part.indexOf('\r\n\r\n') + 4;
+                      const lEnd = part.lastIndexOf('\r\n');
+                      className = part.substring(lStart, lEnd).trim();
+                    }
+                  }
+                }
+              }
+              if (!buffer) {
+                buffer = rawData;
+              }
+            }
+
+            const cleanClass = className.trim().toLowerCase().replace(/\s+/g, '_') || 'object';
+            const targetDir = path.resolve(rawDatasetRoot, 'own', cleanClass);
+            if (!fs.existsSync(targetDir)) {
+              fs.mkdirSync(targetDir, { recursive: true });
+            }
+            const targetFilePath = path.resolve(targetDir, filename);
+            assertSafeDatasetPath(targetFilePath);
+            if (buffer && buffer.length > 0) {
+              fs.writeFileSync(targetFilePath, buffer);
+            }
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({
+              success: true,
+              status: 'success',
+              message: 'Dataset tersimpan',
+              filename: filename,
+              label: cleanClass
+            }));
+          } catch (uploadErr) {
+            console.error('[Upload Error]', uploadErr);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, error: uploadErr.message }));
+          }
+        }
+
+        // ======================================================================
         // BACKWARD COMPATIBLE DATASET CAPTURE API
         // ======================================================================
 

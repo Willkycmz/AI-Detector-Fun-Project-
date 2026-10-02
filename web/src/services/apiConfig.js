@@ -13,21 +13,17 @@ const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env && imp
   : null;
 
 /**
- * Detect if we're running on a local Vite dev server.
- * When local, use empty string so fetch('/api/...') hits the Vite middleware
- * instead of going to the production URL across the network.
+ * Backend URL untuk seluruh panggilan API VisionX ke backend server (Flask / Cloudflare Tunnel / Groq Cloud).
+ * Prioritas:
+ *   1. VITE_API_BASE_URL env variable (explicit override)
+ *   2. 'https://visionx.my.id' (default production endpoint)
  */
-const isLocalDev = typeof window !== 'undefined'
-  && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const BACKEND_URL = envBaseUrl ?? 'https://visionx.my.id';
 
 /**
  * Base URL for all API calls.
- * Priority:
- *   1. VITE_API_BASE_URL env variable (explicit override)
- *   2. '' (empty) when running on localhost (Vite dev middleware handles /api/*)
- *   3. Production backend at https://visionx.my.id (deployed builds)
  */
-export const API_BASE_URL = envBaseUrl ?? (isLocalDev ? '' : 'https://visionx.my.id');
+export const API_BASE_URL = BACKEND_URL;
 
 /**
  * Helper: build a full API URL from a relative path.
@@ -36,14 +32,17 @@ export const API_BASE_URL = envBaseUrl ?? (isLocalDev ? '' : 'https://visionx.my
  */
 export function apiUrl(path) {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE_URL}${cleanPath}`;
+  return `${BACKEND_URL}${cleanPath}`;
 }
 
 // ── Prebuilt endpoint constants ──────────────────────────────────────
 export const ENDPOINTS = {
-  // Upload / Tunnel
-  UPLOAD:             apiUrl('/api/upload'),
-  HEALTH:             apiUrl('/api/health'),
+  // Upload / Tunnel & Dataset Collection
+  UPLOAD:             `${BACKEND_URL}/api/dataset/upload`,
+  DATASET_UPLOAD:     `${BACKEND_URL}/api/dataset/upload`,
+  COLLECTION_SAVE:    `${BACKEND_URL}/api/collection/save`,
+  HEALTH:             `${BACKEND_URL}/api/health`,
+  CONFIG:             `${BACKEND_URL}/api/config`,
 
   // Dataset Capture & Management
   DATASET_LIST:       apiUrl('/api/dataset/list'),
@@ -71,7 +70,7 @@ export const ENDPOINTS = {
   IDENTITY_DETECT:    apiUrl('/api/identity/detect'),
   IDENTITY_MATCH:     apiUrl('/api/identity/match'),
 
-  // AI Chat
-  CHAT:               apiUrl('/api/chat'),
-  LOGIN:              apiUrl('/api/login'),
+  // AI Chat & Auth
+  CHAT:               `${BACKEND_URL}/api/chat`,
+  LOGIN:              `${BACKEND_URL}/api/login`,
 };

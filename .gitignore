@@ -47,3 +47,8 @@ scratch/
 **/.env.local
 !.env.example
 !**/.env.example
+
+# Test Browser User Profiles
+**/.chrome-after/
+**/.chrome-profile/
+
