@@ -43,7 +43,7 @@
 
       <!-- Action: New Chat -->
       <div class="sidebar-action-group">
-        <button type="button" id="btnNewChat" class="btn btn-new-chat bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700" aria-label="Mulai Percakapan Baru">
+        <button type="button" id="btnNewChat" class="btn btn-new-chat" aria-label="Mulai Percakapan Baru">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -348,6 +348,13 @@
                 <span class="dropdown-role-badge user" id="dropdownUserRoleBadge">Pengguna</span>
               </div>
               <div class="dropdown-divider"></div>
+              <button type="button" class="dropdown-item" id="btnOpenSettingsModal" role="menuitem">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Pengaturan</span>
+              </button>
               <button type="button" class="dropdown-item" id="btnHeaderSignOut" role="menuitem">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -543,21 +550,30 @@
             <div id="chatThread" class="chat-thread" aria-live="polite" aria-label="Thread Percakapan VisionX"></div>
           </div>
 
-          <!-- Chat Bottom Input Dock -->
+          <!-- Chat Bottom Input Dock (I1: Relocated Privacy Popover & Clean Dock) -->
           <div class="chat-input-container" id="chatInputContainer">
-            <!-- Privacy Disclosure Notice (Desktop: pristine inline paragraph) -->
-            <p class="chat-privacy-disclosure desktop-privacy-notice" role="note" aria-label="Pemberitahuan Privasi">
-              <strong class="disclosure-badge">🛡️ Privasi:</strong> <span class="disclosure-text">Deteksi VisionX berjalan lokal di browser. Saat snapshot dikirim melalui Chat, gambar dikirim ke VisionX Backend dan dapat diteruskan ke penyedia AI eksternal.</span>
-            </p>
-
-            <!-- Privacy Disclosure Notice (M7 Mobile: Accordion) -->
-            <details class="chat-privacy-disclosure mobile-privacy-notice" role="note" aria-label="Pemberitahuan Privasi">
-              <summary class="disclosure-summary">
-                <span class="disclosure-badge">🛡️ Info Privasi</span>
-                <span class="disclosure-toggle-icon" aria-hidden="true">▾</span>
-              </summary>
-              <span class="disclosure-text">Deteksi VisionX berjalan lokal di browser. Saat snapshot dikirim melalui Chat, gambar dikirim ke VisionX Backend dan dapat diteruskan ke penyedia AI eksternal.</span>
-            </details>
+            <!-- Floating Privacy Popover (I1: Opened by lock button in dock) -->
+            <div id="privacyPopover" class="privacy-popover hidden" role="dialog" aria-label="Kebijakan Privasi VisionX">
+              <div class="privacy-popover-header">
+                <div class="privacy-popover-title">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <span>Privasi &amp; Keamanan Data</span>
+                </div>
+                <button type="button" id="btnClosePrivacyPopover" class="btn-close-popover" aria-label="Tutup popover privasi">✕</button>
+              </div>
+              <div class="privacy-popover-body">
+                <p>Deteksi visi komputer VisionX dieksekusi <strong>100% lokal</strong> di browser melalui Web ONNX.</p>
+                <p>Snapshot kamera atau citra hanya dikirim ke backend saat Anda meminta analisis multimodal AI melalui chat.</p>
+              </div>
+              <div class="privacy-popover-footer">
+                <button type="button" id="btnPrivacyGoToSettings" class="btn-popover-link">
+                  Detail &amp; Kebijakan Lengkap &rarr;
+                </button>
+              </div>
+            </div>
 
             <!-- Snapshot Thumbnail Preview Container (Hidden by default) -->
             <div id="snapshotPreviewContainer" class="snapshot-preview-container hidden" aria-live="polite">
@@ -571,7 +587,7 @@
               </div>
             </div>
 
-            <!-- Floating Dock Row (H3: Fixed 20px icons, high contrast) -->
+            <!-- Floating Dock Row (H3 & I1: Fixed 20px icons, high contrast) -->
             <div class="chat-input-dock chat-input-row">
               <button type="button" id="btnOpenCamModal" class="btn-cam-dock btn-cam-trigger" title="Buka Kamera untuk Snapshot" aria-label="Buka Kamera untuk Snapshot">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -581,10 +597,16 @@
               </button>
 
               <div class="input-field-dock-wrapper input-field-wrapper">
-                <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Ketik pesan..." autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
+                <textarea id="chatMessageInput" class="chat-message-input" rows="1" placeholder="Ketik pesan... (Enter untuk kirim, Shift+Enter untuk baris baru)" autocomplete="off" spellcheck="false" aria-label="Pesan obrolan"></textarea>
               </div>
 
               <div class="dock-actions-right">
+                <button type="button" id="btnPrivacyPopoverToggle" class="btn-dock-icon btn-privacy-dock" title="Informasi Privasi &amp; Pemrosesan Data" aria-label="Informasi Privasi">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </button>
                 <button type="button" id="btnAttachDoc" class="btn-dock-icon" title="Lampirkan Dokumen" aria-label="Lampirkan Dokumen">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
@@ -610,10 +632,6 @@
                 </button>
               </div>
             </div>
-
-            <div class="dock-footnote">
-              <span>Tekan Enter untuk mengirim • Shift + Enter untuk baris baru</span>
-            </div>
           </div>
         </div>
 
@@ -626,9 +644,9 @@
           </svg>
         </button>
 
-        <!-- Right Status & Information Panel (Visible on Desktop >= 1200px) -->
-        <aside class="chat-right-panel" id="chatRightPanel" aria-label="Status Sistem &amp; Aktivitas">
-          <!-- Card 1: System Status -->
+        <!-- Right Status & Information Panel (I2: Focused System Status Sidebar) -->
+        <aside class="chat-right-panel" id="chatRightPanel" aria-label="Status Sistem VisionX">
+          <!-- Card 1: System Status (Enriched & Focused) -->
           <div class="panel-card system-status-card">
             <div class="panel-card-header">
               <div class="panel-title-with-dot">
@@ -640,6 +658,7 @@
                 <button type="button" id="btnToggleRightPanel" class="btn-toggle-right-panel" title="Minimize Status Sidebar" aria-label="Minimize Status Sidebar">✕</button>
               </div>
             </div>
+
             <div class="status-items-list">
               <div class="status-item-row">
                 <div class="status-item-info">
@@ -651,16 +670,18 @@
                   <span id="rightPanelBackendStatus">Online</span>
                 </div>
               </div>
+
               <div class="status-item-row">
                 <div class="status-item-info">
                   <span class="item-name">AI Provider (Gemini)</span>
-                  <span class="item-sub">Multimodal</span>
+                  <span class="item-sub">Multimodal API</span>
                 </div>
                 <div class="status-item-val online">
                   <span class="status-dot cyan"></span>
                   <span id="rightPanelAiStatus">Connected</span>
                 </div>
               </div>
+
               <div class="status-item-row">
                 <div class="status-item-info">
                   <span class="item-name">Vision Model</span>
@@ -671,35 +692,47 @@
                   <span id="rightPanelModelStatus">Ready</span>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Card 2: Recent Activity -->
-          <div class="panel-card recent-activity-card">
-            <div class="panel-card-header">
-              <div class="panel-title-with-icon">
-                <span class="panel-icon">🕒</span>
-                <span class="panel-title">Recent Activity</span>
+              <div class="status-item-row">
+                <div class="status-item-info">
+                  <span class="item-name">Inference Engine</span>
+                  <span class="item-sub">Browser Hardware Accel</span>
+                </div>
+                <div class="status-item-val online">
+                  <span class="status-dot emerald"></span>
+                  <span>WebGL / WebGPU</span>
+                </div>
               </div>
-              <button type="button" class="panel-header-link" id="btnViewAllActivity" aria-label="Lihat Semua Aktivitas">View All</button>
-            </div>
-            <div class="activity-items-list" id="recentActivityList">
-              <!-- Rendered dynamically -->
-            </div>
-          </div>
 
-          <!-- Card 3: Privasi & Keamanan -->
-          <div class="panel-card privacy-card">
-            <div class="panel-card-header">
-              <div class="panel-title-with-icon">
-                <span class="panel-icon">🛡️</span>
-                <span class="panel-title">Privasi &amp; Keamanan</span>
+              <div class="status-item-row">
+                <div class="status-item-info">
+                  <span class="item-name">Local Storage</span>
+                  <span class="item-sub">Riwayat &amp; Dataset</span>
+                </div>
+                <div class="status-item-val online">
+                  <span class="status-dot cyan"></span>
+                  <span>IndexedDB</span>
+                </div>
               </div>
             </div>
-            <p class="privacy-card-body">
-              Deteksi VisionX berjalan lokal di browser. Gambar yang Anda kirim akan dikirim ke backend VisionX dan dapat diteruskan ke penyedia AI eksternal yang dikonfigurasi.
-            </p>
-            <a href="#privacyNotice" class="privacy-learn-more" id="btnPrivacyLearnMore">Pelajari lebih lanjut &rarr;</a>
+
+            <!-- Edge Telemetry Highlights Box -->
+            <div class="system-telemetry-box">
+              <div class="telemetry-badge-item">
+                <span class="telemetry-dot dot-active"></span>
+                <div class="telemetry-text">
+                  <span class="telemetry-label">Privacy Shield</span>
+                  <span class="telemetry-value">Active (100% Local Inference)</span>
+                </div>
+              </div>
+              <div class="telemetry-badge-item">
+                <span class="telemetry-dot dot-cyan"></span>
+                <div class="telemetry-text">
+                  <span class="telemetry-label">Edge Intelligence</span>
+                  <span class="telemetry-value">Zero Cloud Retention</span>
+                </div>
+              </div>
+            </div>
           </div>
         </aside>
       </div>
@@ -1162,26 +1195,32 @@
                2. VOICE ASSISTANT ACCESSIBILITY PANEL (V0.8)
                ================================================================ -->
           <div id="voicePanel" class="contextual-panel voice-assistant-panel" role="tabpanel" aria-labelledby="toolBtnVoice" aria-hidden="true" aria-label="Voice Assistant Accessibility Controls">
-            <div class="voice-header-row">
-              <div class="voice-title-group">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="voice-icon" aria-hidden="true">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                </svg>
-                <div class="voice-title-texts">
-                  <h3 class="voice-title">🔊 Voice Assistant</h3>
-                  <span class="voice-subtitle">Aksesibilitas Umpan Balik Visual Realtime &bull; Shortcut: <kbd class="kbd-badge">V</kbd></span>
+            <div class="contextual-panel-header voice-header-row">
+              <div class="contextual-header-content">
+                <div class="contextual-header-title-row">
+                  <span class="contextual-header-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                  </span>
+                  <h3 class="contextual-header-title">Voice Assistant</h3>
+                  <span class="contextual-version-badge">v2.0.0</span>
                 </div>
+                <span class="contextual-header-subtitle">Aksesibilitas Umpan Balik Visual Realtime &bull; Shortcut: <kbd class="kbd-badge">V</kbd></span>
               </div>
 
-              <!-- Status Indicator & Close Button -->
-              <div class="voice-status-group">
+              <!-- Status Indicator -->
+              <div class="contextual-header-actions voice-status-group">
                 <span id="voiceStatusBadge" class="badge badge-ready">
                   <span class="badge-dot"></span>
                   <span id="voiceStatusText">Ready</span>
                 </span>
-                <button type="button" class="btn-close-contextual-panel" data-close-tool="voice" aria-label="Close Voice panel" title="Tutup panel Voice">✕</button>
               </div>
+
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="voice" aria-label="Close Voice panel" title="Tutup panel Voice">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <!-- Controls Grid -->
@@ -1262,30 +1301,34 @@
                3. V1.1 OBJECT MEMORY PANEL
                ================================================================ -->
           <div id="objectMemoryPanel" class="contextual-panel object-memory-panel" role="tabpanel" aria-labelledby="toolBtnMemory" aria-hidden="true" aria-label="Object Memory Controls">
-            <div class="memory-header-row">
-              <div class="memory-title-group">
-                <div class="memory-brain-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04"></path>
-                    <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04"></path>
-                  </svg>
+            <div class="contextual-panel-header memory-header-row">
+              <div class="contextual-header-content">
+                <div class="contextual-header-title-row">
+                  <span class="contextual-header-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.04"></path>
+                      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.04"></path>
+                    </svg>
+                  </span>
+                  <h3 class="contextual-header-title">OBJECT MEMORY</h3>
+                  <span class="contextual-version-badge">v2.0.0</span>
                 </div>
-                <div class="memory-title-texts">
-                  <h3 class="memory-title">🧠 OBJECT MEMORY <span class="version-tag">v2.0.0</span></h3>
-                  <span class="memory-subtitle">Memori temporal &amp; spasial objek lokal &bull; Melacak riwayat kemunculan &amp; posisi</span>
-                </div>
+                <span class="contextual-header-subtitle">Memori temporal &amp; spasial objek lokal &bull; Melacak riwayat kemunculan &amp; posisi</span>
               </div>
 
               <!-- Memory Stats Badges & Actions -->
-              <div class="memory-header-actions">
+              <div class="contextual-header-actions memory-header-actions">
                 <span class="badge badge-ready">
                   <span id="memoryRecordsCount">0</span> records
                 </span>
                 <button type="button" id="btnClearObjectMemory" class="btn btn-sm btn-outline btn-clear-memory" title="Kosongkan seluruh memori sesi objek">
                   🗑 Clear Memory
                 </button>
-                <button type="button" class="btn-close-contextual-panel" data-close-tool="memory" aria-label="Close Memory panel" title="Tutup panel Memory">✕</button>
               </div>
+
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="memory" aria-label="Close Memory panel" title="Tutup panel Memory">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <div class="memory-grid">
@@ -1324,30 +1367,34 @@
                4. V1.2 PERSONAL OBJECTS PANEL (PERSONALIZED RECOGNITION)
                ================================================================ -->
           <div id="personalObjectsPanel" class="contextual-panel personal-objects-panel" role="tabpanel" aria-labelledby="toolBtnPersonal" aria-hidden="true" aria-label="Personal Objects Controls">
-            <div class="personal-header-row">
-              <div class="personal-title-group">
-                <div class="personal-badge-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                  </svg>
+            <div class="contextual-panel-header personal-header-row">
+              <div class="contextual-header-content">
+                <div class="contextual-header-title-row">
+                  <span class="contextual-header-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                      <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                  </span>
+                  <h3 class="contextual-header-title">PERSONAL OBJECTS</h3>
+                  <span class="contextual-version-badge">v2.0.0</span>
                 </div>
-                <div class="personal-title-texts">
-                  <h3 class="personal-title">🏷 PERSONAL OBJECTS <span class="version-tag">v2.0.0</span></h3>
-                  <span class="personal-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
-                </div>
+                <span class="contextual-header-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
               </div>
 
               <!-- Header Actions -->
-              <div class="personal-header-actions">
+              <div class="contextual-header-actions personal-header-actions">
                 <span class="badge badge-ready">
                   <span id="personalObjectsCount">0</span> terdaftar
                 </span>
                 <button type="button" id="btnToggleEnrollForm" class="btn btn-sm btn-primary">
                   + Register Object
                 </button>
-                <button type="button" class="btn-close-contextual-panel" data-close-tool="personal" aria-label="Close Personal panel" title="Tutup panel Personal">✕</button>
               </div>
+
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="personal" aria-label="Close Personal panel" title="Tutup panel Personal">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <!-- Enrollment Form (Collapsible) -->
@@ -1434,31 +1481,35 @@
                5. V1.3.1 SAFETY ALERTS PANEL (SAFETY ALERT MANAGER)
                ================================================================ -->
           <div id="safetyAlertsPanel" class="contextual-panel safety-alerts-panel" role="tabpanel" aria-labelledby="toolBtnSafety" aria-hidden="true" aria-label="Safety Alerts System">
-            <div class="safety-alerts-header-row">
-              <div class="safety-alerts-title-group">
-                <div class="safety-alert-icon" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
+            <div class="contextual-panel-header safety-alerts-header-row">
+              <div class="contextual-header-content">
+                <div class="contextual-header-title-row">
+                  <span class="contextual-header-icon text-amber" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </span>
+                  <h3 class="contextual-header-title">SAFETY ALERTS</h3>
+                  <span class="contextual-version-badge">v2.0.0</span>
                 </div>
-                <div class="safety-alerts-title-texts">
-                  <h3 class="safety-alerts-title">⚠️ SAFETY ALERTS <span class="version-tag">v2.0.0</span></h3>
-                  <span class="safety-alerts-subtitle">Sistem peringatan keselamatan objek &amp; anomali pelacakan &bull; Terintegrasi VoiceEngine</span>
-                </div>
+                <span class="contextual-header-subtitle">Sistem peringatan keselamatan objek &amp; anomali pelacakan &bull; Terintegrasi VoiceEngine</span>
               </div>
 
               <!-- Header Actions -->
-              <div class="safety-alerts-header-actions">
+              <div class="contextual-header-actions safety-alerts-header-actions">
                 <span class="badge badge-ready">
                   <span id="safetyAlertsCount">0</span> alert aktif
                 </span>
                 <button type="button" id="btnClearSafetyAlerts" class="btn btn-sm btn-outline btn-clear-alerts" title="Hapus semua riwayat alert keselamatan">
                   🗑 Clear Alerts
                 </button>
-                <button type="button" class="btn-close-contextual-panel" data-close-tool="safety" aria-label="Close Safety panel" title="Tutup panel Safety">✕</button>
               </div>
+
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="safety" aria-label="Close Safety panel" title="Tutup panel Safety">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <!-- User Configuration Controls Grid -->
@@ -1507,15 +1558,24 @@
                6. SETTINGS & ADVANCED DIAGNOSTICS PANEL (V1.5 PHASE E)
                ================================================================ -->
           <div id="settingsPanel" class="contextual-panel settings-panel" role="tabpanel" aria-labelledby="toolBtnSettings" aria-hidden="true" aria-label="Detection Settings and Advanced Controls">
-            <div class="panel-header-row">
-              <div class="panel-title-group">
-                <span class="panel-icon">⚙️</span>
-                <div class="panel-title-texts">
-                  <h3 class="panel-title">Settings &amp; Diagnostics</h3>
-                  <span class="panel-subtitle">Konfigurasi inferensi, model, threshold deteksi, &amp; diagnostik kamera</span>
+            <div class="contextual-panel-header panel-header-row">
+              <div class="contextual-header-content">
+                <div class="contextual-header-title-row">
+                  <span class="contextual-header-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                  </span>
+                  <h3 class="contextual-header-title">Settings &amp; Diagnostics</h3>
+                  <span class="contextual-version-badge">v2.0.0</span>
                 </div>
+                <span class="contextual-header-subtitle">Konfigurasi inferensi, model, threshold deteksi, &amp; diagnostik kamera</span>
               </div>
-              <button type="button" class="btn-close-contextual-panel" data-close-tool="settings" aria-label="Close Settings panel" title="Tutup panel Settings">✕</button>
+
+              <button type="button" class="btn-close-contextual-panel" data-close-tool="settings" aria-label="Close Settings panel" title="Tutup panel Settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <details class="advanced-controls-details">
@@ -2812,6 +2872,136 @@
       <div class="modal-footer" style="justify-content: center; gap: 10px;">
         <button type="button" id="btnDevNoticeHome" class="btn btn-outline">Kembali ke Beranda</button>
         <button type="button" id="btnDevNoticeLogin" class="btn btn-primary">Masuk sebagai Developer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       VISIONX APP SETTINGS MODAL (I4: Akun, Privasi & Data, Tentang, Developer)
+       ========================================================================= -->
+  <div id="appSettingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal-card app-settings-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="settings-modal-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <h3 id="settingsModalTitle" class="modal-title">Pengaturan VisionX</h3>
+        </div>
+        <button type="button" id="btnCloseSettingsModal" class="btn-close-modal" aria-label="Tutup Pengaturan">✕</button>
+      </div>
+
+      <!-- Settings Tab Navigation -->
+      <div class="settings-tabs-nav" role="tablist">
+        <button type="button" class="settings-tab-btn active" data-tab="account" role="tab">Akun</button>
+        <button type="button" class="settings-tab-btn" data-tab="privacy" role="tab">Privasi &amp; Data</button>
+        <button type="button" class="settings-tab-btn" data-tab="about" role="tab">Tentang</button>
+        <button type="button" class="settings-tab-btn hidden" id="tabBtnDeveloper" data-tab="developer" role="tab">Akses Cepat</button>
+      </div>
+
+      <div class="modal-body app-settings-modal-body">
+        <!-- Tab 1: Akun -->
+        <div class="settings-tab-panel active" id="settingsTabAccount" role="tabpanel">
+          <div class="settings-section">
+            <h4 class="settings-section-title">Status Akun</h4>
+            <div class="settings-user-card">
+              <div class="settings-avatar-circle" id="settingsAvatarLetter">U</div>
+              <div class="settings-user-meta">
+                <div class="settings-user-email" id="settingsUserEmail">user@visionx.id</div>
+                <div class="settings-role-badge-row">
+                  <span class="settings-role-badge" id="settingsUserRole">Pengguna</span>
+                  <span class="settings-status-online-tag">Tersambung</span>
+                </div>
+              </div>
+            </div>
+            <div class="settings-action-row">
+              <button type="button" id="btnSettingsAuthAction" class="btn btn-primary btn-sm">Keluar Akun</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Privasi & Data -->
+        <div class="settings-tab-panel" id="settingsTabPrivacy" role="tabpanel">
+          <div class="settings-section">
+            <h4 class="settings-section-title">Kebijakan Privasi &amp; Pemrosesan Data</h4>
+            <div class="settings-info-box">
+              <p class="settings-info-text">
+                <strong>1. Eksekusi Lokal:</strong> Seluruh inferensi computer vision, deteksi objek (YOLOv8), dan pelacakan spasial berjalan langsung di browser perangkat Anda tanpa mengunggah feed kamera ke server.
+              </p>
+              <p class="settings-info-text">
+                <strong>2. Pengiriman Snapshot:</strong> Citra snapshot hanya dikirim ke backend VisionX saat Anda secara eksplisit mengklik kirim di obrolan untuk diproses oleh asisten AI multimodal.
+              </p>
+              <p class="settings-info-text">
+                <strong>3. Penyimpanan Data:</strong> Riwayat percakapan disimpan secara aman di IndexedDB perangkat lokal Anda.
+              </p>
+            </div>
+            <div class="settings-danger-zone">
+              <div class="danger-zone-header">
+                <h5>Manajemen Riwayat &amp; Penyimpanan</h5>
+                <p>Menghapus seluruh riwayat percakapan yang tersimpan di IndexedDB lokal.</p>
+              </div>
+              <button type="button" id="btnSettingsClearAllHistory" class="btn btn-danger btn-sm">
+                Hapus Semua Riwayat Percakapan
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Tentang -->
+        <div class="settings-tab-panel" id="settingsTabAbout" role="tabpanel">
+          <div class="settings-section">
+            <div class="about-hero">
+              <div class="about-logo">
+                <svg width="40" height="40" viewBox="0 0 32 32" fill="none">
+                  <rect width="32" height="32" rx="8" fill="#18181B"/>
+                  <circle cx="16" cy="16" r="6" stroke="#FFFFFF" stroke-width="2"/>
+                  <path d="M16 6V8M16 24V26M6 16H8M24 16H26" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="16" cy="16" r="2.5" fill="#38BDF8"/>
+                </svg>
+              </div>
+              <h4 class="about-title">VisionX</h4>
+              <span class="about-version">Versi 2.0.0 (Edge AI Release)</span>
+              <p class="about-desc">
+                Platform asisten computer vision berbasis web dengan arsitektur Edge AI, multimodal conversational intelligence, dan privasi terdesentralisasi.
+              </p>
+              <div class="about-links">
+                <a href="https://github.com/Willkycmz/AI-Detector-Fun-Project-" target="_blank" rel="noopener noreferrer" class="about-link-btn">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                  <span>GitHub Repository</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Akses Cepat (Developer Only) -->
+        <div class="settings-tab-panel" id="settingsTabDeveloper" role="tabpanel">
+          <div class="settings-section">
+            <h4 class="settings-section-title">Akses Khusus Developer</h4>
+            <p class="settings-section-desc">Peralatan lanjutan untuk kurasi dataset dan pelatihan identitas wajah.</p>
+            <div class="settings-dev-grid">
+              <button type="button" id="btnSettingsOpenDatasetMgr" class="settings-dev-card">
+                <div class="dev-card-icon">📁</div>
+                <div class="dev-card-content">
+                  <span class="dev-card-title">Dataset Manager</span>
+                  <span class="dev-card-sub">Manajemen koleksi citra YOLO &amp; dataset</span>
+                </div>
+              </button>
+              <button type="button" id="btnSettingsOpenIdentityLab" class="settings-dev-card">
+                <div class="dev-card-icon">👤</div>
+                <div class="dev-card-content">
+                  <span class="dev-card-title">Identity Lab</span>
+                  <span class="dev-card-sub">Pendaftaran wajah &amp; embedding pengenalan</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

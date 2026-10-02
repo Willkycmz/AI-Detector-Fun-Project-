@@ -624,7 +624,28 @@ class VisionXWebApp {
       userAvatarDropdown: document.getElementById('userAvatarDropdown'),
       dropdownUserEmail: document.getElementById('dropdownUserEmail'),
       dropdownUserRoleBadge: document.getElementById('dropdownUserRoleBadge'),
+      btnOpenSettingsModal: document.getElementById('btnOpenSettingsModal'),
       btnHeaderSignOut: document.getElementById('btnHeaderSignOut'),
+
+      // App Settings Modal (I4)
+      appSettingsModal: document.getElementById('appSettingsModal'),
+      btnCloseSettingsModal: document.getElementById('btnCloseSettingsModal'),
+      settingsTabBtns: document.querySelectorAll('.settings-tab-btn'),
+      settingsTabPanels: document.querySelectorAll('.settings-tab-panel'),
+      settingsAvatarLetter: document.getElementById('settingsAvatarLetter'),
+      settingsUserEmail: document.getElementById('settingsUserEmail'),
+      settingsUserRole: document.getElementById('settingsUserRole'),
+      btnSettingsAuthAction: document.getElementById('btnSettingsAuthAction'),
+      btnSettingsClearAllHistory: document.getElementById('btnSettingsClearAllHistory'),
+      tabBtnDeveloper: document.getElementById('tabBtnDeveloper'),
+      btnSettingsOpenDatasetMgr: document.getElementById('btnSettingsOpenDatasetMgr'),
+      btnSettingsOpenIdentityLab: document.getElementById('btnSettingsOpenIdentityLab'),
+
+      // Privacy Popover (I1)
+      btnPrivacyPopoverToggle: document.getElementById('btnPrivacyPopoverToggle'),
+      privacyPopover: document.getElementById('privacyPopover'),
+      btnClosePrivacyPopover: document.getElementById('btnClosePrivacyPopover'),
+      btnPrivacyGoToSettings: document.getElementById('btnPrivacyGoToSettings'),
 
       // Developer Route Guard Modal (Phase 2 F5)
       developerNoticeModal: document.getElementById('developerNoticeModal'),
@@ -1230,15 +1251,19 @@ class VisionXWebApp {
       this.elements.btnSubmitAuthModal.addEventListener('click', () => this.handleAuthSubmit());
     }
 
-    // Header User Avatar & Dropdown Menu (F3)
+    // Header User Avatar & Dropdown Menu (F3 & I4)
     if (this.elements.headerUserAvatar) {
       this.elements.headerUserAvatar.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (!authService.isAuthenticated()) {
-          this.openAuthModal();
-        } else {
-          this.elements.userAvatarDropdown?.classList.toggle('hidden');
-        }
+        this.elements.userAvatarDropdown?.classList.toggle('hidden');
+      });
+    }
+    if (this.elements.btnOpenSettingsModal) {
+      this.elements.btnOpenSettingsModal.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.elements.userAvatarDropdown?.classList.add('hidden');
+        this.openSettingsModal('account');
       });
     }
     if (this.elements.btnHeaderSignOut) {
@@ -1246,9 +1271,13 @@ class VisionXWebApp {
         e.preventDefault();
         e.stopPropagation();
         this.elements.userAvatarDropdown?.classList.add('hidden');
-        await authService.signOut();
-        this.updateAuthStatusUI();
-        this.showSuccess('Anda telah keluar.');
+        if (authService.isAuthenticated()) {
+          await authService.signOut();
+          this.updateAuthStatusUI();
+          this.showSuccess('Anda telah keluar.');
+        } else {
+          this.openAuthModal();
+        }
       });
     }
     document.addEventListener('click', (e) => {
@@ -1259,7 +1288,91 @@ class VisionXWebApp {
       ) {
         this.elements.userAvatarDropdown.classList.add('hidden');
       }
+      if (
+        this.elements.privacyPopover &&
+        !this.elements.privacyPopover.classList.contains('hidden') &&
+        !this.elements.privacyPopover.contains(e.target) &&
+        !this.elements.btnPrivacyPopoverToggle?.contains(e.target)
+      ) {
+        this.elements.privacyPopover.classList.add('hidden');
+      }
     });
+
+    // Privacy Popover Listeners (I1)
+    if (this.elements.btnPrivacyPopoverToggle) {
+      this.elements.btnPrivacyPopoverToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.elements.privacyPopover?.classList.toggle('hidden');
+      });
+    }
+    if (this.elements.btnClosePrivacyPopover) {
+      this.elements.btnClosePrivacyPopover.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.elements.privacyPopover?.classList.add('hidden');
+      });
+    }
+    if (this.elements.btnPrivacyGoToSettings) {
+      this.elements.btnPrivacyGoToSettings.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.elements.privacyPopover?.classList.add('hidden');
+        this.openSettingsModal('privacy');
+      });
+    }
+
+    // App Settings Modal Listeners (I4)
+    if (this.elements.btnCloseSettingsModal) {
+      this.elements.btnCloseSettingsModal.addEventListener('click', () => {
+        this.closeSettingsModal();
+      });
+    }
+    if (this.elements.appSettingsModal) {
+      this.elements.appSettingsModal.addEventListener('click', (e) => {
+        if (e.target === this.elements.appSettingsModal) {
+          this.closeSettingsModal();
+        }
+      });
+    }
+    if (this.elements.settingsTabBtns) {
+      this.elements.settingsTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabName = btn.dataset.tab;
+          if (tabName) this.switchSettingsTab(tabName);
+        });
+      });
+    }
+    if (this.elements.btnSettingsAuthAction) {
+      this.elements.btnSettingsAuthAction.addEventListener('click', async () => {
+        if (authService.isAuthenticated()) {
+          this.closeSettingsModal();
+          await authService.signOut();
+          this.updateAuthStatusUI();
+          this.showSuccess('Anda telah keluar.');
+        } else {
+          this.closeSettingsModal();
+          this.openAuthModal();
+        }
+      });
+    }
+    if (this.elements.btnSettingsClearAllHistory) {
+      this.elements.btnSettingsClearAllHistory.addEventListener('click', async () => {
+        this.closeSettingsModal();
+        if (this.chatController) {
+          await this.chatController.clearAllHistory();
+        }
+      });
+    }
+    if (this.elements.btnSettingsOpenDatasetMgr) {
+      this.elements.btnSettingsOpenDatasetMgr.addEventListener('click', () => {
+        this.closeSettingsModal();
+        this.setMode('collection');
+      });
+    }
+    if (this.elements.btnSettingsOpenIdentityLab) {
+      this.elements.btnSettingsOpenIdentityLab.addEventListener('click', () => {
+        this.closeSettingsModal();
+        this.setMode('identity');
+      });
+    }
 
     // Developer Notice Modal Buttons (F5)
     if (this.elements.btnCloseDevNotice) {
@@ -4709,6 +4822,62 @@ class VisionXWebApp {
       this.chatController.setUserId(authService.getUserId());
       this.chatController.updateAuthStatus();
     }
+
+    // 6. Update Settings Modal UI (I4)
+    this.updateSettingsModalUI();
+  }
+
+  // --- APP SETTINGS MODAL LIFECYCLE (I4) ---
+  openSettingsModal(defaultTab = 'account') {
+    if (!this.elements.appSettingsModal) return;
+    this.updateSettingsModalUI();
+    this.switchSettingsTab(defaultTab);
+    this.elements.appSettingsModal.classList.remove('hidden');
+  }
+
+  closeSettingsModal() {
+    if (!this.elements.appSettingsModal) return;
+    this.elements.appSettingsModal.classList.add('hidden');
+  }
+
+  switchSettingsTab(tabName) {
+    const btns = this.elements.settingsTabBtns || document.querySelectorAll('.settings-tab-btn');
+    const panels = this.elements.settingsTabPanels || document.querySelectorAll('.settings-tab-panel');
+
+    btns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+
+    const targetPanelId = `settingsTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`;
+    panels.forEach(panel => {
+      panel.classList.toggle('active', panel.id === targetPanelId);
+    });
+  }
+
+  updateSettingsModalUI() {
+    const isAuthed = authService.isAuthenticated();
+    const role = authService.getRole();
+    const user = authService.getUser();
+    const email = user?.email || (isAuthed ? 'developer@visionx.local' : 'Tamu (Belum Masuk)');
+    const isDev = (role === 'developer');
+
+    if (this.elements.settingsAvatarLetter) {
+      this.elements.settingsAvatarLetter.textContent = (email[0] || 'U').toUpperCase();
+    }
+    if (this.elements.settingsUserEmail) {
+      this.elements.settingsUserEmail.textContent = email;
+    }
+    if (this.elements.settingsUserRole) {
+      this.elements.settingsUserRole.textContent = isDev ? 'Developer' : (isAuthed ? 'Pengguna' : 'Tamu');
+      this.elements.settingsUserRole.className = `settings-role-badge ${isDev ? 'developer' : (isAuthed ? 'user' : 'guest')}`;
+    }
+    if (this.elements.btnSettingsAuthAction) {
+      this.elements.btnSettingsAuthAction.textContent = isAuthed ? 'Keluar Akun' : 'Masuk Akun';
+      this.elements.btnSettingsAuthAction.className = isAuthed ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm';
+    }
+    if (this.elements.tabBtnDeveloper) {
+      this.elements.tabBtnDeveloper.classList.toggle('hidden', !isDev);
+    }
   }
 
   switchAuthTab(tab) {
@@ -4961,12 +5130,25 @@ class VisionXWebApp {
         const eventsHtml = recentEvents.map(evt => {
           let tagClass = 'tag-updated';
           let tagText = 'UPDATE';
-          if (evt.type === 'OBJECT_ENTERED') { tagClass = 'tag-entered'; tagText = 'ENTER'; }
-          else if (evt.type === 'OBJECT_LEFT') { tagClass = 'tag-left'; tagText = 'LEFT'; }
-          else if (evt.type === 'OBJECT_RETURNED') { tagClass = 'tag-returned'; tagText = 'RETURN'; }
+          let iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>`;
+
+          if (evt.type === 'OBJECT_ENTERED') {
+            tagClass = 'tag-entered';
+            tagText = 'ENTER';
+            iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+          } else if (evt.type === 'OBJECT_LEFT') {
+            tagClass = 'tag-left';
+            tagText = 'LEFT';
+            iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+          } else if (evt.type === 'OBJECT_RETURNED') {
+            tagClass = 'tag-returned';
+            tagText = 'RETURN';
+            iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>`;
+          }
 
           return `
             <div class="memory-event-item">
+              <span class="memory-event-icon-badge ${tagClass}" title="${tagText}">${iconSvg}</span>
               <span class="memory-event-time">${evt.timeString || ''}</span>
               <span class="memory-event-tag ${tagClass}">${tagText}</span>
               <span class="memory-event-desc">${evt.description || ''}</span>
@@ -5165,8 +5347,11 @@ class VisionXWebApp {
                 </button>
                 <button type="button" class="btn btn-sm btn-outline text-danger"
                   onclick="window.visionXApp.deletePersonalObject('${obj.id}')"
-                  title="Hapus objek">
-                  🗑
+                  title="Hapus objek" aria-label="Hapus objek">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -5240,24 +5425,33 @@ class VisionXWebApp {
           second: '2-digit'
         });
 
+        const isLeft = (alert.type && alert.type.includes('LEFT')) || (alert.message && alert.message.includes('tidak lagi terlihat'));
+        const eventTypeClass = isLeft ? 'event-type-left' : 'event-type-update';
+        const eventIconSvg = isLeft
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+
         return `
-          <div class="safety-alert-card ${severityClass}" data-alert-id="${alert.id}">
+          <div class="safety-alert-card ${severityClass} ${eventTypeClass}" data-alert-id="${alert.id}">
             <div class="alert-card-header">
               <div class="alert-header-left">
-                <span class="alert-severity-badge ${badgeClass}">${alert.severity}</span>
-                <span class="alert-card-title">${alert.title || alert.objectName}</span>
+                <span class="alert-type-icon ${eventTypeClass}">${eventIconSvg}</span>
+                <span class="alert-severity-badge ${badgeClass}">${alert.severity || 'NORMAL'}</span>
+                <span class="alert-card-title">${alert.title || alert.objectName || 'Objek'}</span>
               </div>
               <div class="alert-card-actions">
                 <span class="alert-card-time">${timeStr}</span>
-                <button type="button" class="btn-dismiss-alert" onclick="window.visionXApp.dismissSafetyAlert('${alert.id}')" title="Dismiss alert">✕</button>
+                <button type="button" class="btn-dismiss-alert" onclick="window.visionXApp.dismissSafetyAlert('${alert.id}')" title="Dismiss alert" aria-label="Hapus peringatan">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
               </div>
             </div>
             <div class="alert-card-body">
               ${alert.message}
             </div>
             <div class="alert-card-footer">
-              <span>Event: ${alert.type}</span>
-              <span>Zona: ${alert.lastZone}</span>
+              <span class="alert-footer-chip">Event: <strong>${alert.type || 'ALERT'}</strong></span>
+              <span class="alert-footer-chip">Zona: <strong>${alert.lastZone || '-'}</strong></span>
             </div>
           </div>
         `;
@@ -5405,10 +5599,22 @@ class VisionXWebApp {
 window.addEventListener('DOMContentLoaded', () => {
   window.visionXApp = new VisionXWebApp();
 
-  // PWA Service Worker Registration
+  // PWA Service Worker: Hanya aktif di production (bukan localhost) agar tidak caching file dev
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('./sw.js').catch((err) => {
-      console.warn('[VisionX] SW register warning:', err);
-    });
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      navigator.serviceWorker.register('./sw.js').catch((err) => {
+        console.warn('[VisionX] SW register warning:', err);
+      });
+    } else {
+      // Di localhost: bersihkan service worker lama & cache browser agar perubahan langsung muncul
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      });
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          for (const key of keys) caches.delete(key);
+        });
+      }
+    }
   }
 });

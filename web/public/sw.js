@@ -40,8 +40,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Jangan sentuh request API gateway, SSE stream, atau external calls
-  if (url.pathname.startsWith('/api') || url.origin !== self.location.origin) {
+  // Jangan sentuh request API gateway, SSE stream, external calls, atau dev localhost
+  if (url.pathname.startsWith('/api') || url.origin !== self.location.origin || url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
     return;
   }
 

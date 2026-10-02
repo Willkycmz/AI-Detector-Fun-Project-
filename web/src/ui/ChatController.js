@@ -323,7 +323,12 @@ export class ChatController {
           <span class="item-label">${this._escapeAndFormatText(s.title || 'Percakapan')}</span>
           <span class="item-time">${timeText}</span>
         </div>
-        <button type="button" class="btn-delete-session" data-delete-id="${s.id}" title="Hapus percakapan" aria-label="Hapus percakapan">🗑️</button>
+        <button type="button" class="btn-delete-session" data-delete-id="${s.id}" title="Hapus percakapan" aria-label="Hapus percakapan">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
       `;
 
       // Klik sesi untuk load
@@ -996,10 +1001,17 @@ export class ChatController {
         <span class="message-timestamp">${this._formatTime(Date.now())}</span>
       </div>
       <div class="message-content" id="${turnId}_content">
-        <span class="streaming-cursor"></span>
+        <div class="thinking-indicator" id="${turnId}_thinking">
+          <div class="thinking-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <span class="thinking-text">VisionX sedang berpikir...</span>
+        </div>
       </div>
       <div class="message-meta-row" id="${turnId}_meta">
-        <span class="message-streaming-status">Sedang mengetik...</span>
+        <span class="message-streaming-status">Sedang berpikir...</span>
       </div>
     `;
 
@@ -1015,6 +1027,10 @@ export class ChatController {
     const contentEl = document.getElementById(`${turnId}_content`);
     if (contentEl) {
       contentEl.innerHTML = `${this._escapeAndFormatText(text)}<span class="streaming-cursor"></span>`;
+    }
+    const metaStatus = document.querySelector(`#${turnId}_meta .message-streaming-status`);
+    if (metaStatus && metaStatus.textContent !== 'Sedang mengetik...') {
+      metaStatus.textContent = 'Sedang mengetik...';
     }
   }
 
