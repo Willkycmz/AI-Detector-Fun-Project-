@@ -1,0 +1,39 @@
+{
+  "phase": "before",
+  "bug05": {
+    "viewBottom": 1322,
+    "navTop": 782,
+    "clearance": -540,
+    "scrollWidth": 370
+  },
+  "bug06": {
+    "overflowX": "auto",
+    "scrollWidth": 374,
+    "clientWidth": 357,
+    "scrollLeftBefore": 0,
+    "lastFullyVisible": true
+  },
+  "bug07": {
+    "isInteractive": false,
+    "popoverOpen": false,
+    "popoverInViewport": false,
+    "popoverTop": 0
+  },
+  "bug08": {
+    "home": {
+      "mode": "home",
+      "title": "",
+      "newChatVisible": true
+    },
+    "detection": {
+      "mode": "detection",
+      "title": "",
+      "newChatVisible": true
+    },
+    "readText": {
+      "mode": "read_text",
+      "title": "",
+      "newChatVisible": true
+    }
+  }
+}

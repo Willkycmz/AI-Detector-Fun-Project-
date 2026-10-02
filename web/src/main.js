@@ -699,6 +699,8 @@ class VisionXWebApp {
       headerServerStatusText: document.getElementById('headerServerStatusText'),
       headerStatusPopover: document.getElementById('headerStatusPopover'),
       btnCloseStatusPopover: document.getElementById('btnCloseStatusPopover'),
+      mobileStatusDot: document.getElementById('mobileStatusDot'),
+      mobileHeaderModeTitle: document.getElementById('mobileHeaderModeTitle'),
       appSidebar: document.getElementById('appSidebar'),
       mobileDrawerBackdrop: document.getElementById('mobileDrawerBackdrop') || document.getElementById('sidebarBackdrop'),
       btnToggleSidebar: document.getElementById('btnToggleSidebar') || document.getElementById('btnMobileMenu'),
@@ -911,6 +913,18 @@ class VisionXWebApp {
             this.elements.headerStatusPopover.classList.add('hidden');
           }
         }
+      });
+    }
+
+    // Reuse the system status details from the desktop header on mobile.
+    if (this.elements.mobileStatusDot && this.elements.headerStatusPopover) {
+      this.elements.mobileStatusDot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.elements.headerStatusPopover.classList.add('mobile-status-popover');
+        if (this.elements.headerStatusPopover.parentElement !== document.body) {
+          document.body.appendChild(this.elements.headerStatusPopover);
+        }
+        this.elements.headerStatusPopover.classList.toggle('hidden');
       });
     }
 
@@ -2076,6 +2090,14 @@ class VisionXWebApp {
     };
     if (this.elements.headerBreadcrumbTitle) {
       this.elements.headerBreadcrumbTitle.textContent = breadcrumbs[mode] || 'Asisten AI';
+    }
+    if (this.elements.mobileHeaderModeTitle) {
+      this.elements.mobileHeaderModeTitle.textContent = breadcrumbs[mode] || 'Asisten AI';
+    }
+    if (this.elements.btnMobileNewChat) {
+      const showMobileNewChat = mode === 'home';
+      this.elements.btnMobileNewChat.classList.toggle('hidden', !showMobileNewChat);
+      this.elements.btnMobileNewChat.setAttribute('aria-hidden', showMobileNewChat ? 'false' : 'true');
     }
 
     // --- Global Mode attribute on container & body for CSS scoping ---

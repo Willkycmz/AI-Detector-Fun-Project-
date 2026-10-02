@@ -1261,6 +1261,23 @@ body.theme-dark {
   flex-shrink: 0;
 }
 
+.mobile-status-dot-button {
+  display: inline-block;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.header-status-popover.mobile-status-popover {
+  position: fixed;
+  top: 60px;
+  right: 10px;
+  left: 10px;
+  width: auto;
+  max-width: none;
+  z-index: 1000;
+}
+
 .status-dot.green { background-color: var(--success); }
 .status-dot.emerald { background-color: #10B981; }
 .status-dot.cyan { background-color: var(--accent-cyan); }
@@ -6561,6 +6578,39 @@ body.theme-dark .success-banner {
     gap: 5px;
   }
 
+  .mobile-brand-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .mobile-brand-title .brand-tag {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-status-dot-button {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
+  }
+
+  .settings-tabs-nav {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .contextual-tools-view {
+    padding-bottom: calc(68px + max(8px, env(safe-area-inset-bottom))) !important;
+    box-sizing: border-box;
+  }
+
   .app-header {
     display: none !important;
   }
@@ -7776,6 +7826,7 @@ body.theme-dark .success-banner {
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
+  flex: 0 0 auto;
   transition: all 0.15s ease;
 }
 

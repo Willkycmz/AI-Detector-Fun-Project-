@@ -1,0 +1,44 @@
+{
+  "phase": "after",
+  "bug05": {
+    "viewBottom": 768,
+    "navTop": 782,
+    "clearance": 14,
+    "panelBottomClearance": 76,
+    "paddingBottom": 76,
+    "navHeight": 62,
+    "hasSafeBottomClearance": true,
+    "workspaceScrolledToBottom": true,
+    "scrollWidth": 370
+  },
+  "bug06": {
+    "overflowX": "auto",
+    "scrollWidth": 374,
+    "clientWidth": 357,
+    "scrollLeftBefore": 0,
+    "lastFullyVisible": true
+  },
+  "bug07": {
+    "isInteractive": true,
+    "popoverOpen": true,
+    "popoverInViewport": true,
+    "popoverTop": 60
+  },
+  "bug08": {
+    "home": {
+      "mode": "home",
+      "title": "Asisten AI",
+      "newChatVisible": true
+    },
+    "detection": {
+      "mode": "detection",
+      "title": "Deteksi Objek",
+      "newChatVisible": false
+    },
+    "readText": {
+      "mode": "read_text",
+      "title": "Pembaca Teks (OCR)",
+      "newChatVisible": false
+    }
+  }
+}
