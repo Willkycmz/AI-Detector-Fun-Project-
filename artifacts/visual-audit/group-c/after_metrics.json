@@ -1,0 +1,111 @@
+{
+  "phase": "after",
+  "bug09": {
+    "390": {
+      "height": 36,
+      "width": 88,
+      "text": "Lupa Password?",
+      "textIntact": true,
+      "visible": true
+    },
+    "1280": {
+      "height": 36,
+      "width": 100,
+      "text": "Lupa Password?",
+      "textIntact": true,
+      "visible": true
+    },
+    "1920": {
+      "height": 36,
+      "width": 100,
+      "text": "Lupa Password?",
+      "textIntact": true,
+      "visible": true
+    }
+  },
+  "bug10": {
+    "name": "dataset_gambar_produk_dengan_nama_sangat_panjang_2026.jpg",
+    "title": "dataset_gambar_produk_dengan_nama_sangat_panjang_2026.jpg",
+    "titleMatches": true,
+    "ellipsis": true,
+    "contained": true
+  },
+  "bug11": {
+    "1280": {
+      "marginTop": 12,
+      "marginBottom": 24,
+      "logoWidth": 44
+    },
+    "1920": {
+      "marginTop": 12,
+      "marginBottom": 24,
+      "logoWidth": 44
+    },
+    "mobile": {
+      "promptsVisibleWithoutScroll": true,
+      "promptTop": 541,
+      "logoWidth": 44,
+      "heroMarginTop": 20,
+      "heroMarginBottom": 20
+    }
+  },
+  "bug12": {
+    "verification": "DOM manipulation per acceptance note",
+    "idle": {
+      "stop": {
+        "width": 44,
+        "height": 44,
+        "visibility": "hidden",
+        "position": "static",
+        "tabIndex": -1
+      },
+      "send": {
+        "left": 323,
+        "top": 723
+      },
+      "composer": {
+        "left": 0,
+        "top": 659
+      }
+    },
+    "active": {
+      "stop": {
+        "width": 44,
+        "height": 44,
+        "visibility": "visible",
+        "position": "static",
+        "tabIndex": 0
+      },
+      "send": {
+        "left": 323,
+        "top": 723
+      },
+      "composer": {
+        "left": 0,
+        "top": 659
+      }
+    },
+    "sendShift": {
+      "left": 0,
+      "top": 0
+    },
+    "composerShift": {
+      "left": 0,
+      "top": 0
+    },
+    "stableWithin2px": true,
+    "idleNotFocusable": true,
+    "activeVisibleAndFocusable": true
+  },
+  "screenshots": [
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug09_auth_1920.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug09_auth_1280.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug09_auth_390.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug10_dataset_1920.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug10_dataset_1280.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug11_home_390.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_home_1920.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_home_1280.png",
+    "C:\\Users\\advan\\Documents\\VisionX\\artifacts\\visual-audit\\group-c\\after_bug12_composer_390.png"
+  ]
+}

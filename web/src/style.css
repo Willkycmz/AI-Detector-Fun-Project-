@@ -2630,10 +2630,24 @@ body.theme-dark .message-error-bubble .message-content {
   display: none !important;
 }
 
-.btn-stop-gen {
+/* BUG-12: reserve the stop control's slot without changing composer flow while idle */
+.chat-input-dock .btn-stop-gen {
+  visibility: hidden;
+  position: static;
+  pointer-events: none;
+}
+
+.chat-input-dock .btn-stop-gen.is-streaming {
+  visibility: visible !important;
+  position: static;
+  pointer-events: auto;
+}
+
+.chat-input-dock .btn-stop-gen {
   background: rgba(239, 68, 68, 0.18) !important;
   border: 1px solid rgba(239, 68, 68, 0.45) !important;
   color: #ef4444 !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease !important;
 }
 
 .btn-stop-gen:hover {
@@ -5366,6 +5380,15 @@ body.theme-dark .text-input:focus {
   max-width: 100%;
 }
 
+/* BUG-10: keep long dataset names contained while exposing the full name via title */
+.dataset-item-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
+}
+
 .manager-card-meta {
   display: flex;
   align-items: center;
@@ -7330,7 +7353,9 @@ body.theme-dark .success-banner {
 .auth-link-btn {
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 8px 4px;
+  min-height: 36px;
+  box-sizing: border-box;
   color: var(--primary);
   font-size: 0.8rem;
   font-weight: 500;

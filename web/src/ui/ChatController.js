@@ -1239,7 +1239,9 @@ export class ChatController {
       sendButton.disabled = isBusy;
     }
     if (stopButton) {
-      stopButton.classList.toggle('hidden', !isBusy);
+      stopButton.classList.toggle('is-streaming', isBusy);
+      stopButton.setAttribute('aria-hidden', String(!isBusy));
+      stopButton.tabIndex = isBusy ? 0 : -1;
     }
     if (inputElement && !isBusy) {
       inputElement.disabled = false;

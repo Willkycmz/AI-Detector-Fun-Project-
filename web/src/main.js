@@ -2531,7 +2531,7 @@ class VisionXWebApp {
           <!-- Metadata & Footer (Bawah): Padding 'p-3 flex flex-col gap-1.5' -->
           <div class="manager-card-body p-3 flex flex-col gap-1.5 flex-1 justify-between">
             <div>
-              <span class="manager-card-filename truncate text-xs font-medium text-slate-200 block" title="${it.filename}">
+              <span class="manager-card-filename dataset-item-name truncate text-xs font-medium text-slate-200 block" title="${it.filename}">
                 ${it.filename}
               </span>
               <div class="manager-card-meta flex items-center justify-between text-[11px] text-slate-400 mt-1">
