@@ -1468,8 +1468,15 @@
                   </span>
                   <h3 class="contextual-header-title">PERSONAL OBJECTS</h3>
                   <span class="contextual-version-badge">v2.0.0</span>
+                  <span id="personalUserBadge" class="personal-user-badge" title="Database terisolasi untuk akun ini">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span id="personalUserLabel">Guest</span>
+                  </span>
                 </div>
-                <span class="contextual-header-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Local-first visual similarity</span>
+                <span class="contextual-header-subtitle">Kenali barang pribadi Anda tanpa retraining model &bull; Database terisolasi per akun user</span>
               </div>
 
               <!-- Header Actions -->
@@ -1490,58 +1497,88 @@
             <!-- Enrollment Form (Collapsible) -->
             <div id="enrollmentFormSection" class="enrollment-form-section hidden">
               <div class="enrollment-card">
-                <h4 class="enrollment-title">Daftarkan Objek Personal Baru</h4>
+                <div class="enrollment-card-header">
+                  <div class="enrollment-card-title-group">
+                    <span class="enrollment-card-icon">✨</span>
+                    <h4 class="enrollment-title">Daftarkan Objek Personal Baru</h4>
+                  </div>
+                  <span class="enrollment-card-badge">Zero Retraining</span>
+                </div>
+
                 <div class="enrollment-form-grid">
                   <div class="form-group">
-                    <label for="enrollObjectNameInput" class="form-label">Nama Personal:</label>
-                    <input type="text" id="enrollObjectNameInput" class="text-input" placeholder="Misal: My Laptop, Mouse Merah, Botol Biru" />
+                    <label for="enrollObjectNameInput" class="form-label">
+                      <span>Nama Personal:</span>
+                      <span class="form-label-hint">Nama unik barang</span>
+                    </label>
+                    <div class="input-with-icon">
+                      <span class="input-icon" aria-hidden="true">🏷️</span>
+                      <input type="text" id="enrollObjectNameInput" class="text-input" placeholder="Misal: My Laptop, Mouse Merah, Botol Biru" autocomplete="off" />
+                    </div>
                   </div>
                   <div class="form-group">
-                    <label for="enrollBaseClassSelect" class="form-label">Base Class YOLO:</label>
-                    <select id="enrollBaseClassSelect" class="select-control">
-                      <option value="laptop">laptop</option>
-                      <option value="mouse">mouse</option>
-                      <option value="bottle">bottle</option>
-                      <option value="cup">cup</option>
-                      <option value="keyboard">keyboard</option>
-                      <option value="cell_phone">cell_phone</option>
-                      <option value="book">book</option>
-                      <option value="person">person</option>
-                      <option value="chair">chair</option>
-                      <option value="backpack">backpack</option>
-                    </select>
+                    <label for="enrollBaseClassSelect" class="form-label">
+                      <span>Base Class YOLO:</span>
+                      <span class="form-label-hint">Kategori deteksi AI</span>
+                    </label>
+                    <div class="select-with-icon">
+                      <span class="input-icon" aria-hidden="true">🎯</span>
+                      <select id="enrollBaseClassSelect" class="select-control">
+                        <option value="laptop">laptop</option>
+                        <option value="mouse">mouse</option>
+                        <option value="bottle">bottle</option>
+                        <option value="cup">cup</option>
+                        <option value="keyboard">keyboard</option>
+                        <option value="cell_phone">cell_phone</option>
+                        <option value="book">book</option>
+                        <option value="person">person</option>
+                        <option value="chair">chair</option>
+                        <option value="backpack">backpack</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
                 <!-- References Capture/Upload Row -->
-                <div class="enrollment-ref-row">
-                  <div class="enrollment-ref-actions">
-                    <button type="button" id="btnCaptureRefCam" class="btn btn-sm btn-secondary" title="Ambil foto referensi dari video webcam saat ini">
-                      📸 Ambil Snapshot Kamera
-                    </button>
-                    <label class="btn btn-sm btn-outline file-upload-label">
-                      📁 Upload Foto
-                      <input type="file" id="inputRefFile" accept="image/*" class="hidden-file-input" />
-                    </label>
-                    <select id="refAngleSelect" class="select-control select-sm">
-                      <option value="front">Sudut: Depan (Front)</option>
-                      <option value="top">Sudut: Atas (Top)</option>
-                      <option value="side">Sudut: Samping (Side)</option>
-                      <option value="custom">Sudut: Lainnya</option>
-                    </select>
+                <div class="enrollment-ref-section">
+                  <div class="enrollment-ref-toolbar">
+                    <div class="enrollment-ref-actions">
+                      <button type="button" id="btnCaptureRefCam" class="btn btn-sm btn-secondary btn-ref-action" title="Ambil foto referensi dari video webcam saat ini">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        <span>Snapshot Kamera</span>
+                      </button>
+                      <label class="btn btn-sm btn-outline btn-ref-action file-upload-label" title="Unggah file foto dari perangkat">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span>Upload Foto</span>
+                        <input type="file" id="inputRefFile" accept="image/*" class="hidden-file-input" />
+                      </label>
+                    </div>
+                    <div class="enrollment-angle-wrapper">
+                      <label for="refAngleSelect" class="angle-label">Sudut:</label>
+                      <select id="refAngleSelect" class="select-control select-sm angle-select">
+                        <option value="front">Depan (Front)</option>
+                        <option value="top">Atas (Top)</option>
+                        <option value="side">Samping (Side)</option>
+                        <option value="custom">Lainnya</option>
+                      </select>
+                    </div>
                   </div>
 
                   <!-- References Preview Strip -->
                   <div id="enrollRefPreviewGallery" class="enroll-ref-gallery">
-                    <span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut).</span>
+                    <div class="empty-ref-placeholder">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                      <span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut untuk akurasi maksimal).</span>
+                    </div>
                   </div>
                 </div>
 
                 <div class="enrollment-btn-group">
-                  <button type="button" id="btnSaveEnrolledObject" class="btn btn-primary">
-                    Simpan Objek Personal
+                  <button type="button" id="btnSaveEnrolledObject" class="btn btn-primary btn-save-object">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <span>Simpan Objek Personal</span>
                   </button>
-                  <button type="button" id="btnCancelEnroll" class="btn btn-outline">
+                  <button type="button" id="btnCancelEnroll" class="btn btn-outline btn-cancel-object">
                     Batal
                   </button>
                 </div>
@@ -1550,19 +1587,40 @@
 
             <!-- Global Threshold Slider & Controls -->
             <div class="personal-controls-row">
-              <div class="slider-control-group">
-                <label for="personalMatchThresholdSlider" class="control-label">
-                  Similarity Threshold: <strong id="personalThresholdVal">0.75</strong>
-                </label>
-                <input type="range" id="personalMatchThresholdSlider" min="0.50" max="0.95" step="0.05" value="0.75" class="range-slider" />
+              <div class="slider-control-card">
+                <div class="slider-control-header">
+                  <div class="slider-title-group">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <label for="personalMatchThresholdSlider" class="control-label">Similarity Threshold</label>
+                  </div>
+                  <span class="threshold-pill"><span id="personalThresholdVal">0.75</span></span>
+                </div>
+                <div class="slider-input-wrapper">
+                  <span class="slider-bound-label">0.50</span>
+                  <input type="range" id="personalMatchThresholdSlider" min="0.50" max="0.95" step="0.05" value="0.75" class="range-slider personal-threshold-slider" />
+                  <span class="slider-bound-label">0.95</span>
+                </div>
+                <div class="threshold-hint-row">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                  <span class="threshold-hint">Skor kemiripan minimal untuk mengonfirmasi identitas personal. Nilai tinggi = makin ketat.</span>
+                </div>
               </div>
-              <span class="threshold-hint">Skor kemiripan minimal untuk mengonfirmasi identitas personal.</span>
             </div>
 
             <!-- Registered Objects List Cards -->
             <div id="personalObjectsList" class="personal-objects-grid">
               <div class="personal-empty-state">
-                <span>Belum ada objek personal terdaftar. Klik "+ Register Object" untuk mendaftarkan barang Anda.</span>
+                <div class="empty-state-icon-wrapper">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                  </svg>
+                </div>
+                <h5 class="empty-state-title">Belum Ada Objek Personal Terdaftar</h5>
+                <p class="empty-state-desc">Daftarkan barang berharga Anda (laptop, mouse, botol, dsb) agar dikenali khusus oleh VisionX AI.</p>
+                <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('btnToggleEnrollForm')?.click()">
+                  + Daftarkan Objek Sekarang
+                </button>
               </div>
             </div>
           </div>

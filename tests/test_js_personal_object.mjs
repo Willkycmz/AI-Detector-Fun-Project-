@@ -424,6 +424,84 @@ async function runTests() {
     passed++;
   }
 
+  // Test 14: Per-User Database Isolation & User Switching
+  {
+    process.stdout.write('• Testing: User Isolation - Database terisolasi per akun user tanpa tabrakan... ');
+    const userStorage = new MockStorage();
+
+    // User A mendaftarkan "Laptop User A"
+    const regUserA = new PersonalObjectRegistry({ storage: userStorage, userId: 'user_aaa' });
+    regUserA.register({
+      name: 'Laptop User A',
+      baseClass: 'laptop',
+      references: [{ id: 'ref_a1', angle: 'front', embedding: createNormalizedVector(1.1) }]
+    });
+
+    assert(regUserA.getUserId() === 'user_aaa', 'User ID harus user_aaa');
+    assert(regUserA.getAll().length === 1, 'User A harus memiliki 1 objek');
+    assert(regUserA.findByName('Laptop User A') !== null, 'Laptop User A harus ada di User A');
+
+    // User B mendaftarkan "Laptop User B" (di browser yang sama)
+    const regUserB = new PersonalObjectRegistry({ storage: userStorage, userId: 'user_bbb' });
+    assert(regUserB.getAll().length === 0, 'User B baru harus kosong, tidak ada collision dengan User A');
+    assert(regUserB.findByName('Laptop User A') === null, 'User B tidak boleh melihat objek milik User A');
+
+    regUserB.register({
+      name: 'Laptop User B',
+      baseClass: 'laptop',
+      references: [{ id: 'ref_b1', angle: 'front', embedding: createNormalizedVector(2.2) }]
+    });
+    assert(regUserB.getAll().length === 1, 'User B harus memiliki 1 objek');
+    assert(regUserB.findByName('Laptop User B') !== null, 'Laptop User B harus ada di User B');
+
+    // Switch namespace dinamis pada regUserA ke user_bbb
+    regUserA.setUserId('user_bbb');
+    assert(regUserA.getUserId() === 'user_bbb', 'User ID harus berubah ke user_bbb');
+    assert(regUserA.findByName('Laptop User B') !== null, 'Setelah switch ke User B, harus melihat objek User B');
+    assert(regUserA.findByName('Laptop User A') === null, 'Setelah switch ke User B, tidak boleh melihat objek User A');
+
+    // Switch kembali ke user_aaa
+    regUserA.setUserId('user_aaa');
+    assert(regUserA.findByName('Laptop User A') !== null, 'Setelah switch kembali ke User A, objek User A utuh');
+    assert(regUserA.findByName('Laptop User B') === null, 'Objek User B tidak tercampur');
+
+    console.log('✅ PASSED');
+    passed++;
+  }
+
+  // Test 15: Legacy Migration
+  {
+    process.stdout.write('• Testing: Legacy Migration - Migrasi data global legacy ke namespace akun... ');
+    const migStorage = new MockStorage();
+    // Simpan data di key legacy lama
+    const legacyPayload = {
+      version: '1.2',
+      updatedAt: Date.now(),
+      objects: [{
+        id: 'po_legacy_1',
+        name: 'Legacy Mouse',
+        baseClass: 'mouse',
+        references: [{ id: 'ref_leg', angle: 'front', embedding: createNormalizedVector(3.3) }],
+        threshold: 0.75,
+        enabled: true
+      }]
+    };
+    migStorage.setItem('visionx_personal_objects_v1', JSON.stringify(legacyPayload));
+
+    // Buka registry untuk user_logged_in
+    const regNewUser = new PersonalObjectRegistry({ storage: migStorage, userId: 'user_logged_in' });
+    const migratedObj = regNewUser.findByName('Legacy Mouse');
+    assert(migratedObj !== null, 'Data legacy harus termigrasi ke namespace user');
+    assert(migratedObj.id === 'po_legacy_1', 'ID data termigrasi harus sesuai');
+
+    // Pastikan tersimpan di key user baru
+    const userStored = migStorage.getItem('visionx_personal_objects_user_logged_in');
+    assert(userStored !== null, 'Data termigrasi harus disimpan di key akun user baru');
+
+    console.log('✅ PASSED');
+    passed++;
+  }
+
   console.log('\n================================================================');
   console.log(`🏁 Test Summary: ${passed} PASSED, 0 FAILED`);
   console.log('================================================================\n');

@@ -19,13 +19,53 @@ export const DEFAULT_PERSONAL_OBJECT_CONFIG = {
 export class PersonalObjectRegistry {
   /**
    * @param {Object} [config={}]
+   * @param {string} [config.userId='guest'] User ID / namespace unik akun
    */
   constructor(config = {}) {
     this.config = { ...DEFAULT_PERSONAL_OBJECT_CONFIG, ...config };
+    this.userId = config.userId || 'guest';
     this.objects = new Map(); // id -> PersonalObjectRecord
     this.listeners = new Set();
 
     this.loadFromStorage();
+  }
+
+  /**
+   * Mendapatkan storage key terisolasi per akun user
+   * @returns {string}
+   */
+  getStorageKey() {
+    // Jika config.storageKey di-override secara eksplisit oleh tes atau caller luar
+    if (this.config.storageKey && this.config.storageKey !== DEFAULT_PERSONAL_OBJECT_CONFIG.storageKey) {
+      return this.config.storageKey;
+    }
+    const uid = this.userId || 'guest';
+    return `visionx_personal_objects_${uid}`;
+  }
+
+  /**
+   * Mengganti namespace user aktif secara dinamis (misal saat login / logout / switch account)
+   * Menyimpan objek user sebelumnya dan memuat database user baru tanpa tabrakan.
+   * @param {string|null} userId
+   */
+  setUserId(userId) {
+    const cleanId = (userId && typeof userId === 'string') ? userId.trim() : 'guest';
+    if (this.userId === cleanId) return;
+
+    // Simpan objek user saat ini sebelum berpindah
+    this.saveToStorage();
+
+    this.userId = cleanId;
+    this.loadFromStorage();
+    this._notifyListeners('USER_CHANGED', { userId: this.userId });
+  }
+
+  /**
+   * Mengambil namespace user ID saat ini
+   * @returns {string}
+   */
+  getUserId() {
+    return this.userId || 'guest';
   }
 
   /**
@@ -290,7 +330,7 @@ export class PersonalObjectRegistry {
   }
 
   /**
-   * Simpan data ke localStorage
+   * Simpan data ke localStorage terisolasi per akun user
    */
   saveToStorage() {
     const storage = this._getStorage();
@@ -298,26 +338,45 @@ export class PersonalObjectRegistry {
 
     try {
       const payload = {
-        version: '1.2',
+        version: '2.0',
+        userId: this.userId || 'guest',
         updatedAt: Date.now(),
         objects: Array.from(this.objects.values())
       };
-      storage.setItem(this.config.storageKey, JSON.stringify(payload));
+      storage.setItem(this.getStorageKey(), JSON.stringify(payload));
     } catch (err) {
       console.warn('[PersonalObjectRegistry] Gagal menyimpan ke storage:', err);
     }
   }
 
   /**
-   * Muat data dari localStorage
+   * Muat data dari localStorage terisolasi per akun user
+   * Jika user belum punya data baru, cek dan migrasikan data legacy jika tersedia.
    */
   loadFromStorage() {
     const storage = this._getStorage();
     if (!storage) return false;
 
+    const key = this.getStorageKey();
     try {
-      const raw = storage.getItem(this.config.storageKey);
-      if (!raw) return false;
+      let raw = storage.getItem(key);
+
+      // Auto-migration: Jika key user belum ada data, cek key legacy global
+      if (!raw && key !== DEFAULT_PERSONAL_OBJECT_CONFIG.storageKey) {
+        const legacyRaw = storage.getItem(DEFAULT_PERSONAL_OBJECT_CONFIG.storageKey);
+        if (legacyRaw) {
+          raw = legacyRaw;
+          // Salin ke database akun user saat ini
+          try {
+            storage.setItem(key, legacyRaw);
+          } catch (e) {}
+        }
+      }
+
+      if (!raw) {
+        this.objects.clear();
+        return false;
+      }
 
       const payload = JSON.parse(raw);
       if (Array.isArray(payload.objects)) {
@@ -336,14 +395,14 @@ export class PersonalObjectRegistry {
   }
 
   /**
-   * Kosongkan seluruh registry lokal
+   * Kosongkan seluruh registry lokal akun saat ini
    */
   clear() {
     this.objects.clear();
     const storage = this._getStorage();
     if (storage) {
       try {
-        storage.removeItem(this.config.storageKey);
+        storage.removeItem(this.getStorageKey());
       } catch (e) {}
     }
     this._notifyListeners('CLEAR');

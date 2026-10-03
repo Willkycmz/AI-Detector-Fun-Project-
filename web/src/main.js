@@ -149,7 +149,8 @@ class VisionXWebApp {
     this.objectEnrollment = null;
     this.tempEnrollmentReferences = [];
     try {
-      this.personalObjectRegistry = new PersonalObjectRegistry();
+      const initialUid = (authService && typeof authService.getUserId === 'function') ? authService.getUserId() : 'guest';
+      this.personalObjectRegistry = new PersonalObjectRegistry({ userId: initialUid });
       this.personalObjectRecognizer = new PersonalObjectRecognizer(this.personalObjectRegistry);
       this.objectEnrollment = new ObjectEnrollment(this.personalObjectRegistry);
       this.personalObjectRegistry.onRegistryUpdate(() => this.updatePersonalObjectsUI());
@@ -183,6 +184,10 @@ class VisionXWebApp {
       if (this.chatController) {
         this.chatController.setUserId(authService.getUserId());
         this.chatController.updateAuthStatus();
+      }
+      if (this.personalObjectRegistry) {
+        this.personalObjectRegistry.setUserId(authService.getUserId());
+        this.updatePersonalObjectsUI();
       }
       if (['collection', 'manager', 'identity'].includes(this.currentMode) && role !== 'developer') {
         this.setMode('home');
@@ -4854,6 +4859,12 @@ class VisionXWebApp {
       this.chatController.updateAuthStatus();
     }
 
+    // 5b. Update Personal Object Registry User Scope (V2.0)
+    if (this.personalObjectRegistry) {
+      this.personalObjectRegistry.setUserId(authService.getUserId());
+      this.updatePersonalObjectsUI();
+    }
+
     // 6. Update Settings Modal UI (I4)
     this.updateSettingsModalUI();
   }
@@ -5248,14 +5259,22 @@ class VisionXWebApp {
     if (!this.elements.enrollRefPreviewGallery) return;
 
     if (this.tempEnrollmentReferences.length === 0) {
-      this.elements.enrollRefPreviewGallery.innerHTML = '<span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut).</span>';
+      this.elements.enrollRefPreviewGallery.innerHTML = `
+        <div class="empty-ref-placeholder">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span class="empty-ref-text">Belum ada foto referensi (minimal 1, disarankan 3 sudut untuk akurasi maksimal).</span>
+        </div>
+      `;
       return;
     }
 
     this.elements.enrollRefPreviewGallery.innerHTML = this.tempEnrollmentReferences.map((ref, idx) => `
       <div class="ref-thumb-chip">
-        <span>#${idx + 1} (${ref.angle})</span>
-        <button type="button" class="ref-remove-btn" onclick="window.visionXApp.removeEnrollRef(${idx})" title="Hapus foto">✕</button>
+        <span class="ref-chip-badge">#${idx + 1}</span>
+        <span class="ref-chip-angle">${ref.angle}</span>
+        <button type="button" class="ref-remove-btn" onclick="window.visionXApp.removeEnrollRef(${idx})" title="Hapus foto ini">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
     `).join('');
   }
@@ -5344,6 +5363,23 @@ class VisionXWebApp {
     const objects = this.personalObjectRegistry.getAll();
     const stats = this.personalObjectRegistry.getStats();
 
+    // 0. Update User Scope Indicator Badge
+    const userLabel = document.getElementById('personalUserLabel');
+    if (userLabel && authService) {
+      const isAuthed = authService.isAuthenticated();
+      const user = authService.getUser();
+      if (isAuthed && user?.email) {
+        userLabel.textContent = user.email;
+        userLabel.parentElement?.setAttribute('title', `Database terisolasi untuk akun: ${user.email}`);
+      } else if (isAuthed) {
+        userLabel.textContent = 'Developer';
+        userLabel.parentElement?.setAttribute('title', 'Database terisolasi untuk mode Developer');
+      } else {
+        userLabel.textContent = 'Guest (Lokal)';
+        userLabel.parentElement?.setAttribute('title', 'Database terisolasi untuk mode Tamu');
+      }
+    }
+
     // 1. Update counter
     if (this.elements.personalObjectsCount) {
       this.elements.personalObjectsCount.textContent = stats.totalObjects;
@@ -5354,7 +5390,17 @@ class VisionXWebApp {
       if (objects.length === 0) {
         this.elements.personalObjectsList.innerHTML = `
           <div class="personal-empty-state">
-            <span>Belum ada objek personal terdaftar. Klik "+ Register Object" untuk mendaftarkan barang Anda.</span>
+            <div class="empty-state-icon-wrapper">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                <line x1="7" y1="7" x2="7.01" y2="7"></line>
+              </svg>
+            </div>
+            <h5 class="empty-state-title">Belum Ada Objek Personal Terdaftar</h5>
+            <p class="empty-state-desc">Belum ada objek personal terdaftar. Klik "+ Register Object" untuk mendaftarkan barang Anda.</p>
+            <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('btnToggleEnrollForm')?.click()">
+              + Daftarkan Objek Sekarang
+            </button>
           </div>
         `;
         return;
@@ -5367,16 +5413,16 @@ class VisionXWebApp {
           <div class="personal-object-card ${isEn ? 'enabled' : 'disabled'}">
             <div class="card-top-row">
               <div class="card-name-group">
-                <span class="card-personal-name">★ ${obj.name}</span>
+                <span class="card-personal-name"><span class="star-icon">★</span> ${obj.name}</span>
                 <span class="card-base-class">Base YOLO: ${obj.baseClass}</span>
               </div>
               <div class="card-actions">
-                <button type="button" class="btn btn-sm ${isEn ? 'btn-secondary' : 'btn-outline'}"
+                <button type="button" class="btn btn-sm ${isEn ? 'btn-status-active' : 'btn-status-disabled'}"
                   onclick="window.visionXApp.togglePersonalObjectEnabled('${obj.id}')"
-                  title="${isEn ? 'Nonaktifkan' : 'Aktifkan'}">
+                  title="${isEn ? 'Klik untuk menonaktifkan' : 'Klik untuk mengaktifkan'}">
                   ${isEn ? 'Active' : 'Disabled'}
                 </button>
-                <button type="button" class="btn btn-sm btn-outline text-danger"
+                <button type="button" class="btn btn-sm btn-delete-object"
                   onclick="window.visionXApp.deletePersonalObject('${obj.id}')"
                   title="Hapus objek" aria-label="Hapus objek">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -5387,8 +5433,11 @@ class VisionXWebApp {
               </div>
             </div>
             <div class="card-footer">
-              <span>${refCount} foto referensi</span>
-              <span>Threshold: ${(obj.threshold || 0.75).toFixed(2)}</span>
+              <span class="card-ref-info">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                ${refCount} foto referensi
+              </span>
+              <span class="card-threshold-info">Threshold: ${(obj.threshold || 0.75).toFixed(2)}</span>
             </div>
           </div>
         `;
