@@ -1669,6 +1669,19 @@ class VisionXWebApp {
     });
 
     // Sliders Threshold
+    if (this.elements.confSlider && this.inferenceService) {
+      this.elements.confSlider.value = this.inferenceService.confThreshold;
+      if (this.elements.confVal) {
+        this.elements.confVal.textContent = this.inferenceService.confThreshold.toFixed(2);
+      }
+    }
+    if (this.elements.iouSlider && this.inferenceService) {
+      this.elements.iouSlider.value = this.inferenceService.iouThreshold;
+      if (this.elements.iouVal) {
+        this.elements.iouVal.textContent = this.inferenceService.iouThreshold.toFixed(2);
+      }
+    }
+
     this.elements.confSlider.addEventListener('input', (e) => {
       const val = parseFloat(e.target.value);
       this.inferenceService.confThreshold = val;

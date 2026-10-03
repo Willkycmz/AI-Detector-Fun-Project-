@@ -95,8 +95,11 @@ function computeIoU(boxA, boxB) {
 
 /**
  * Non-Maximum Suppression (NMS)
+ * Mendukung same-class suppression (iouThreshold) dan cross-class suppression (crossClassIouThreshold)
+ * untuk mencegah beberapa anchor kelas berbeda (misal laptop/cup dan cell_phone) bertumpuk
+ * pada satu fisik objek yang sama (IoU tinggi > crossClassIouThreshold).
  */
-function applyNMS(candidates, iouThreshold = 0.45) {
+export function applyNMS(candidates, iouThreshold = 0.45, crossClassIouThreshold = 0.50) {
   candidates.sort((a, b) => b.confidence - a.confidence);
 
   const selected = [];
@@ -113,12 +116,13 @@ function applyNMS(candidates, iouThreshold = 0.45) {
     for (let j = i + 1; j < candidates.length; j++) {
       if (!active[j]) continue;
 
-      if (current.class_id === candidates[j].class_id) {
-        const boxB = [candidates[j].x1, candidates[j].y1, candidates[j].x2, candidates[j].y2];
-        const iou = computeIoU(boxA, boxB);
-        if (iou > iouThreshold) {
-          active[j] = false;
-        }
+      const isSameClass = (current.class_id === candidates[j].class_id);
+      const effectiveIouThreshold = isSameClass ? iouThreshold : crossClassIouThreshold;
+
+      const boxB = [candidates[j].x1, candidates[j].y1, candidates[j].x2, candidates[j].y2];
+      const iou = computeIoU(boxA, boxB);
+      if (iou > effectiveIouThreshold) {
+        active[j] = false;
       }
     }
   }
@@ -143,9 +147,10 @@ export class YOLOInferenceService {
     this.errorMessage = null;
     this.loadTimeMs = 0;
 
-    // Default confidence threshold 0.25 dan IoU NMS 0.45
-    this.confThreshold = 0.25;
+    // Default confidence threshold 0.30 dan IoU NMS 0.45 (cross-class 0.50)
+    this.confThreshold = 0.30;
     this.iouThreshold = 0.45;
+    this.crossClassIouThreshold = 0.50;
 
     // Tracking diagnostics lengkap
     this.diagnostics = {
@@ -560,7 +565,7 @@ export class YOLOInferenceService {
           totalRawCount++;
         }
 
-        // Confidence Filtering menggunakan confThreshold yang aktif (default 0.25)
+        // Confidence Filtering menggunakan confThreshold yang aktif (default 0.30)
         if (maxScore >= this.confThreshold && maxClassId >= 0 && maxClassId < activeClasses.length) {
           let cx, cy, w, h;
           if (isChannelsFirst) {
@@ -637,8 +642,10 @@ export class YOLOInferenceService {
         }
       }
 
-      // Non-Maximum Suppression (NMS)
-      const finalDetections = this.disableNms ? rawCandidates : applyNMS(rawCandidates, this.iouThreshold);
+      // Non-Maximum Suppression (NMS) dengan Same-Class dan Cross-Class Suppression
+      const finalDetections = this.disableNms
+        ? rawCandidates
+        : applyNMS(rawCandidates, this.iouThreshold, this.crossClassIouThreshold);
       const inferenceTimeMs = Math.round(performance.now() - startTime);
 
       // Update diagnostics tracking
