@@ -17,8 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DmIPT1n1.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-DxudFK3G.css">
+  <script type="module" crossorigin src="./assets/index-DSx7VUEl.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Czb7g0IB.css">
 </head>
 <body class="theme-light" data-mode="home">
   <div class="app-container" data-mode="home">
@@ -181,7 +181,7 @@
           </div>
           <div class="system-card-subtext">
             <span>Gateway: <strong id="sidebarGatewayStatus">Online</strong></span> &bull; 
-            <span>AI: <strong id="sidebarAiStatusShort">Llama 3.3</strong></span>
+            <span><strong id="sidebarAiStatusShort">VisionX AI</strong></span>
           </div>
         </div>
 
@@ -336,8 +336,8 @@
                 <span class="row-value"><span class="status-dot green" id="popoverGatewayDot"></span> <strong id="popoverBackendStatus">visionx.my.id (Online)</strong></span>
               </div>
               <div class="popover-row">
-                <span class="row-label">AI Provider:</span>
-                <span class="row-value"><span class="status-dot cyan"></span> <strong id="popoverAiStatus">Groq (Llama 3.3) Connected</strong></span>
+                <span class="row-label">AI Engine:</span>
+                <span class="row-value"><span class="status-dot cyan"></span> <strong id="popoverAiStatus">VisionX AI Connected</strong></span>
               </div>
               <div class="popover-row">
                 <span class="row-label">Vision Model:</span>
@@ -925,7 +925,9 @@
         <div class="model-select-group">
           <label for="modelSelect" class="field-label-sm">Model Vision:</label>
           <select id="modelSelect" class="select-control model-select-sm">
-            <option value="visionx_v3" selected>VisionX V3 (14 Target Classes - Recommended)</option>
+            <option value="visionx_v4" selected>VisionX V4 (21 Target Classes - Latest)</option>
+            <option value="visionx_v4_final">VisionX V4 Final (Frozen Backbone 21 Classes)</option>
+            <option value="visionx_v3">VisionX V3 (14 Target Classes - Stable)</option>
             <option value="visionx_v2">VisionX V2 (Real-World Improved 7 Classes)</option>
             <option value="visionx_v1">VisionX V1 (Custom 7 Classes)</option>
             <option value="pretrained">Pretrained Vision Model (COCO 80 Classes)</option>
