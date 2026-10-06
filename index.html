@@ -17,8 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-DSx7VUEl.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-Czb7g0IB.css">
+  <script type="module" crossorigin src="./assets/index-DSfkhz4C.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DSvamMbW.css">
 </head>
 <body class="theme-light" data-mode="home">
   <div class="app-container" data-mode="home">
@@ -1097,6 +1097,22 @@
               </button>
             </div>
 
+            <!-- Thread Actions Bar (Reset & TTS Voice) -->
+            <div id="threadActionsBar" class="thread-actions-bar hidden">
+              <span class="thread-actions-label">Percakapan Aktif:</span>
+              <div class="thread-actions-buttons">
+                <button type="button" id="btnResetConversation" class="btn btn-xs btn-outline btn-reset-conversation" title="Reset percakapan">
+                  🗑️ Reset
+                </button>
+                <button type="button" id="btnReadAloudResponse" class="btn btn-xs btn-secondary btn-read-aloud" title="Bacakan jawaban terakhir">
+                  🔊 Bacakan
+                </button>
+                <button type="button" id="btnStopSpeechResponse" class="btn btn-xs btn-danger btn-stop-speech hidden" title="Hentikan pembacaan">
+                  ⏹ Stop
+                </button>
+              </div>
+            </div>
+
             <!-- Conversation Thread Container (Phase D Multi-Turn) -->
             <div id="visionConversationThread" class="vision-conversation-thread hidden" aria-live="polite" aria-label="Riwayat Percakapan AI"></div>
 
@@ -1137,32 +1153,11 @@
               <span id="askVisionErrorMessage">Terjadi kesalahan pada AI Assistant.</span>
             </div>
 
-            <!-- Response Display Area -->
-            <div id="askVisionResponseArea" class="ask-vision-response-area hidden" aria-live="polite">
-              <div class="response-header">
-                <div class="response-title-wrapper">
-                  <span class="response-icon">💬</span>
-                  <span class="response-title">Jawaban VisionX AI:</span>
-                </div>
-                <div class="response-actions">
-                  <button type="button" id="btnResetConversation" class="btn btn-sm btn-outline btn-reset-conversation" title="Reset sesi percakapan">
-                    🗑️ Reset
-                  </button>
-                  <button type="button" id="btnReadAloudResponse" class="btn btn-sm btn-secondary btn-read-aloud" title="Bacakan jawaban ini dengan suara">
-                    🔊 Bacakan
-                  </button>
-                  <button type="button" id="btnStopSpeechResponse" class="btn btn-sm btn-danger btn-stop-speech hidden" title="Hentikan suara pembacaan">
-                    ⏹ Stop
-                  </button>
-                  <button type="button" id="btnClearResponse" class="btn btn-sm btn-outline btn-clear-response" title="Tutup jawaban">
-                    ✕ Tutup
-                  </button>
-                </div>
-              </div>
-              <div id="askVisionResponseText" class="response-content"></div>
-              <div class="response-footer">
-                <span id="askVisionMeta" class="response-meta">-</span>
-              </div>
+            <!-- Legacy Response Display Area (Permanently Hidden to Prevent Duplicate Clutter) -->
+            <div id="askVisionResponseArea" class="ask-vision-response-area hidden" style="display: none !important;" aria-hidden="true">
+              <button type="button" id="btnClearResponse" class="hidden" style="display:none;"></button>
+              <div id="askVisionResponseText" class="hidden" style="display:none;"></div>
+              <span id="askVisionMeta" class="hidden" style="display:none;"></span>
             </div>
           </div>
 
