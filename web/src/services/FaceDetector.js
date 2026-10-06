@@ -9,6 +9,7 @@
  */
 
 import { CoordinateMapper } from './CoordinateMapper.js';
+import { isLocalDev } from './apiConfig.js';
 
 export class FaceDetector {
   constructor(identityService, frameSource) {
@@ -48,8 +49,9 @@ export class FaceDetector {
     }
 
     const now = performance.now();
-    // Non-blocking throttling: luncurkan inferensi di background (gap ~80ms)
-    if (!this.isDetecting && (now - this.lastDetectTime >= 80)) {
+    // Non-blocking throttling: 600ms lokal dev, 2000ms di remote/tunnel agar tidak membebani jaringan/FPS
+    const minIntervalMs = isLocalDev ? 600 : 2000;
+    if (!this.isDetecting && (now - this.lastDetectTime >= minIntervalMs)) {
       this.isDetecting = true;
       this.lastDetectTime = now;
       this._runDetectAsync(letterboxedFrame).finally(() => {
@@ -65,7 +67,7 @@ export class FaceDetector {
     const startTime = performance.now();
     try {
       const { canvas, params, isMirrored } = letterboxedFrame;
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.80);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
       const res = await this.identityService.detectFaces(dataUrl);
       this.lastLatencyMs = Math.round(performance.now() - startTime);
@@ -103,6 +105,8 @@ export class FaceDetector {
     } catch (err) {
       this.status = 'error';
       this.errorMessage = err.message || 'Face detection error';
+      // Terapkan cooldown 5 detik bila terjadi error jaringan/backend
+      this.lastDetectTime = performance.now() + 5000;
       console.warn('[VisionX FaceDetector Warning]', err.message);
     }
   }

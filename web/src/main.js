@@ -214,12 +214,29 @@ class VisionXWebApp {
       });
       this.visionAssistant.onStateChange((statePayload) => this.handleAssistantStateChange(statePayload));
       this.visionAssistant.on('streamChunk', ({ chunk, fullText }) => {
-        if (this.elements.askVisionResponseArea) {
-          this.elements.askVisionResponseArea.classList.remove('hidden');
+        if (!this.elements.visionConversationThread) return;
+        this.elements.visionConversationThread.classList.remove('hidden');
+        const actionsBar = document.getElementById('threadActionsBar');
+        if (actionsBar) actionsBar.classList.remove('hidden');
+
+        let streamBubble = this.elements.visionConversationThread.querySelector('.ask-chat-message.streaming');
+        if (!streamBubble) {
+          streamBubble = document.createElement('div');
+          streamBubble.className = 'ask-chat-message ask-assistant streaming';
+          streamBubble.innerHTML = `
+            <div class="ask-bubble-header">
+              <span class="ask-bubble-sender">🤖 VisionX AI</span>
+              <span class="ask-bubble-time">Menjawab...</span>
+            </div>
+            <div class="ask-bubble-content"></div>
+          `;
+          this.elements.visionConversationThread.appendChild(streamBubble);
         }
-        if (this.elements.askVisionResponseText) {
-          this.elements.askVisionResponseText.textContent = fullText;
+        const contentEl = streamBubble.querySelector('.ask-bubble-content');
+        if (contentEl) {
+          contentEl.textContent = fullText;
         }
+        this.elements.visionConversationThread.scrollTop = this.elements.visionConversationThread.scrollHeight;
       });
     } catch (assistantInitErr) {
       console.warn('[VisionX] Peringatan inisialisasi VisionAssistant (terisolasi):', assistantInitErr);
@@ -4633,7 +4650,7 @@ class VisionXWebApp {
     };
 
     return VisionContextBuilder.build({
-      detections: this.lastDetections || [],
+      detections: (this.lastUnifiedDetections && this.lastUnifiedDetections.length > 0) ? this.lastUnifiedDetections : (this.lastDetections || []),
       trackingEngine: this.trackingEngine,
       ocrResult: this.currentOcrResult,
       identityState: this.lastIdentityState || (this.faceRecognizer ? this.faceRecognizer.getLatestIdentity() : null),
@@ -4764,17 +4781,8 @@ class VisionXWebApp {
       }
     }
 
-    // 5. Update Response Area & Multi-turn Conversation Thread (Phase D)
+    // 5. Update Multi-turn Conversation Thread (Phase D)
     if (state === AssistantState.SUCCESS && lastResult) {
-      if (this.elements.askVisionResponseArea) {
-        this.elements.askVisionResponseArea.classList.remove('hidden');
-      }
-      if (this.elements.askVisionResponseText) {
-        this.elements.askVisionResponseText.textContent = lastResult.answer;
-      }
-      if (this.elements.askVisionMeta) {
-        this.elements.askVisionMeta.textContent = `Provider: ${lastResult.provider} • Latency: ${latencyMs}ms • Snapshot on-demand`;
-      }
       this.renderConversationThread();
     }
   }
@@ -4785,36 +4793,43 @@ class VisionXWebApp {
   renderConversationThread() {
     if (!this.elements.visionConversationThread || !this.visionAssistant?.conversationManager) return;
     const turns = this.visionAssistant.conversationManager.getAllTurns();
+    const actionsBar = document.getElementById('threadActionsBar');
+
     if (turns.length === 0) {
       this.elements.visionConversationThread.classList.add('hidden');
       this.elements.visionConversationThread.innerHTML = '';
+      if (actionsBar) actionsBar.classList.add('hidden');
       return;
     }
 
     this.elements.visionConversationThread.classList.remove('hidden');
     this.elements.visionConversationThread.innerHTML = '';
+    if (actionsBar) actionsBar.classList.remove('hidden');
 
     for (const turn of turns) {
       const bubble = document.createElement('div');
-      bubble.className = `chat-bubble ${turn.role === 'user' ? 'chat-user' : 'chat-assistant'}`;
-
-      const content = document.createElement('div');
-      content.className = 'chat-bubble-content';
-      content.textContent = turn.content;
-      bubble.appendChild(content);
+      bubble.className = `ask-chat-message ${turn.role === 'user' ? 'ask-user' : 'ask-assistant'}`;
 
       const meta = document.createElement('div');
-      meta.className = 'chat-bubble-meta';
+      meta.className = 'ask-bubble-header';
 
       const roleSpan = document.createElement('span');
-      roleSpan.textContent = turn.role === 'user' ? '👤 Anda' : '🤖 VisionX';
+      roleSpan.className = 'ask-bubble-sender';
+      roleSpan.textContent = turn.role === 'user' ? '👤 Anda' : '🤖 VisionX AI';
       meta.appendChild(roleSpan);
 
       const timeSpan = document.createElement('span');
+      timeSpan.className = 'ask-bubble-time';
       timeSpan.textContent = new Date(turn.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       meta.appendChild(timeSpan);
 
       bubble.appendChild(meta);
+
+      const content = document.createElement('div');
+      content.className = 'ask-bubble-content';
+      content.textContent = turn.content;
+      bubble.appendChild(content);
+
       this.elements.visionConversationThread.appendChild(bubble);
     }
 
@@ -4838,6 +4853,10 @@ class VisionXWebApp {
     if (this.elements.visionConversationThread) {
       this.elements.visionConversationThread.innerHTML = '';
       this.elements.visionConversationThread.classList.add('hidden');
+    }
+    const actionsBar = document.getElementById('threadActionsBar');
+    if (actionsBar) {
+      actionsBar.classList.add('hidden');
     }
     if (this.elements.askVisionResponseArea) {
       this.elements.askVisionResponseArea.classList.add('hidden');

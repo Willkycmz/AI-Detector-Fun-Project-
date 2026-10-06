@@ -18,6 +18,8 @@ __pycache__/
 datasets/*
 !datasets/metadata/
 !datasets/metadata/**
+!datasets/faces/
+!datasets/faces/**
 !datasets/**/README.md
 !datasets/MIGRATION_PLAN.md
 *.zip
@@ -25,12 +27,15 @@ datasets/*
 outputs/*.zip
 
 # Model Binaries & Checkpoints
-models/
+models/*
+!models/face/
+!models/face/**
 runs/
 scratch/
 *.pt
 *.onnx
 *.parquet
+!models/face/*.onnx
 !web/public/models/
 !web/public/models/*.onnx
 !web/dist/models/

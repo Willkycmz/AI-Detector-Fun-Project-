@@ -15,6 +15,8 @@
  * - Tidak pernah menyimpulkan nama untuk orang yang tidak terdaftar.
  */
 
+import { isLocalDev } from './apiConfig.js';
+
 export class FaceRecognizer {
   constructor(identityService, frameSource) {
     this.identityService = identityService;
@@ -24,9 +26,7 @@ export class FaceRecognizer {
     this.status = 'ready'; // 'ready' | 'matching' | 'error' | 'disabled'
     this.errorMessage = null;
 
-    // Konfigurasi performa
-    this.checkIntervalMs = 280; // Throttled rate untuk pengenalan identitas
-    this.frameInterval = 8;     // Atau setiap 8 frame
+    // Konfigurasi performa: 1000ms lokal dev, 2500ms di remote/tunnel
     this.frameCounter = 0;
     this.lastMatchTime = 0;
     this.isMatching = false;
@@ -66,23 +66,33 @@ export class FaceRecognizer {
       return this.latestIdentity;
     }
 
-    if (!detectedFaces || detectedFaces.length === 0 || !letterboxedFrame) {
-      this.latestIdentity = {
-        label: 'Person',
-        score_percent: '',
-        similarity: 0.0,
-        identityStatus: 'UNREGISTERED',
-        matched: false,
-        timestamp: Date.now()
-      };
+    if (!letterboxedFrame) {
+      return this.latestIdentity;
+    }
+
+    const hasFaces = Array.isArray(detectedFaces) && detectedFaces.length > 0;
+    const now = performance.now();
+
+    // Grace period: jangan langsung reset identitas jika wajah sempat hilang 1-2 frame
+    if (!hasFaces) {
+      if (Date.now() - (this.latestIdentity.timestamp || 0) > 4000) {
+        this.latestIdentity = {
+          label: 'Person',
+          score_percent: '',
+          similarity: 0.0,
+          identityStatus: 'UNREGISTERED',
+          matched: false,
+          timestamp: Date.now()
+        };
+      }
       return this.latestIdentity;
     }
 
     this.frameCounter++;
-    const now = performance.now();
 
-    // Jalankan pengenalan identitas di background bila interval terlampaui (gap ~250ms)
-    const shouldRun = (now - this.lastMatchTime >= this.checkIntervalMs);
+    // Throttled matching interval: 1000ms lokal, 2500ms remote
+    const minIntervalMs = isLocalDev ? 1000 : 2500;
+    const shouldRun = (now - this.lastMatchTime >= minIntervalMs);
     if (shouldRun && !this.isMatching) {
       this.isMatching = true;
       this.lastMatchTime = now;
@@ -98,7 +108,7 @@ export class FaceRecognizer {
     const startTime = performance.now();
     try {
       this.status = 'matching';
-      const dataUrl = letterboxedFrame.canvas.toDataURL('image/jpeg', 0.80);
+      const dataUrl = letterboxedFrame.canvas.toDataURL('image/jpeg', 0.65);
 
       const res = await this.identityService.matchFace(dataUrl, this.identityService.threshold);
       this.lastLatencyMs = Math.round(performance.now() - startTime);
@@ -138,6 +148,8 @@ export class FaceRecognizer {
     } catch (err) {
       this.status = 'error';
       this.errorMessage = err.message || 'Identity matching error';
+      // Cooldown 5 detik bila terjadi error
+      this.lastMatchTime = performance.now() + 5000;
       console.warn('[VisionX FaceRecognizer Warning]', err.message);
     }
   }

@@ -18,7 +18,7 @@ const envBaseUrl = (typeof import.meta !== 'undefined' && import.meta.env && imp
  * gunakan empty string '' sehingga semua request /api/* diarahkan ke
  * server Vite lokal / local backend proxy secara langsung.
  */
-const isLocalDev = typeof window !== 'undefined'
+export const isLocalDev = typeof window !== 'undefined'
   && (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
