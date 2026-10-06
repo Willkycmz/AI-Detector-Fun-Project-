@@ -1,0 +1,225 @@
+import json
+from pathlib import Path
+
+notebook = {
+    "nbformat": 4,
+    "nbformat_minor": 0,
+    "metadata": {
+        "colab": {
+            "provenance": [],
+            "gpuType": "T4"
+        },
+        "kernelspec": {
+            "name": "python3",
+            "display_name": "Python 3"
+        },
+        "language_info": {
+            "name": "python"
+        },
+        "accelerator": "GPU"
+    },
+    "cells": [
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "# VisionX V3 — Fine-Tuning 14 Kelas (Google Colab GPU)\n",
+                "Notebook ini disiapkan untuk melatih model VisionX V3 (14 kelas) menggunakan GPU T4 gratis di Google Colab.\n",
+                "\n",
+                "**Langkah persiapan sebelum klik Run All:**\n",
+                "1. Pastikan Runtime Colab menggunakan GPU: Menu `Runtime` > `Change runtime type` > Pilih `T4 GPU` > `Save`.\n",
+                "2. Upload 2 file dari laptop ke Google Drive (My Drive / root):\n",
+                "   - `processed_v2.zip` (dataset siap pakai)\n",
+                "   - `visionx_v2_best.pt` (checkpoint awal fine-tune)"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "### Cell 1: Mount Google Drive & Install Ultralytics"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "from google.colab import drive\n",
+                "import os, sys\n",
+                "\n",
+                "# 1. Hubungkan Google Drive\n",
+                "drive.mount('/content/drive')\n",
+                "\n",
+                "# 2. Install Ultralytics YOLO\n",
+                "!pip install -q ultralytics\n",
+                "\n",
+                "import torch\n",
+                "print('\\n--- Environment Check ---')\n",
+                "print('PyTorch Version:', torch.__version__)\n",
+                "print('CUDA Available :', torch.cuda.is_available())\n",
+                "if torch.cuda.is_available():\n",
+                "    print('GPU Device     :', torch.cuda.get_device_name(0))\n",
+                "    vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)\n",
+                "    print(f'VRAM           : {vram:.2f} GB')\n",
+                "else:\n",
+                "    print('PERINGATAN: GPU belum aktif! Silakan buka Runtime > Change runtime type > Pilih T4 GPU.')\n"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "### Cell 2: Ekstrak Dataset processed_v2 dari Google Drive"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "import zipfile, os, yaml\n",
+                "\n",
+                "# Cari processed_v2.zip di Drive\n",
+                "ZIP_PATH = '/content/drive/MyDrive/processed_v2.zip'\n",
+                "if not os.path.exists(ZIP_PATH):\n",
+                "    for root, dirs, files in os.walk('/content/drive/MyDrive'):\n",
+                "        if 'processed_v2.zip' in files:\n",
+                "            ZIP_PATH = os.path.join(root, 'processed_v2.zip')\n",
+                "            break\n",
+                "\n",
+                "print(f'Menggunakan file: {ZIP_PATH}')\n",
+                "DEST_DIR = '/content/datasets/processed_v2'\n",
+                "os.makedirs(DEST_DIR, exist_ok=True)\n",
+                "\n",
+                "print('Mengekstrak dataset ke /content/datasets/processed_v2...')\n",
+                "with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:\n",
+                "    zip_ref.extractall(DEST_DIR)\n",
+                "\n",
+                "print('Ekstraksi selesai!')\n",
+                "\n",
+                "# Sesuaikan path di dataset.yaml ke direktori lokal Colab\n",
+                "yaml_path = os.path.join(DEST_DIR, 'dataset.yaml')\n",
+                "with open(yaml_path, 'r') as f:\n",
+                "    cfg = yaml.safe_load(f)\n",
+                "\n",
+                "cfg['path'] = DEST_DIR\n",
+                "with open(yaml_path, 'w') as f:\n",
+                "    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)\n",
+                "\n",
+                "print('\\n--- Isi dataset.yaml terverifikasi ---')\n",
+                "with open(yaml_path) as f:\n",
+                "    print(f.read())\n"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "### Cell 3: Load Checkpoint Base & Verifikasi Transfer Bobot nc=14"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "from ultralytics import YOLO\n",
+                "\n",
+                "# Cari checkpoint visionx_v2_best.pt / best.pt di Drive\n",
+                "CHECKPOINT_PATH = '/content/drive/MyDrive/visionx_v2_best.pt'\n",
+                "if not os.path.exists(CHECKPOINT_PATH):\n",
+                "    for root, dirs, files in os.walk('/content/drive/MyDrive'):\n",
+                "        for f in files:\n",
+                "            if f in ['visionx_v2_best.pt', 'best.pt']:\n",
+                "                CHECKPOINT_PATH = os.path.join(root, f)\n",
+                "                break\n",
+                "\n",
+                "print(f'Loading Base Checkpoint: {CHECKPOINT_PATH}')\n",
+                "model = YOLO(CHECKPOINT_PATH)\n",
+                "print('Kelas awal checkpoint (nc=7):', model.names)\n"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "### Cell 4: Training VisionX V3 (20 Epochs di GPU Colab)"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "DATA_YAML = '/content/datasets/processed_v2/dataset.yaml'\n",
+                "\n",
+                "print('Memulai fine-tuning VisionX V3 di GPU Colab...')\n",
+                "results = model.train(\n",
+                "    data=DATA_YAML,\n",
+                "    epochs=20,\n",
+                "    patience=6,\n",
+                "    batch=16,\n",
+                "    imgsz=640,\n",
+                "    optimizer='auto',\n",
+                "    lr0=0.005,\n",
+                "    lrf=0.01,\n",
+                "    device=0 if torch.cuda.is_available() else 'cpu',\n",
+                "    workers=4,\n",
+                "    project='runs/detect',\n",
+                "    name='visionx_v3',\n",
+                "    exist_ok=True,\n",
+                "    verbose=True,\n",
+                "    seed=42\n",
+                ")\n",
+                "print('\\nTraining VisionX V3 20-Epoch Selesai!')\n"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "### Cell 5: Zip Hasil Training & Simpan Otomatis ke Google Drive"
+            ]
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "import shutil, os\n",
+                "\n",
+                "OUTPUT_ZIP_DRIVE = '/content/drive/MyDrive/visionx_v3_results.zip'\n",
+                "RUN_DIR = '/content/runs/detect/visionx_v3'\n",
+                "\n",
+                "print(f'Mengompresi hasil training dari: {RUN_DIR}...')\n",
+                "shutil.make_archive('/content/visionx_v3_results', 'zip', RUN_DIR)\n",
+                "\n",
+                "shutil.copy2('/content/visionx_v3_results.zip', OUTPUT_ZIP_DRIVE)\n",
+                "size_mb = os.path.getsize(OUTPUT_ZIP_DRIVE) / (1024 * 1024)\n",
+                "print(f'\\nSUKSES! Hasil training tersimpan di Google Drive:')\n",
+                "print(f' -> {OUTPUT_ZIP_DRIVE} ({size_mb:.2f} MB)')\n",
+                "print('\\nSilakan download visionx_v3_results.zip dari Drive ke laptop, lalu ekstrak isinya ke models/visionx_v3/')\n"
+            ]
+        }
+    ]
+}
+
+Path("notebooks").mkdir(exist_ok=True)
+Path("outputs").mkdir(exist_ok=True)
+
+nb_path1 = Path("notebooks/visionx_v3_colab_training.ipynb")
+nb_path2 = Path("outputs/visionx_v3_colab_training.ipynb")
+
+with open(nb_path1, "w", encoding="utf-8") as f:
+    json.dump(notebook, f, indent=2)
+
+with open(nb_path2, "w", encoding="utf-8") as f:
+    json.dump(notebook, f, indent=2)
+
+print("Notebook created successfully at notebooks/ and outputs/")

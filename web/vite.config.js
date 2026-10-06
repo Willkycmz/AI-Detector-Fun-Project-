@@ -42,6 +42,33 @@ function saveTrashMeta(meta) {
   fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
 }
 
+// Helper membaca key environment dari env process atau file .env/.env.local
+function readEnvKey(key) {
+  if (process.env[key] && !process.env[key].includes('your_') && !process.env[key].includes('placeholder')) {
+    return process.env[key];
+  }
+  const candidateFiles = [
+    path.resolve(__dirname, '.env.local'),
+    path.resolve(__dirname, '.env'),
+    path.resolve(projectRoot, '.env')
+  ];
+  for (const f of candidateFiles) {
+    if (fs.existsSync(f)) {
+      try {
+        const text = fs.readFileSync(f, 'utf-8');
+        const match = text.match(new RegExp(`^${key}=(.*)$`, 'm'));
+        if (match) {
+          const val = match[1].trim().replace(/^['"]|['"]$/g, '');
+          if (val && !val.includes('your_') && !val.includes('placeholder')) {
+            return val;
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  return '';
+}
+
 // Pastikan background Identity Service aktif
 let identityServiceProcess = null;
 function ensureIdentityService() {
@@ -59,6 +86,100 @@ function ensureIdentityService() {
     });
 }
 ensureIdentityService();
+
+// Helper pemindaian cepat dataset nyata (mengabaikan folder staging internal _*, hidden .*, dan labels)
+function scanActiveDataset(rootDir, options = {}) {
+  const { filterClass = null, filterSource = null, search = '', maxItems = 1000 } = options;
+  const supportedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+  const items = [];
+  const classCounts = {};
+  const sourceCounts = {};
+  let totalImages = 0;
+  let totalSizeBytes = 0;
+
+  function walk(dir) {
+    if (!fs.existsSync(dir)) return;
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (_) { return; }
+
+    // Prioritaskan folder own dan tangkapan lokal agar muncul lebih awal dibanding external
+    entries.sort((a, b) => {
+      if (a.name === 'own') return -1;
+      if (b.name === 'own') return 1;
+      if (a.name === 'external') return 1;
+      if (b.name === 'external') return -1;
+      return 0;
+    });
+
+    for (const ent of entries) {
+      if (ent.name.startsWith('_') || ent.name.startsWith('.') || ent.name === 'labels' || ent.name === '__pycache__') continue;
+      const fullPath = path.resolve(dir, ent.name);
+
+      if (ent.isDirectory()) {
+        walk(fullPath);
+      } else if (ent.isFile() && supportedExts.has(path.extname(ent.name).toLowerCase())) {
+        totalImages++;
+        const relPath = path.relative(rootDir, fullPath);
+        const parts = relPath.split(path.sep);
+
+        let cls = 'general';
+        let sourceName = 'own_capture';
+        if (parts[0] === 'external') {
+          cls = parts[1] || 'general';
+          sourceName = 'external';
+        } else if (parts[0] === 'own') {
+          sourceName = 'own_capture';
+          if (parts.length > 2 && parts[1] !== 'images') {
+            cls = parts[1];
+          } else {
+            const m = ent.name.match(/^(?:own_v\d+_)?([a-zA-Z0-9_]+?)_\d+/);
+            cls = m ? m[1] : (parts[1] !== 'images' ? parts[1] : 'own');
+          }
+        } else {
+          cls = parts[0] || 'general';
+          sourceName = 'own_capture';
+        }
+
+        if (ent.name.startsWith('import_') || (parts.length > 1 && parts[1] === 'import')) {
+          sourceName = 'own_import';
+        }
+
+        classCounts[cls] = (classCounts[cls] || 0) + 1;
+        sourceCounts[sourceName] = (sourceCounts[sourceName] || 0) + 1;
+
+        if (filterClass && filterClass !== 'all' && filterClass !== cls) continue;
+        if (filterSource && filterSource !== 'all' && filterSource !== sourceName) continue;
+        if (search && !ent.name.toLowerCase().includes(search) && !cls.toLowerCase().includes(search)) continue;
+
+        if (items.length < maxItems) {
+          try {
+            const stat = fs.statSync(fullPath);
+            totalSizeBytes += stat.size;
+            const urlPath = relPath.replace(/\\/g, '/');
+            items.push({
+              id: ent.name,
+              filename: ent.name,
+              className: cls,
+              source: sourceName,
+              sizeBytes: stat.size,
+              formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
+              timestamp: new Date(stat.mtimeMs).toLocaleString(),
+              mtime: stat.mtimeMs,
+              url: `/api/dataset/image/${urlPath}`,
+              isTrash: false
+            });
+          } catch (_) {}
+        }
+      }
+    }
+  }
+
+  walk(rootDir);
+  items.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+  return { items, totalImages, totalSizeBytes, classCounts, sourceCounts };
+}
 
 function visionxCorePlugin() {
   return {
@@ -98,6 +219,7 @@ function visionxCorePlugin() {
                 if (!fs.existsSync(dir)) return null;
                 const entries = fs.readdirSync(dir, { withFileTypes: true });
                 for (const ent of entries) {
+                  if (ent.name.startsWith('_') || ent.name.startsWith('.') || ent.name === 'labels' || ent.name === '__pycache__') continue;
                   const fp = path.resolve(dir, ent.name);
                   if (ent.isFile() && ent.name === baseName) return fp;
                   if (ent.isDirectory()) {
@@ -321,12 +443,13 @@ function visionxCorePlugin() {
         // GET /api/manager/list
         if (url.pathname === '/api/manager/list' && req.method === 'GET') {
           try {
-            const view = url.searchParams.get('view') || 'active'; // 'active' | 'trash'
+            const view = (url.searchParams.get('view') || 'active').toLowerCase().trim(); // 'active' | 'trash'
             const classFilter = url.searchParams.get('class');
             const sourceFilter = url.searchParams.get('source');
             const search = (url.searchParams.get('search') || '').toLowerCase().trim();
             const supportedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-            const items = [];
+            let items = [];
+            let totalCount = 0;
 
             if (view === 'trash') {
               // Baca Recycle Bin
@@ -355,62 +478,42 @@ function visionxCorePlugin() {
                   }
                 }
               }
+              if (classFilter && classFilter !== 'all') {
+                items = items.filter(it => it.className === classFilter);
+              }
+              if (sourceFilter && sourceFilter !== 'all') {
+                items = items.filter(it => it.source === sourceFilter);
+              }
+              if (search) {
+                items = items.filter(it =>
+                  it.filename.toLowerCase().includes(search) ||
+                  it.className.toLowerCase().includes(search)
+                );
+              }
+              totalCount = items.length;
             } else {
-              // Baca Active Dataset
-              const scanCategory = (catDir, sourceName) => {
-                if (!fs.existsSync(catDir)) return;
-                const classDirs = fs.readdirSync(catDir, { withFileTypes: true });
-                for (const cd of classDirs) {
-                  if (cd.isDirectory()) {
-                    const cls = cd.name;
-                    const dirPath = path.resolve(catDir, cls);
-                    const files = fs.readdirSync(dirPath, { withFileTypes: true });
-                    for (const f of files) {
-                      if (f.isFile() && supportedExts.has(path.extname(f.name).toLowerCase())) {
-                        const filePath = path.resolve(dirPath, f.name);
-                        const stat = fs.statSync(filePath);
-                        items.push({
-                          id: f.name,
-                          filename: f.name,
-                          className: cls,
-                          source: sourceName,
-                          sizeBytes: stat.size,
-                          formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
-                          timestamp: new Date(stat.mtimeMs).toLocaleString(),
-                          mtime: stat.mtimeMs,
-                          url: `/datasets/raw/${sourceName.startsWith('own') ? 'own' : 'external'}/${cls}/${f.name}`,
-                          isTrash: false
-                        });
-                      }
-                    }
-                  }
-                }
-              };
-
-              scanCategory(path.resolve(rawDatasetRoot, 'own'), 'own_capture');
-              scanCategory(path.resolve(rawDatasetRoot, 'external'), 'external');
+              // Baca Active Dataset dengan fast scan
+              const scanned = scanActiveDataset(rawDatasetRoot, {
+                filterClass: classFilter,
+                filterSource: sourceFilter,
+                search,
+                maxItems: 1000
+              });
+              items = scanned.items;
+              totalCount = scanned.totalImages;
             }
 
-            // Terapkan filter
-            let filtered = items;
-            if (classFilter && classFilter !== 'all') {
-              filtered = filtered.filter(it => it.className === classFilter);
-            }
-            if (sourceFilter && sourceFilter !== 'all') {
-              filtered = filtered.filter(it => it.source === sourceFilter);
-            }
-            if (search) {
-              filtered = filtered.filter(it =>
-                it.filename.toLowerCase().includes(search) ||
-                it.className.toLowerCase().includes(search)
-              );
-            }
-
-            filtered.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+            items.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
 
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: true, items: filtered, total: filtered.length }));
+            return res.end(JSON.stringify({
+              success: true,
+              items,
+              total: totalCount,
+              active_count: totalCount,
+              count: items.length
+            }));
           } catch (err) {
             console.error('[Manager List Error]', err);
             res.statusCode = 500;
@@ -422,35 +525,7 @@ function visionxCorePlugin() {
         // GET /api/manager/stats
         if (url.pathname === '/api/manager/stats' && req.method === 'GET') {
           try {
-            let totalImages = 0;
-            let totalSizeBytes = 0;
-            const classCounts = {};
-            const sourceCounts = {};
-            const supportedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-
-            const scanStats = (catDir, sourceName) => {
-              if (!fs.existsSync(catDir)) return;
-              const classDirs = fs.readdirSync(catDir, { withFileTypes: true });
-              for (const cd of classDirs) {
-                if (cd.isDirectory()) {
-                  const cls = cd.name;
-                  const dirPath = path.resolve(catDir, cls);
-                  const files = fs.readdirSync(dirPath, { withFileTypes: true });
-                  for (const f of files) {
-                    if (f.isFile() && supportedExts.has(path.extname(f.name).toLowerCase())) {
-                      const stat = fs.statSync(path.resolve(dirPath, f.name));
-                      totalImages++;
-                      totalSizeBytes += stat.size;
-                      classCounts[cls] = (classCounts[cls] || 0) + 1;
-                      sourceCounts[sourceName] = (sourceCounts[sourceName] || 0) + 1;
-                    }
-                  }
-                }
-              }
-            };
-
-            scanStats(path.resolve(rawDatasetRoot, 'own'), 'own_capture');
-            scanStats(path.resolve(rawDatasetRoot, 'external'), 'external');
+            const scanned = scanActiveDataset(rawDatasetRoot, { maxItems: 0 });
 
             // Hitung Recycle Bin
             let trashCount = 0;
@@ -462,12 +537,12 @@ function visionxCorePlugin() {
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({
               success: true,
-              totalImages,
-              totalSizeBytes,
-              formattedTotalSize: `${(totalSizeBytes / (1024 * 1024)).toFixed(2)} MB`,
-              classesCount: Object.keys(classCounts).length,
-              classCounts,
-              sourceCounts,
+              totalImages: scanned.totalImages,
+              totalSizeBytes: scanned.totalSizeBytes,
+              formattedTotalSize: `${(scanned.totalSizeBytes / (1024 * 1024)).toFixed(2)} MB`,
+              classesCount: Object.keys(scanned.classCounts).length,
+              classCounts: scanned.classCounts,
+              sourceCounts: scanned.sourceCounts,
               trashCount
             }));
           } catch (err) {
@@ -653,7 +728,7 @@ function visionxCorePlugin() {
         }
 
         // ======================================================================
-        // STATUS & HEALTH METADATA (Groq Llama 3.3)
+        // STATUS & HEALTH METADATA (VisionX AI)
         // ======================================================================
         if ((url.pathname === '/api/config' || url.pathname === '/status' || url.pathname === '/api/health') && req.method === 'GET') {
           res.statusCode = 200;
@@ -661,8 +736,8 @@ function visionxCorePlugin() {
           return res.end(JSON.stringify({
             status: 'online',
             service: 'visionx',
-            ai_provider: 'Groq (Llama 3.3)',
-            ai_model: 'llama-3.3-70b-versatile',
+            ai_provider: 'VisionX AI',
+            ai_model: 'VisionX Core',
             streaming_enabled: true
           }));
         }
@@ -682,24 +757,113 @@ function visionxCorePlugin() {
           try {
             const body = await parseJsonBody(req);
             const userMsg = body.message || 'Halo';
-            const groqApiKey = process.env.AI_API_KEY || '';
+            const visionContext = body.vision_context || null;
+            const detections = body.detections || (visionContext?.detections || []);
+            const groqApiKey = readEnvKey('AI_API_KEY') || readEnvKey('GROQ_API_KEY') || '';
+            const groqModel = readEnvKey('AI_MODEL') || 'openai/gpt-oss-120b';
 
-            const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${groqApiKey}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                model: 'openai/gpt-oss-120b',
-                messages: [
-                  { role: 'system', content: 'Kamu adalah VisionX AI Assistant, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia.' },
-                  { role: 'user', content: userMsg }
-                ],
-                stream: true,
-                temperature: 0.7
-              })
-            });
+            // Jika API Key Groq belum disetel atau placeholder, fallback ke local grounded responder
+            if (!groqApiKey) {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/event-stream');
+              res.setHeader('Cache-Control', 'no-cache');
+              res.setHeader('Connection', 'keep-alive');
+
+              let localAnswer = '';
+              const qLower = userMsg.toLowerCase().trim();
+              const detNames = Array.from(new Set(
+                (Array.isArray(detections) ? detections : [])
+                  .map(d => d.class_name || d.className || 'objek')
+                  .filter(Boolean)
+              ));
+
+              if (qLower.includes('halo') || qLower.includes('hai') || qLower.includes('test')) {
+                localAnswer = 'Halo! Saya VisionX AI. Sistem deteksi visual aktif dan siap menganalisis objek atau situasi di depan kamera Anda.';
+              } else if (qLower.includes('apa yang terlihat') || qLower.includes('ada apa') || qLower.includes('lihat')) {
+                localAnswer = detNames.length > 0
+                  ? `Berdasarkan deteksi visual kamera saat ini, terlihat: ${detNames.join(', ')}.`
+                  : 'Saat ini belum ada objek spesifik yang terdeteksi di dalam frame kamera.';
+              } else if (detNames.length > 0) {
+                localAnswer = `Objek yang terdeteksi di kamera: ${detNames.join(', ')}.`;
+              } else {
+                localAnswer = 'VisionX AI siap membantu Anda. Arahkan kamera atau ajukan pertanyaan terkait apa yang ingin dianalisis.';
+              }
+
+              const words = localAnswer.split(' ');
+              for (const word of words) {
+                res.write(`data: ${JSON.stringify({ text: word + ' ' })}\n\n`);
+                await new Promise(r => setTimeout(r, 20));
+              }
+              res.write('data: [DONE]\n\n');
+              res.end();
+              return;
+            }
+
+            // Jika API Key ada, susun prompt bebas simbol markdown kaku
+            const systemPrompt = `Kamu adalah VisionX AI, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia.
+ATURAN FORMAT WAJIB (SANGAT KETAT):
+1. Tulis jawaban dalam bahasa Indonesia santai, jelas, dan mengalir natural layaknya percakapan manusia.
+2. DILARANG KERAS menggunakan simbol bintang (*) atau (**) sama sekali (JANGAN gunakan bold/italic dengan bintang).
+3. DILARANG KERAS menggunakan tanda pagar (#, ##, ###) untuk judul atau subjudul.
+4. DILARANG KERAS membuat tabel markdown atau garis pipa (|).
+5. Gunakan teks biasa yang rapi. Bila membuat daftar, gunakan nomor biasa (1, 2, 3) atau tanda strip (-) sederhana.
+6. Hindari format kaku yang terlihat seperti salinan AI generator.`;
+
+            const messages = [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMsg }
+            ];
+
+            // Prioritas model: model pilihan user atau fallback terverifikasi
+            const candidateModels = Array.from(new Set([
+              groqModel,
+              'openai/gpt-oss-120b',
+              'openai/gpt-oss-20b',
+              'qwen/qwen3.8-27b'
+            ]));
+
+            let groqRes = null;
+            let lastErrDetail = '';
+            for (const targetModel of candidateModels) {
+              try {
+                const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${groqApiKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: targetModel,
+                    messages,
+                    stream: true,
+                    temperature: 0.7
+                  })
+                });
+
+                if (resp.ok) {
+                  groqRes = resp;
+                  break;
+                } else {
+                  const errJson = await resp.json().catch(() => ({}));
+                  lastErrDetail = errJson?.error?.message || `HTTP ${resp.status}`;
+                  console.warn(`[Groq Model ${targetModel} Failed]:`, lastErrDetail);
+                }
+              } catch (fetchErr) {
+                lastErrDetail = fetchErr.message;
+              }
+            }
+
+            if (!groqRes) {
+              console.warn(`[Groq Cloud Error] ${lastErrDetail}`);
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/event-stream');
+              res.setHeader('Cache-Control', 'no-cache');
+              res.setHeader('Connection', 'keep-alive');
+              res.write(`data: ${JSON.stringify({ error: `Groq Cloud error: ${lastErrDetail}` })}\n\n`);
+              res.write('data: [DONE]\n\n');
+              res.end();
+              return;
+            }
 
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/event-stream');
@@ -722,9 +886,13 @@ function visionxCorePlugin() {
                   }
                   try {
                     const parsed = JSON.parse(raw);
-                    const chunk = parsed.choices?.[0]?.delta?.content || '';
+                    let chunk = parsed.choices?.[0]?.delta?.content || '';
                     if (chunk) {
-                      res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                      // Hapus tanda bintang dan tanda pagar dari chunk jika lolos dari model
+                      chunk = chunk.replace(/\*/g, '');
+                      if (chunk) {
+                        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                      }
                     }
                   } catch (_) {}
                 }
@@ -734,9 +902,14 @@ function visionxCorePlugin() {
             return;
           } catch (chatErr) {
             console.error('[Vite /api/chat Proxy Error]', chatErr);
-            res.statusCode = 500;
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ error: chatErr.message }));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.write(`data: ${JSON.stringify({ error: `Gateway error: ${chatErr.message}` })}\n\n`);
+            res.write('data: [DONE]\n\n');
+            res.end();
+            return;
           }
         }
 
@@ -897,48 +1070,29 @@ function visionxCorePlugin() {
         if (url.pathname === '/api/dataset/list' && req.method === 'GET') {
           try {
             const requestedClass = url.searchParams.get('className') || url.searchParams.get('class');
+            const requestedSource = url.searchParams.get('source');
             const view = (url.searchParams.get('view') || 'active').toLowerCase().trim();
             const search = (url.searchParams.get('search') || '').toLowerCase().trim();
             const supportedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
-            const activeItems = [];
-            const trashItems = [];
+            let activeItems = [];
+            let trashItems = [];
+            let totalActive = 0;
 
             // 1. Scan active items in rawDatasetRoot
-            const scanDir = (dir, category = 'own') => {
-              if (!fs.existsSync(dir)) return;
-              const entries = fs.readdirSync(dir, { withFileTypes: true });
-              for (const dirent of entries) {
-                if (dirent.name === '.trash') continue;
-                const fullP = path.resolve(dir, dirent.name);
-                if (dirent.isDirectory()) {
-                  scanDir(fullP, dirent.name);
-                } else if (dirent.isFile() && supportedExts.has(path.extname(dirent.name).toLowerCase())) {
-                  const stat = fs.statSync(fullP);
-                  const relP = path.relative(rawDatasetRoot, fullP).replace(/\\/g, '/');
-                  const parts = relP.split('/');
-                  const cls = parts.length > 2 ? parts[1] : (parts.length > 1 ? parts[0] : 'general');
-                  const fname = dirent.name;
-
-                  if (requestedClass && requestedClass !== 'all' && requestedClass !== cls) continue;
-                  if (search && !fname.toLowerCase().includes(search) && !cls.toLowerCase().includes(search)) continue;
-
-                  activeItems.push({
-                    id: fname,
-                    filename: fname,
-                    className: cls,
-                    source: category.startsWith('own') ? 'own_capture' : `external/${category}`,
-                    sizeBytes: stat.size,
-                    formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
-                    timestamp: new Date(stat.mtimeMs).toLocaleTimeString(),
-                    mtime: stat.mtimeMs,
-                    url: `/api/dataset/image/${relP}`,
-                    isTrash: false
-                  });
-                }
-              }
-            };
-            scanDir(rawDatasetRoot);
+            if (view !== 'trash') {
+              const scanned = scanActiveDataset(rawDatasetRoot, {
+                filterClass: requestedClass,
+                filterSource: requestedSource,
+                search,
+                maxItems: 1000
+              });
+              activeItems = scanned.items;
+              totalActive = scanned.totalImages;
+            } else {
+              const scanned = scanActiveDataset(rawDatasetRoot, { maxItems: 0 });
+              totalActive = scanned.totalImages;
+            }
 
             // 2. Scan trash items in trashDatasetRoot
             const trashMeta = getTrashMeta();
@@ -952,8 +1106,10 @@ function visionxCorePlugin() {
                   const meta = metaItems[f.name] || {};
                   const origFname = meta.originalFilename || f.name;
                   const origCls = meta.originalClass || 'unknown';
+                  const origSrc = meta.originalSource || 'own_capture';
 
                   if (requestedClass && requestedClass !== 'all' && requestedClass !== origCls) continue;
+                  if (requestedSource && requestedSource !== 'all' && requestedSource !== origSrc) continue;
                   if (search && !origFname.toLowerCase().includes(search) && !origCls.toLowerCase().includes(search)) continue;
 
                   trashItems.push({
@@ -961,7 +1117,7 @@ function visionxCorePlugin() {
                     trashFilename: f.name,
                     filename: origFname,
                     className: origCls,
-                    source: meta.originalSource || 'own_capture',
+                    source: origSrc,
                     sizeBytes: stat.size,
                     formattedSize: `${(stat.size / 1024).toFixed(1)} KB`,
                     timestamp: meta.trashedAt || new Date(stat.mtimeMs).toLocaleTimeString(),
@@ -973,8 +1129,8 @@ function visionxCorePlugin() {
               }
             }
 
-            activeItems.sort((a, b) => b.mtime - a.mtime);
-            trashItems.sort((a, b) => b.mtime - a.mtime);
+            activeItems.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+            trashItems.sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
 
             const selected = view === 'trash' ? trashItems : activeItems;
 
@@ -985,10 +1141,10 @@ function visionxCorePlugin() {
               items: selected,
               active: activeItems,
               trash: trashItems,
-              active_count: activeItems.length,
+              active_count: totalActive,
               trash_count: trashItems.length,
               count: selected.length,
-              total: activeItems.length
+              total: totalActive
             }));
           } catch (err) {
             console.error('[API List Error]', err);
@@ -1032,7 +1188,7 @@ function visionxCorePlugin() {
               if (!fs.existsSync(dir)) return;
               const entries = fs.readdirSync(dir, { withFileTypes: true });
               for (const ent of entries) {
-                if (ent.name === '.trash') continue;
+                if (ent.name.startsWith('_') || ent.name.startsWith('.') || ent.name === 'labels' || ent.name === '__pycache__') continue;
                 const fullP = path.resolve(dir, ent.name);
                 if (ent.isDirectory()) {
                   findAndMove(fullP);
@@ -1103,6 +1259,7 @@ function visionxCorePlugin() {
                 if (!fs.existsSync(dir)) return;
                 const entries = fs.readdirSync(dir, { withFileTypes: true });
                 for (const ent of entries) {
+                  if (ent.name.startsWith('_') || ent.name.startsWith('.') || ent.name === 'labels' || ent.name === '__pycache__') continue;
                   const fp = path.resolve(dir, ent.name);
                   if (ent.isDirectory()) findAndDel(fp);
                   else if (ent.isFile() && ent.name === baseName) {

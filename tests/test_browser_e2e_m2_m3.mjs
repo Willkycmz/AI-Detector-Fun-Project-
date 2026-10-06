@@ -394,22 +394,23 @@ async function runBrowserE2E() {
       const desktopCheck = await cdp.evaluate(`(() => {
         const sidebar = document.getElementById('appSidebar');
         const chatContainer = document.getElementById('chatContainer');
-        const rightPanel = document.getElementById('chatRightPanel');
-        const rightPanelVisible = rightPanel ? window.getComputedStyle(rightPanel).display !== 'none' : false;
+        const statusCard = document.getElementById('sidebarSystemStatusCard') || document.getElementById('headerServerStatusPill');
+        const chatVisible = chatContainer ? window.getComputedStyle(chatContainer).display !== 'none' : false;
         const sidebarVisible = sidebar ? window.getComputedStyle(sidebar).display !== 'none' : false;
         return {
           sidebarVisible,
-          rightPanelVisible,
+          chatVisible,
+          hasStatus: Boolean(statusCard),
           hasChat: Boolean(chatContainer)
         };
       })()`);
 
-      if (!desktopCheck.sidebarVisible || !desktopCheck.rightPanelVisible) {
+      if (!desktopCheck.sidebarVisible || !desktopCheck.chatVisible || !desktopCheck.hasStatus) {
         desktopSuccess = false;
         console.warn(`  Desktop check failed at ${vp.name}:`, desktopCheck);
       }
     }
-    record('13. Desktop layout (1280, 1440) -> Stable sidebar, chat workspace, right status panel', desktopSuccess);
+    record('13. Desktop layout (1280, 1440) -> Stable sidebar, clean full-width chat workspace, system status accessible', desktopSuccess);
 
     // E2E Test 14: Error states handling
     const test14 = await cdp.evaluate(`(() => {

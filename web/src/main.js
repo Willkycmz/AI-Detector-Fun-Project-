@@ -11,7 +11,7 @@
  */
 
 import { CameraService } from './services/CameraService.js';
-import { YOLOInferenceService, MODEL_PRESETS, VISIONX_V1_CLASSES } from './services/InferenceService.js';
+import { YOLOInferenceService, MODEL_PRESETS, VISIONX_V4_CLASSES, VISIONX_V3_CLASSES, VISIONX_V1_CLASSES } from './services/InferenceService.js';
 import { DetectionRenderer } from './services/DetectionRenderer.js';
 import { DatasetCaptureService, validateClassName, SUPPORTED_IMPORT_EXTENSIONS } from './services/DatasetCaptureService.js';
 import { DatasetManagerService } from './services/DatasetManagerService.js';
@@ -77,7 +77,12 @@ class VisionXWebApp {
 
     // Multimodal Vision Context Caches (V1.0)
     this.lastDetections = [];
+    this.lastUnifiedDetections = [];
+    this.lastYoloResult = null;
+    this.lastTrackingOutput = null;
     this.lastIdentityState = null;
+    this.isRenderLoopRunning = false;
+    this.isInferenceLoopRunning = false;
 
     // Multi-Select State (Collection Mode)
     this.isSelectMode = false;
@@ -88,7 +93,7 @@ class VisionXWebApp {
     // 3. Inisialisasi Core Vision Services
     this.cameraService = new CameraService();
     this.frameSource = new FrameSource(this.cameraService);
-    this.inferenceService = new YOLOInferenceService('visionx_v2');
+    this.inferenceService = new YOLOInferenceService('visionx_v4');
     this.captureService = new DatasetCaptureService();
     this.managerService = new DatasetManagerService();
     this.identityService = new IdentityService();
@@ -727,8 +732,9 @@ class VisionXWebApp {
       sidebarServerStatus: document.getElementById('sidebarServerStatus'),
       sidebarUserCard: document.getElementById('sidebarUserCard'),
       btnUserSettings: document.getElementById('btnUserSettings'),
+      sidebarSystemStatusCard: document.getElementById('sidebarSystemStatusCard'),
 
-      // Right Panel System Status Controls
+      // Right Panel System Status Controls (stubs)
       chatRightPanel: document.getElementById('chatRightPanel'),
       btnToggleRightPanel: document.getElementById('btnToggleRightPanel'),
       btnExpandRightPanel: document.getElementById('btnExpandRightPanel'),
@@ -878,8 +884,8 @@ class VisionXWebApp {
         console.warn('[VisionX] Peringatan inisialisasi galeri (non-blocking):', galleryErr);
       }
 
-      // Muat default model YOLO (VisionX V2 Real-World Improved)
-      const initialModelId = (this.elements.modelSelect && this.elements.modelSelect.value) || 'visionx_v2';
+      // Muat default model YOLO (VisionX V4 21 Target Classes)
+      const initialModelId = (this.elements.modelSelect && this.elements.modelSelect.value) || 'visionx_v4';
       await this.loadSelectedModel(initialModelId);
 
       // Inisialisasi UI Personal Objects (V1.2)
@@ -908,12 +914,20 @@ class VisionXWebApp {
    * Bind semua event listener UI
    */
   bindEvents() {
-    // Status Popover Trigger
-    if (this.elements.headerServerStatusPill && this.elements.headerStatusPopover) {
-      this.elements.headerServerStatusPill.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.elements.headerStatusPopover.classList.toggle('hidden');
-      });
+    // Status Popover Trigger (from Header Pill or Sidebar Card)
+    if (this.elements.headerStatusPopover) {
+      if (this.elements.headerServerStatusPill) {
+        this.elements.headerServerStatusPill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.elements.headerStatusPopover.classList.toggle('hidden');
+        });
+      }
+      if (this.elements.sidebarSystemStatusCard) {
+        this.elements.sidebarSystemStatusCard.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.elements.headerStatusPopover.classList.toggle('hidden');
+        });
+      }
       if (this.elements.btnCloseStatusPopover) {
         this.elements.btnCloseStatusPopover.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -922,7 +936,10 @@ class VisionXWebApp {
       }
       document.addEventListener('click', (e) => {
         if (!this.elements.headerStatusPopover.classList.contains('hidden')) {
-          if (!this.elements.headerStatusPopover.contains(e.target) && !this.elements.headerServerStatusPill.contains(e.target)) {
+          const clickedInsidePopover = this.elements.headerStatusPopover.contains(e.target);
+          const clickedHeaderPill = this.elements.headerServerStatusPill?.contains(e.target);
+          const clickedSidebarCard = this.elements.sidebarSystemStatusCard?.contains(e.target);
+          if (!clickedInsidePopover && !clickedHeaderPill && !clickedSidebarCard) {
             this.elements.headerStatusPopover.classList.add('hidden');
           }
         }
@@ -2764,21 +2781,29 @@ class VisionXWebApp {
   startRenderLoop() {
     if (this.animationFrameId) return;
     this.prevTime = performance.now();
-    const renderFrame = async () => {
-      await this.processFrame();
+    this.isRenderLoopRunning = true;
+
+    const renderFrame = () => {
+      if (!this.isRenderLoopRunning) return;
+      this.processFrame();
       this.animationFrameId = requestAnimationFrame(renderFrame);
     };
     this.animationFrameId = requestAnimationFrame(renderFrame);
+
+    // Dedicated asynchronous, decoupled background inference loop
+    this.startInferenceLoop();
   }
 
   stopRenderLoop() {
+    this.isRenderLoopRunning = false;
+    this.isInferenceLoopRunning = false;
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
   }
 
-  async processFrame() {
+  processFrame() {
     if (!this.frameSource || !this.frameSource.isReady()) return;
     const video = this.elements.video;
 
@@ -2789,7 +2814,9 @@ class VisionXWebApp {
     if (delta > 0) {
       const currentFps = 1.0 / delta;
       this.fpsSmooth = this.fpsSmooth === 0 ? currentFps : (this.alphaFps * this.fpsSmooth + (1 - this.alphaFps) * currentFps);
-      this.elements.fpsValue.textContent = this.fpsSmooth.toFixed(1);
+      if (this.elements.fpsValue) {
+        this.elements.fpsValue.textContent = this.fpsSmooth.toFixed(1);
+      }
     }
 
     const dims = this.frameSource.getDimensions();
@@ -2800,13 +2827,51 @@ class VisionXWebApp {
     }
 
     if (this.currentMode === 'detection' || this.currentMode === 'read_text') {
+      const activeInferenceLatency = this.lastYoloResult?.inferenceTimeMs || this.faceDetector?.lastLatencyMs || 0;
+      const activeFrameId = this.lastYoloResult?.frameId || this.currentFrameId;
+
+      this.renderer.renderUnified(this.lastUnifiedDetections || [], {
+        frameId: activeFrameId,
+        inferenceTimeMs: activeInferenceLatency,
+        modelName: this.inferenceService.modelConfig.shortName
+      }, this.currentOcrRegions, this.frameSource?.isMirrored);
+
+      if (this.isDebugVisible) {
+        this.updateDebugTable(this.lastUnifiedDetections || [], activeFrameId, activeInferenceLatency);
+      }
+    } else if (this.currentMode === 'identity') {
+      // Live test di Identity Lab studio (management tab)
+      this.processIdentityLabLiveTest(video, vw, vh);
+    } else {
+      this.renderer.clear();
+    }
+  }
+
+  async startInferenceLoop() {
+    if (this.isInferenceLoopRunning) return;
+    this.isInferenceLoopRunning = true;
+
+    while (this.isRenderLoopRunning && (this.currentMode === 'detection' || this.currentMode === 'read_text')) {
+      if (!this.frameSource || !this.frameSource.isReady()) {
+        await new Promise(r => setTimeout(r, 60));
+        continue;
+      }
+
+      const video = this.elements.video;
       const letterboxedFrame = this.frameSource.getLetterboxedFrame(640);
-      if (!letterboxedFrame) return;
+      if (!letterboxedFrame) {
+        await new Promise(r => setTimeout(r, 30));
+        continue;
+      }
+
+      const dims = this.frameSource.getDimensions();
+      const vw = dims.width;
+      const vh = dims.height;
 
       let objectDetections = [];
       let yoloResult = null;
 
-      // 1. YOLO Object Detection (Realtime rate)
+      // 1. YOLO Object Detection (Non-blocking decouple)
       if (this.inferenceService.isActive && !this.isProcessingFrame) {
         this.isProcessingFrame = true;
         try {
@@ -2814,6 +2879,7 @@ class VisionXWebApp {
           if (yoloResult && Array.isArray(yoloResult.detections)) {
             objectDetections = yoloResult.detections;
             this.lastDetections = objectDetections;
+            this.lastYoloResult = yoloResult;
           } else {
             this.lastDetections = [];
           }
@@ -2836,7 +2902,6 @@ class VisionXWebApp {
       this.trackingEngine.isEnabled = isTrackingActive;
 
       if (isTrackingActive && this.inferenceService.isActive) {
-        // Hanya update tracker saat ada siklus inferensi aktual yang selesai
         if (yoloResult !== null) {
           trackingOutput = this.trackingEngine.update(objectDetections, activeFrameId);
           this.lastTrackingOutput = trackingOutput;
@@ -2848,7 +2913,7 @@ class VisionXWebApp {
         }
         trackedObjects = trackingOutput.visibleTracks;
 
-        // 1.55. Personalized Recognition (V1.2): Non-blocking & Throttled Visual Similarity
+        // 1.55. Personalized Recognition (V1.2)
         try {
           if (this.personalObjectRecognizer && trackingOutput) {
             const tracksToProcess = trackingOutput.allTracks || trackingOutput.activeTracks || trackingOutput.visibleTracks;
@@ -2858,7 +2923,7 @@ class VisionXWebApp {
           console.warn('[VisionX] Personal recognition error:', poErr);
         }
 
-        // 1.6. Voice Assistant Engine (V0.8): Spoken accessibility feedback
+        // 1.6. Voice Assistant Engine (V0.8)
         try {
           if (this.eventEngine && this.voiceEngine && this.voiceEngine.config.enabled) {
             this.eventEngine.processTracks(trackingOutput.allTracks || trackingOutput.activeTracks);
@@ -2867,20 +2932,23 @@ class VisionXWebApp {
           console.warn('[VisionX] Voice event processing error:', voiceErr);
         }
 
-        // 1.7. Object Memory Engine (V1.1): Temporal & Spatial Tracking Lifecycle
+        // 1.7. Object Memory Engine (V1.1)
         try {
           if (this.objectMemory) {
             this.objectMemory.update(trackingOutput.allTracks || trackingOutput.activeTracks, {
               frameWidth: vw,
               frameHeight: vh
             });
-            this.updateObjectMemoryUI();
+            const memPanel = document.getElementById('objectMemoryPanel');
+            if (memPanel && memPanel.classList.contains('open')) {
+              this.updateObjectMemoryUI();
+            }
           }
         } catch (memErr) {
           console.warn('[VisionX] Object memory update error:', memErr);
         }
 
-        // 1.8. Safety Engine (V1.3): Spatio-Temporal Safety Rule Evaluation
+        // 1.8. Safety Engine (V1.3)
         try {
           if (this.safetyEngine) {
             this.safetyEngine.evaluate({
@@ -2895,7 +2963,7 @@ class VisionXWebApp {
         }
       }
 
-      // 2. Face Detection & Recognition (Decoupled & Non-blocking)
+      // 2. Face Detection & Recognition
       let faceDetections = [];
       let identityResult = null;
       const isFaceLayerActive = this.elements.toggleFaceRecognition ? this.elements.toggleFaceRecognition.checked : true;
@@ -2904,11 +2972,7 @@ class VisionXWebApp {
         try {
           this.faceDetector.setEnabled(true);
           this.faceRecognizer.setEnabled(true);
-
-          // Face Detection runs at realtime rate
           faceDetections = await this.faceDetector.detect(letterboxedFrame);
-
-          // Face Recognition runs at lower rate, reusing latest identity
           identityResult = await this.faceRecognizer.recognize(faceDetections, letterboxedFrame);
           if (identityResult) {
             this.lastIdentityState = identityResult;
@@ -2921,8 +2985,8 @@ class VisionXWebApp {
         this.faceRecognizer.setEnabled(false);
       }
 
-      // 3. DetectionFusion: Combine Tracked Objects + Face Detections
-      const unifiedDetections = DetectionFusion.fuse(
+      // 3. DetectionFusion
+      this.lastUnifiedDetections = DetectionFusion.fuse(
         trackedObjects,
         faceDetections,
         identityResult || this.faceRecognizer.getLatestIdentity(),
@@ -2932,24 +2996,16 @@ class VisionXWebApp {
         }
       );
 
-      // 4. UnifiedRenderer: Render to Canvas with OCR Text Regions Overlay
-      const activeInferenceLatency = yoloResult?.inferenceTimeMs || this.faceDetector.lastLatencyMs || 0;
-
-      this.renderer.renderUnified(unifiedDetections, {
-        frameId: activeFrameId,
-        inferenceTimeMs: activeInferenceLatency,
-        modelName: this.inferenceService.modelConfig.shortName
-      }, this.currentOcrRegions, this.frameSource?.isMirrored);
-
-      // 5. Update UI, Counters, & Live Diagnostics
-      this.elements.detectionCountValue.textContent = unifiedDetections.length;
+      // 4. Update UI Counters & Live Diagnostics
+      if (this.elements.detectionCountValue) {
+        this.elements.detectionCountValue.textContent = this.lastUnifiedDetections.length;
+      }
       if (this.elements.trackedCountValue && trackingOutput) {
         this.elements.trackedCountValue.textContent = trackingOutput.stats.totalActiveCount;
       }
-      this.highlightDetectedChips(unifiedDetections);
+      this.highlightDetectedChips(this.lastUnifiedDetections);
       this.updateDiagnosticsUI(trackingOutput);
 
-      // 5.5 Update Camera Quality Strip (V1.2.1)
       if (this.elements.camDiagResolution) {
         this.elements.camDiagResolution.textContent = `${vw}×${vh}`;
       }
@@ -2957,24 +3013,20 @@ class VisionXWebApp {
         this.elements.camDiagFps.textContent = this.fpsSmooth.toFixed(1);
       }
 
-      if (this.isDebugVisible) {
-        this.updateDebugTable(unifiedDetections, activeFrameId, activeInferenceLatency);
-      }
-
-      // 6. Read Text Mode Auto Read Background Loop (Non-blocking)
+      // 5. Read Text Mode Auto Read Background Loop
       if (this.currentMode === 'read_text' && this.isAutoReadOcr) {
         const now = performance.now();
         if (now - this.lastAutoReadScanTime > this.autoReadCooldownMs && this.ocrService.getStatus() === OCRStatus.READY) {
           this.lastAutoReadScanTime = now;
-          this.handleTriggerOcr(true); // Background auto scan
+          this.handleTriggerOcr(true);
         }
       }
-    } else if (this.currentMode === 'identity') {
-      // Live test di Identity Lab studio (management tab)
-      await this.processIdentityLabLiveTest(video, vw, vh);
-    } else {
-      this.renderer.clear();
+
+      // 6. Cooperative Event Loop Yield (Crucial for instant button click response!)
+      await new Promise(resolve => setTimeout(resolve, 35));
     }
+
+    this.isInferenceLoopRunning = false;
   }
 
 
@@ -3091,7 +3143,7 @@ class VisionXWebApp {
   // SHARED METHODS & CAMERA CONTROLS
   // ==========================================================================
   async loadSelectedModel(modelId) {
-    const config = MODEL_PRESETS[modelId] || MODEL_PRESETS.visionx_v1;
+    const config = MODEL_PRESETS[modelId] || MODEL_PRESETS.visionx_v4 || MODEL_PRESETS.visionx_v3 || MODEL_PRESETS.visionx_v2 || MODEL_PRESETS.visionx_v1;
     this.updateInferenceUI('loading', `Memuat ${config.shortName}...`);
     this.updateDiagnosticsUI();
 

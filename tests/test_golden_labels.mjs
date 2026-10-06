@@ -60,6 +60,18 @@ async function runTests() {
     assert(v2.classes[3] === 'laptop', 'v2 class 3 must be laptop');
   });
 
+  testCase('MODEL_PRESETS.visionx_v4 and VISIONX_V4_CLASSES integrity (21 classes)', () => {
+    const v4 = MODEL_PRESETS.visionx_v4;
+    assert(v4, 'MODEL_PRESETS.visionx_v4 must exist');
+    assert(v4.numClasses === 21, `v4 must have 21 classes, got ${v4.numClasses}`);
+    assert(v4.classes[19] === 'helm', `Index 19 must be helm, got ${v4.classes[19]}`);
+    assert(v4.classes[20] === 'tanpa_helm', `Index 20 must be tanpa_helm, got ${v4.classes[20]}`);
+    assert(v4.classes[6] === 'cell_phone', `Index 6 must be cell_phone, got ${v4.classes[6]}`);
+    assert(v4.classes[11] === 'uang_100rb', `Index 11 must be uang_100rb, got ${v4.classes[11]}`);
+    assert(v4.classes[14] === 'car', `Index 14 must be car, got ${v4.classes[14]}`);
+    assert(v4.classes[15] === 'motorcycle', `Index 15 must be motorcycle, got ${v4.classes[15]}`);
+  });
+
   testCase('Tensor parser logic: channels-first layout [1, 11, 8400]', () => {
     const numChannels = 11;
     const numAnchors = 8400;

@@ -20,15 +20,29 @@ export class UnifiedRenderer {
     this.ctx = canvasElement.getContext('2d');
     this.isMirrored = false;
 
-    // Mapping warna spesifik 7 kelas VisionX V1
+    // Mapping warna spesifik 21 kelas VisionX V4
     this.customClassColors = {
-      'person':     { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.20)', tag: '#0284c7' }, // Sky Blue
-      'bottle':     { border: '#10b981', bg: 'rgba(16, 185, 129, 0.20)', tag: '#059669' }, // Emerald Green
-      'cup':        { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.20)', tag: '#d97706' }, // Amber Gold
-      'laptop':     { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.20)', tag: '#7c3aed' }, // Purple
-      'mouse':      { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.20)', tag: '#db2777' }, // Rose Pink
-      'keyboard':   { border: '#f97316', bg: 'rgba(249, 115, 22, 0.20)', tag: '#ea580c' }, // Orange
-      'cell_phone': { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.20)', tag: '#0891b2' }  // Cyan
+      'person':       { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.20)', tag: '#0284c7' }, // Sky Blue
+      'bottle':       { border: '#10b981', bg: 'rgba(16, 185, 129, 0.20)', tag: '#059669' }, // Emerald Green
+      'cup':          { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.20)', tag: '#d97706' }, // Amber Gold
+      'laptop':       { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.20)', tag: '#7c3aed' }, // Purple
+      'mouse':        { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.20)', tag: '#db2777' }, // Rose Pink
+      'keyboard':     { border: '#f97316', bg: 'rgba(249, 115, 22, 0.20)', tag: '#ea580c' }, // Orange
+      'cell_phone':   { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.20)', tag: '#0891b2' }, // Cyan
+      'dompet':       { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.20)', tag: '#6d28d9' }, // Violet
+      'kacamata':     { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.20)', tag: '#0f766e' }, // Teal
+      'sendal':       { border: '#84cc16', bg: 'rgba(132, 204, 22, 0.20)', tag: '#65a30d' }, // Lime
+      'tisue':        { border: '#38bdf8', bg: 'rgba(148, 163, 184, 0.20)', tag: '#475569' }, // Slate Blue
+      'uang_100rb':   { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.25)', tag: '#b91c1c' }, // Red (100rb)
+      'cooler_hp':    { border: '#0284c7', bg: 'rgba(2, 132, 199, 0.20)', tag: '#0369a1' }, // Deep Sky
+      'kunci_cakram': { border: '#eab308', bg: 'rgba(234, 179, 8, 0.20)', tag: '#ca8a04' }, // Gold
+      'car':          { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.20)', tag: '#1d4ed8' }, // Blue (Car)
+      'motorcycle':   { border: '#f97316', bg: 'rgba(249, 115, 22, 0.20)', tag: '#c2410c' }, // Amber Orange (Motorcycle)
+      'backpack':     { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.20)', tag: '#be185d' }, // Pink (Backpack)
+      'umbrella':     { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.20)', tag: '#0e7490' }, // Cyan (Umbrella)
+      'book':         { border: '#10b981', bg: 'rgba(16, 185, 129, 0.20)', tag: '#047857' }, // Emerald (Book)
+      'helm':         { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.25)', tag: '#15803d' },  // Safety Green (Helm)
+      'tanpa_helm':   { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.30)', tag: '#b91c1c' }   // Warning Red (Tanpa Helm)
     };
 
     // Palet warna fallback untuk kelas COCO lainnya

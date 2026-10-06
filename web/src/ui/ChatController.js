@@ -1252,7 +1252,7 @@ export class ChatController {
 
     let metaHtml = '';
     if (!isUser) {
-      const provider = turn.provider || 'visionx-gateway';
+      const provider = (turn.provider && !turn.provider.includes('gateway')) ? turn.provider : 'VisionX AI';
       const lat = turn.latencyMs ? `${turn.latencyMs}ms` : '';
       metaHtml = `
         <div class="message-meta-row">
@@ -1377,8 +1377,9 @@ export class ChatController {
 
     const metaEl = document.getElementById(`${turnId}_meta`);
     if (metaEl) {
+      const displayProvider = (provider && !provider.includes('gateway')) ? provider : 'VisionX AI';
       metaEl.innerHTML = `
-        <span class="message-provider-tag">${provider || 'visionx-gateway'}</span>
+        <span class="message-provider-tag">${displayProvider}</span>
         <span class="message-latency-tag">⚡ ${latencyMs}ms</span>
         <button type="button" class="btn-bubble-action btn-copy-msg" title="Salin pesan">📋</button>
         <button type="button" class="btn-bubble-action btn-speak-msg" title="Bacakan suara">🔊</button>
@@ -1555,6 +1556,33 @@ export class ChatController {
           dot.className = `status-dot ${isOnline ? 'green' : 'red'}`;
         }
       }
+
+      // Sync Sidebar Status Card & Header Popover
+      const sidebarBadge = document.getElementById('sidebarServerStatusBadge');
+      const sidebarBadgeText = document.getElementById('sidebarServerStatusText');
+      const sidebarDot = document.getElementById('sidebarStatusDot');
+      const sidebarGateway = document.getElementById('sidebarGatewayStatus');
+      const popoverBackend = document.getElementById('popoverBackendStatus');
+      const popoverGatewayDot = document.getElementById('popoverGatewayDot');
+
+      if (sidebarBadge) {
+        sidebarBadge.className = `badge ${isOnline ? 'badge-server-online' : 'badge-server-offline'}`;
+      }
+      if (sidebarBadgeText) {
+        sidebarBadgeText.textContent = isOnline ? 'Aktif' : 'Offline';
+      }
+      if (sidebarDot) {
+        sidebarDot.className = `status-dot ${isOnline ? 'green animate-pulse' : 'red'}`;
+      }
+      if (sidebarGateway) {
+        sidebarGateway.textContent = isOnline ? 'Online' : 'Offline';
+      }
+      if (popoverBackend) {
+        popoverBackend.textContent = `visionx.my.id (${isOnline ? 'Online' : 'Offline'})`;
+      }
+      if (popoverGatewayDot) {
+        popoverGatewayDot.className = `status-dot ${isOnline ? 'green' : 'red'}`;
+      }
     }
   }
 
@@ -1610,12 +1638,21 @@ export class ChatController {
 
   _escapeAndFormatText(text) {
     if (!text) return '';
+    // Hilangkan tanda pagar (#, ##, ###) di awal baris
+    let cleaned = String(text).replace(/^#{1,6}\s*/gm, '');
+    // Hilangkan tanda bintang bold/italic (**teks** atau *teks*) menjadi teks polos
+    cleaned = cleaned.replace(/\*{1,3}(.*?)\*{1,3}/g, '$1');
+    cleaned = cleaned.replace(/\*/g, '');
+    // Hilangkan baris tabel markdown (garis pipa |) menjadi teks mengalir
+    cleaned = cleaned.replace(/^\s*\|(.+)\|\s*$/gm, (match, inner) => {
+      const parts = inner.split('|').map(p => p.trim()).filter(Boolean);
+      return parts.join(' — ');
+    });
+
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = cleaned;
     let safe = div.innerHTML;
 
-    // Format markdown bold **teks**
-    safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     // Format line breaks
     safe = safe.replace(/\n/g, '<br/>');
     return safe;

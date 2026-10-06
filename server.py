@@ -1086,7 +1086,16 @@ def api_chat():
         }
         
         # Build OpenAI-compatible messages array with Indonesian system prompt
-        base_system_prompt = "Kamu adalah VisionX AI Assistant, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia."
+        base_system_prompt = (
+            "Kamu adalah VisionX AI, asisten visual dan deteksi cerdas yang ramah, ringkas, dan berbahasa Indonesia.\n"
+            "ATURAN FORMAT WAJIB (SANGAT KETAT):\n"
+            "1. Tulis jawaban dalam bahasa Indonesia santai, jelas, dan mengalir natural layaknya percakapan manusia.\n"
+            "2. DILARANG KERAS menggunakan simbol bintang (*) atau (**) sama sekali (JANGAN gunakan bold/italic dengan bintang).\n"
+            "3. DILARANG KERAS menggunakan tanda pagar (#, ##, ###) untuk judul atau subjudul.\n"
+            "4. DILARANG KERAS membuat tabel markdown atau garis pipa (|).\n"
+            "5. Gunakan teks biasa yang rapi. Bila membuat daftar, gunakan nomor biasa (1, 2, 3) atau tanda strip (-) sederhana.\n"
+            "6. Hindari format kaku yang terlihat seperti salinan AI generator."
+        )
         if vision_context or detections:
             system_prompt = f"{base_system_prompt}\n\n{system_instruction}"
         else:
@@ -1662,6 +1671,7 @@ def dataset_list():
         # 1. Scan active items in RAW_DATASET_ROOT
         if os.path.exists(RAW_DATASET_ROOT):
             for root, dirs, files in os.walk(RAW_DATASET_ROOT):
+                dirs[:] = [d for d in dirs if not (d.startswith('_') or d.startswith('.') or d in ('labels', '__pycache__'))]
                 if ".trash" in root:
                     continue
                 for f_name in files:

@@ -16,6 +16,47 @@ import { CoordinateMapper } from './CoordinateMapper.js';
 // Dapatkan instance ort (utamakan window.ort dari ort.min.js lokal)
 const getOrt = () => window.ort || (typeof globalThis !== 'undefined' ? globalThis.ort : null);
 
+export const VISIONX_V4_CLASSES = [
+  'person',
+  'bottle',
+  'cup',
+  'laptop',
+  'mouse',
+  'keyboard',
+  'cell_phone',
+  'dompet',
+  'kacamata',
+  'sendal',
+  'tisue',
+  'uang_100rb',
+  'cooler_hp',
+  'kunci_cakram',
+  'car',
+  'motorcycle',
+  'backpack',
+  'umbrella',
+  'book',
+  'helm',
+  'tanpa_helm'
+];
+
+export const VISIONX_V3_CLASSES = [
+  'person',
+  'bottle',
+  'cup',
+  'laptop',
+  'mouse',
+  'keyboard',
+  'cell_phone',
+  'dompet',
+  'kacamata',
+  'sendal',
+  'tisue',
+  'uang_100rb',
+  'cooler_hp',
+  'kunci_cakram'
+];
+
 export const VISIONX_V1_CLASSES = [
   'person',
   'bottle',
@@ -39,6 +80,39 @@ export const COCO_CLASSES = [
 ];
 
 export const MODEL_PRESETS = {
+  visionx_v4: {
+    id: 'visionx_v4',
+    name: 'VisionX V4 (21 Target Classes - Latest)',
+    shortName: 'VisionX V4 Custom',
+    badge: 'Custom V4',
+    path: './models/visionx_v4.onnx',
+    classes: VISIONX_V4_CLASSES,
+    numClasses: VISIONX_V4_CLASSES.length,
+    isCustom: true,
+    description: 'Model V4 terlatih 21 kelas (Helm 74.4%, Tanpa Helm 62.7%, Mobil, Motor, Uang, Dompet, HP, dll)'
+  },
+  visionx_v4_final: {
+    id: 'visionx_v4_final',
+    name: 'VisionX V4 Final (Frozen Backbone 21 Classes)',
+    shortName: 'VisionX V4 Final',
+    badge: 'Custom V4-Final',
+    path: './models/visionx_v4_final.onnx',
+    classes: VISIONX_V4_CLASSES,
+    numClasses: VISIONX_V4_CLASSES.length,
+    isCustom: true,
+    description: 'Model V4 Final terlatih 21 kelas dengan CSPDarknet backbone terkunci'
+  },
+  visionx_v3: {
+    id: 'visionx_v3',
+    name: 'VisionX V3 (14 Target Classes - Stable)',
+    shortName: 'VisionX V3 Custom',
+    badge: 'Custom V3',
+    path: './models/visionx_v3.onnx',
+    classes: VISIONX_V3_CLASSES,
+    numClasses: VISIONX_V3_CLASSES.length,
+    isCustom: true,
+    description: 'Model V3 terlatih dengan 14 kelas (mAP50 80.0%, cell_phone mAP50 86.8%, dompet, uang 100rb, dll)'
+  },
   visionx_v2: {
     id: 'visionx_v2',
     name: 'VisionX V2 (Real-World Improved 7 Classes)',
@@ -131,9 +205,9 @@ export function applyNMS(candidates, iouThreshold = 0.45, crossClassIouThreshold
 }
 
 export class YOLOInferenceService {
-  constructor(defaultModelId = 'visionx_v2') {
+  constructor(defaultModelId = 'visionx_v4') {
     this.activeModelId = defaultModelId;
-    this.modelConfig = MODEL_PRESETS[defaultModelId] || MODEL_PRESETS.visionx_v2 || MODEL_PRESETS.visionx_v1;
+    this.modelConfig = MODEL_PRESETS[defaultModelId] || MODEL_PRESETS.visionx_v4 || MODEL_PRESETS.visionx_v3 || MODEL_PRESETS.visionx_v2 || MODEL_PRESETS.visionx_v1;
     this.modelPath = this.modelConfig.path;
     this.classes = this.modelConfig.classes;
     this.numClasses = this.modelConfig.numClasses;
@@ -315,13 +389,37 @@ export class YOLOInferenceService {
 
       // 4. Inisialisasi ONNX InferenceSession langsung dari buffer memori (Uint8Array)
       const modelBytes = new Uint8Array(arrayBuffer);
-      this.session = await ortInstance.InferenceSession.create(modelBytes, {
-        executionProviders: ['wasm'],
-        graphOptimizationLevel: 'all'
-      });
+      let session = null;
+      let activeProvider = 'wasm';
 
-      this.diagnostics.sessionInitialized = new Date().toLocaleTimeString();
-      console.log(`[VisionX Diagnostic] ONNX session initialized successfully!`);
+      if (typeof navigator !== 'undefined' && navigator.gpu) {
+        try {
+          console.log('[VisionX Diagnostic] Mencoba inisialisasi WebGPU hardware acceleration...');
+          session = await ortInstance.InferenceSession.create(modelBytes, {
+            executionProviders: ['webgpu'],
+            graphOptimizationLevel: 'all'
+          });
+          activeProvider = 'webgpu';
+          console.log('[VisionX Diagnostic] WebGPU execution provider aktif!');
+        } catch (gpuErr) {
+          console.warn('[VisionX Diagnostic] WebGPU gagal diinisialisasi, fallback ke WASM:', gpuErr.message || gpuErr);
+          session = null;
+        }
+      }
+
+      if (!session) {
+        session = await ortInstance.InferenceSession.create(modelBytes, {
+          executionProviders: ['wasm'],
+          graphOptimizationLevel: 'all'
+        });
+        activeProvider = 'wasm';
+      }
+
+      this.session = session;
+      this.activeExecutionProvider = activeProvider;
+
+      this.diagnostics.sessionInitialized = `${new Date().toLocaleTimeString()} (${activeProvider.toUpperCase()})`;
+      console.log(`[VisionX Diagnostic] ONNX session initialized successfully using ${activeProvider.toUpperCase()}!`);
 
       // 5. Ekstraksi Input & Output Tensor Shapes
       if (this.session.inputNames && this.session.inputNames.length > 0) {
@@ -511,9 +609,10 @@ export class YOLOInferenceService {
       const numClasses = numChannels - 4;
       const activeClasses = this.classes;
 
-      // Verifikasi output custom model tetap [1, 11, 8400]
-      if (this.modelConfig.isCustom && numChannels !== 11) {
-        console.warn(`[VisionX Warning] Model V2 diharapkan 11 channel, terdeteksi: ${numChannels}`);
+      // Verifikasi output custom model sesuai jumlah channel (4 bbox + N kelas)
+      const expectedChannels = 4 + this.numClasses;
+      if (this.modelConfig.isCustom && numChannels !== expectedChannels) {
+        console.warn(`[VisionX Warning] Model ${this.modelConfig.shortName} diharapkan ${expectedChannels} channel, terdeteksi: ${numChannels}`);
       }
 
       // Hitung tensor output min / max untuk verifikasi diagnostik

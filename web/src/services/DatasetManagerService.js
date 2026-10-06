@@ -31,7 +31,7 @@ export class DatasetManagerService {
     };
   }
 
-  async fetchStats(timeoutMs = 6000) {
+  async fetchStats(timeoutMs = 15000) {
     try {
       const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
       const res = await apiFetch(ENDPOINTS.MANAGER_STATS, { signal });
@@ -48,7 +48,7 @@ export class DatasetManagerService {
     return this.stats;
   }
 
-  async fetchList(options = {}, timeoutMs = 6000) {
+  async fetchList(options = {}, timeoutMs = 15000) {
     const view = options.view || this.currentView;
     const cls = options.class || this.selectedClass;
     const src = options.source || this.selectedSource;
