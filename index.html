@@ -17,8 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <!-- Local ONNX Runtime Web v1.30.0 (Local fast load, zero latency) -->
   <script src="./ort.min.js"></script>
-  <script type="module" crossorigin src="./assets/index-D2U9Dpta.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-lGtK2Nvd.css">
+  <script type="module" crossorigin src="./assets/index-DmIPT1n1.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DxudFK3G.css">
 </head>
 <body class="theme-light" data-mode="home">
   <div class="app-container" data-mode="home">
@@ -167,9 +167,25 @@
         </nav>
       </div>
 
-      <!-- Sidebar Footer: Server & Auth Status + User Profile Card (Mobile Drawer Only) -->
-      <div class="sidebar-footer mobile-only-section">
-        <div class="sidebar-status-list">
+      <!-- Sidebar Footer: System Status Widget & User Profile (Desktop & Mobile) -->
+      <div class="sidebar-footer" id="sidebarFooter">
+        <div class="sidebar-system-card clickable" id="sidebarSystemStatusCard" role="button" tabindex="0" title="Klik untuk lihat rincian status sistem" aria-label="Status Sistem VisionX">
+          <div class="system-card-top">
+            <div class="system-card-title-wrap">
+              <span class="status-dot green animate-pulse" id="sidebarStatusDot"></span>
+              <span class="system-card-title">Status Sistem</span>
+            </div>
+            <span class="badge badge-server-online" id="sidebarServerStatusBadge">
+              <span id="sidebarServerStatusText">Aktif</span>
+            </span>
+          </div>
+          <div class="system-card-subtext">
+            <span>Gateway: <strong id="sidebarGatewayStatus">Online</strong></span> &bull; 
+            <span>AI: <strong id="sidebarAiStatusShort">Llama 3.3</strong></span>
+          </div>
+        </div>
+
+        <div class="sidebar-status-list hidden" id="sidebarLegacyStatusList" style="display: none;">
           <div class="sidebar-status-row" id="sidebarServerStatusRow">
             <span class="status-title">Status Server:</span>
             <span id="sidebarServerStatus" class="badge badge-server-online">
@@ -187,6 +203,7 @@
             </span>
           </div>
         </div>
+
         <div class="sidebar-user-card" id="sidebarUserCard" role="button" tabindex="0" title="Profil Pengguna VisionX" aria-label="Profil Pengguna">
           <div class="user-avatar-circle">V</div>
           <div class="user-info-text">
@@ -304,28 +321,57 @@
             <span class="status-pill-text" id="headerServerStatusText">Server aktif</span>
           </div>
 
-          <!-- Contextual Floating Status Popover -->
+          <!-- Contextual Floating Status Popover (Rich System Telemetry) -->
           <div id="headerStatusPopover" class="header-status-popover hidden" role="region" aria-label="Detail Sistem VisionX">
             <div class="popover-header">
-              <span class="popover-title">Status Sistem VisionX</span>
+              <div class="popover-title-wrap">
+                <span class="status-dot green animate-pulse" id="popoverHeaderDot"></span>
+                <span class="popover-title">Status Sistem VisionX</span>
+              </div>
               <button type="button" id="btnCloseStatusPopover" class="popover-close-btn" aria-label="Tutup Detail Status">✕</button>
             </div>
             <div class="popover-content">
               <div class="popover-row">
                 <span class="row-label">Backend Gateway:</span>
-                <span class="row-value"><span class="status-dot green"></span> visionx.my.id (Online)</span>
+                <span class="row-value"><span class="status-dot green" id="popoverGatewayDot"></span> <strong id="popoverBackendStatus">visionx.my.id (Online)</strong></span>
               </div>
               <div class="popover-row">
                 <span class="row-label">AI Provider:</span>
-                <span class="row-value"><span class="status-dot cyan"></span> Groq (Llama 3.3) Connected</span>
+                <span class="row-value"><span class="status-dot cyan"></span> <strong id="popoverAiStatus">Groq (Llama 3.3) Connected</strong></span>
               </div>
               <div class="popover-row">
                 <span class="row-label">Vision Model:</span>
-                <span class="row-value"><span class="status-dot emerald"></span> Web ONNX Runtime (Ready)</span>
+                <span class="row-value"><span class="status-dot emerald"></span> <strong id="popoverModelStatus">Web ONNX Runtime (Ready)</strong></span>
+              </div>
+              <div class="popover-row">
+                <span class="row-label">Inference Engine:</span>
+                <span class="row-value"><span class="status-dot emerald"></span> <strong>WebGL / WebGPU (Local)</strong></span>
+              </div>
+              <div class="popover-row">
+                <span class="row-label">Local Storage:</span>
+                <span class="row-value"><span class="status-dot cyan"></span> <strong>IndexedDB (Riwayat &amp; Dataset)</strong></span>
               </div>
               <div class="popover-row">
                 <span class="row-label">Autentikasi Gateway:</span>
-                <span class="row-value">Terhubung</span>
+                <span class="row-value" id="popoverAuthStatus">Terhubung</span>
+              </div>
+
+              <!-- Edge Telemetry Highlights Box -->
+              <div class="popover-telemetry-box">
+                <div class="popover-telemetry-item">
+                  <span class="telemetry-dot dot-active"></span>
+                  <div class="telemetry-text">
+                    <span class="telemetry-label">Privacy Shield</span>
+                    <span class="telemetry-value">Active (100% Local Inference)</span>
+                  </div>
+                </div>
+                <div class="popover-telemetry-item">
+                  <span class="telemetry-dot dot-cyan"></span>
+                  <div class="telemetry-text">
+                    <span class="telemetry-label">Edge Intelligence</span>
+                    <span class="telemetry-value">Zero Cloud Retention</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -652,106 +698,15 @@
           </div>
         </div>
 
-        <!-- Floating Expand Button when Right Panel is minimized -->
-        <button type="button" id="btnExpandRightPanel" class="btn-expand-right-panel hidden" title="Buka Status Sistem" aria-label="Buka Status Sistem">
-          <span class="status-dot green animate-pulse"></span>
-          <span class="expand-text">Status Sistem</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-
-        <!-- Right Status & Information Panel (I2: Focused System Status Sidebar) -->
-        <aside class="chat-right-panel" id="chatRightPanel" aria-label="Status Sistem VisionX">
-          <!-- Card 1: System Status (Enriched & Focused) -->
-          <div class="panel-card system-status-card">
-            <div class="panel-card-header">
-              <div class="panel-title-with-dot">
-                <span class="status-dot green animate-pulse"></span>
-                <span class="panel-title">System Status</span>
-              </div>
-              <div class="panel-header-actions" style="display: flex; align-items: center; gap: 8px;">
-                <span class="badge badge-live">Live</span>
-                <button type="button" id="btnToggleRightPanel" class="btn-toggle-right-panel" title="Minimize Status Sidebar" aria-label="Minimize Status Sidebar">✕</button>
-              </div>
-            </div>
-
-            <div class="status-items-list">
-              <div class="status-item-row">
-                <div class="status-item-info">
-                  <span class="item-name">Backend Server</span>
-                  <span class="item-sub">visionx.my.id</span>
-                </div>
-                <div class="status-item-val online">
-                  <span class="status-dot green"></span>
-                  <span id="rightPanelBackendStatus">Online</span>
-                </div>
-              </div>
-
-              <div class="status-item-row">
-                <div class="status-item-info">
-                  <span class="item-name">AI Provider: Groq (Llama 3.3)</span>
-                  <span class="item-sub">Groq Cloud LPU API</span>
-                </div>
-                <div class="status-item-val online">
-                  <span class="status-dot cyan"></span>
-                  <span id="rightPanelAiStatus">Connected</span>
-                </div>
-              </div>
-
-              <div class="status-item-row">
-                <div class="status-item-info">
-                  <span class="item-name">Vision Model</span>
-                  <span class="item-sub">Web ONNX Runtime</span>
-                </div>
-                <div class="status-item-val online">
-                  <span class="status-dot emerald"></span>
-                  <span id="rightPanelModelStatus">Ready</span>
-                </div>
-              </div>
-
-              <div class="status-item-row">
-                <div class="status-item-info">
-                  <span class="item-name">Inference Engine</span>
-                  <span class="item-sub">Browser Hardware Accel</span>
-                </div>
-                <div class="status-item-val online">
-                  <span class="status-dot emerald"></span>
-                  <span>WebGL / WebGPU</span>
-                </div>
-              </div>
-
-              <div class="status-item-row">
-                <div class="status-item-info">
-                  <span class="item-name">Local Storage</span>
-                  <span class="item-sub">Riwayat &amp; Dataset</span>
-                </div>
-                <div class="status-item-val online">
-                  <span class="status-dot cyan"></span>
-                  <span>IndexedDB</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Edge Telemetry Highlights Box -->
-            <div class="system-telemetry-box">
-              <div class="telemetry-badge-item">
-                <span class="telemetry-dot dot-active"></span>
-                <div class="telemetry-text">
-                  <span class="telemetry-label">Privacy Shield</span>
-                  <span class="telemetry-value">Active (100% Local Inference)</span>
-                </div>
-              </div>
-              <div class="telemetry-badge-item">
-                <span class="telemetry-dot dot-cyan"></span>
-                <div class="telemetry-text">
-                  <span class="telemetry-label">Edge Intelligence</span>
-                  <span class="telemetry-value">Zero Cloud Retention</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- System Status is cleanly relocated to Left Sidebar and Top Header Popover -->
+        <!-- Hidden DOM stubs preserved to guarantee backward compatibility for any script querying these IDs -->
+        <aside class="chat-right-panel hidden" id="chatRightPanel" aria-hidden="true" style="display: none !important; width: 0 !important; min-width: 0 !important; max-width: 0 !important; padding: 0 !important; border: none !important; opacity: 0 !important; pointer-events: none !important;">
+          <span id="rightPanelBackendStatus" style="display:none;">Online</span>
+          <span id="rightPanelAiStatus" style="display:none;">Connected</span>
+          <span id="rightPanelModelStatus" style="display:none;">Ready</span>
+          <button type="button" id="btnToggleRightPanel" style="display:none;" aria-hidden="true"></button>
         </aside>
+        <button type="button" id="btnExpandRightPanel" class="btn-expand-right-panel hidden" style="display: none !important;" aria-hidden="true"></button>
       </div>
 
       <!-- Collapsible Legacy Tools Directory for feature preservation (hidden from clean Chat UI) -->
@@ -970,7 +925,8 @@
         <div class="model-select-group">
           <label for="modelSelect" class="field-label-sm">Model Vision:</label>
           <select id="modelSelect" class="select-control model-select-sm">
-            <option value="visionx_v2" selected>VisionX V2 (Real-World Improved)</option>
+            <option value="visionx_v3" selected>VisionX V3 (14 Target Classes - Recommended)</option>
+            <option value="visionx_v2">VisionX V2 (Real-World Improved 7 Classes)</option>
             <option value="visionx_v1">VisionX V1 (Custom 7 Classes)</option>
             <option value="pretrained">Pretrained Vision Model (COCO 80 Classes)</option>
           </select>
@@ -1755,14 +1711,14 @@
                   <!-- Model Meta Tags -->
                   <div class="model-meta-info">
                     <span id="modelArchTag" class="model-pill-tag">Arch: YOLOv8n</span>
-                    <span id="modelClassesTag" class="model-pill-tag">Classes: 7</span>
+                    <span id="modelClassesTag" class="model-pill-tag">Classes: 14</span>
                     <span id="modelLoadTimeTag" class="model-pill-tag">Load: -- ms</span>
                   </div>
                 </div>
 
                 <!-- Target Classes Chips -->
                 <div class="model-target-chips" id="targetChipsContainer">
-                  <span class="chips-label">Target Classes:</span>
+                  <span class="chips-label">Target Classes (14):</span>
                   <span class="class-chip" data-chip-class="person">person</span>
                   <span class="class-chip" data-chip-class="bottle">bottle</span>
                   <span class="class-chip" data-chip-class="cup">cup</span>
@@ -1770,6 +1726,13 @@
                   <span class="class-chip" data-chip-class="mouse">mouse</span>
                   <span class="class-chip" data-chip-class="keyboard">keyboard</span>
                   <span class="class-chip" data-chip-class="cell_phone">cell_phone</span>
+                  <span class="class-chip" data-chip-class="dompet">dompet</span>
+                  <span class="class-chip" data-chip-class="kacamata">kacamata</span>
+                  <span class="class-chip" data-chip-class="sendal">sendal</span>
+                  <span class="class-chip" data-chip-class="tisue">tisue</span>
+                  <span class="class-chip" data-chip-class="uang_100rb">uang_100rb</span>
+                  <span class="class-chip" data-chip-class="cooler_hp">cooler_hp</span>
+                  <span class="class-chip" data-chip-class="kunci_cakram">kunci_cakram</span>
                 </div>
               </div>
 
